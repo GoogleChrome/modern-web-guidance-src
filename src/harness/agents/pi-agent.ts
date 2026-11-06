@@ -18,6 +18,7 @@ import {
   type StandardizedStep,
   type SubagentMetadata,
   type TrajectorySummary,
+  extractRetrievedGuidesFromCommand,
   extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
@@ -50,8 +51,13 @@ export function setupPiCredentials(tempHome: string): void {
     const src = path.join(piSource, 'agent', file);
     copyFileIfExists(src, path.join(piDestAgent, file));
   }
+}
 
-  process.env.PI_CODING_AGENT_DIR = piDestAgent;
+export function getPiEnvOverrides(homeDir?: string): NodeJS.ProcessEnv {
+  return {
+    PI_CODING_AGENT: 'true',
+    ...(homeDir ? { PI_CODING_AGENT_DIR: path.join(homeDir, '.pi', 'agent') } : {}),
+  };
 }
 
 export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
@@ -109,8 +115,6 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.PI_CODING_AGENT = 'true';
-
     try {
       await runCliAgentCommand(
         command,
@@ -118,7 +122,8 @@ async function run() {
         workDir,
         targetDir,
         'Pi',
-        runType
+        runType,
+        getPiEnvOverrides(path.dirname(workDir)),
       );
     } finally {
       exportPiTrajectories(workDir, targetDir);
@@ -220,22 +225,22 @@ export function parsePiTrajectory(logData: any[], subagentsMap: Record<string, a
             if (toolName === 'read' && (params.path || params.file_path)) {
               const filePath = (params.path || params.file_path) as string;
               if (filePath.includes('/skills/') || filePath.includes('.agents/skills/')) {
-                const match = filePath.match(/\/skills\/[^/]+\/guides\/[^/]+\/([^/]+)\/guide\.md$/) ||
-                              filePath.match(/\/skills\/[^/]+\/references\/[^/]+\/([^/]+)\.md$/) ||
-                              filePath.match(/\/skills\/[^/]+\/(?:[^/]+\/)*([^/]+)\.md$/);
-                if (match && match[1] !== 'guide') {
-                  fileReadGuides.add(match[1]);
+                const skillMatch = filePath.match(/\/skills\/([^/]+)\/SKILL\.md$/);
+                if (skillMatch) {
+                  toolsUsed.add(skillMatch[1]);
+                } else {
+                  const match = filePath.match(/\/skills\/[^/]+\/guides\/[^/]+\/([^/]+)\/guide\.md$/) ||
+                                filePath.match(/\/skills\/[^/]+\/references\/[^/]+\/([^/]+)\.md$/) ||
+                                filePath.match(/\/skills\/[^/]+\/(?:[^/]+\/)*([^/]+)\.md$/);
+                  if (match && match[1] !== 'guide') {
+                    fileReadGuides.add(match[1]);
+                  }
                 }
               }
             } else if (toolName === 'bash' && params.command) {
               const command = params.command as string;
-              if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
-                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-                if (match) {
-                  for (const g of match[1].split(',').map((s: string) => s.trim())) {
-                    retrievedGuides.add(g);
-                  }
-                }
+              for (const g of extractRetrievedGuidesFromCommand(command)) {
+                retrievedGuides.add(g);
               }
             }
 

@@ -1,0 +1,285 @@
+diff --git a/index.html b/index.html
+index 66c9173..9fd081b 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,8 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --icon-check: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'></polyline></svg>");
++      --icon-dash: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'><line x1='5' y1='12' x2='19' y2='12'></line></svg>");
+     }
+ 
+     * {
+@@ -113,6 +115,9 @@
+       border-radius: 8px;
+       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+       text-align: center;
++      display: flex;
++      flex-direction: column;
++      justify-content: space-between;
+     }
+ 
+     .card h3 {
+@@ -120,6 +125,122 @@
+       color: var(--primary);
+     }
+ 
++    /* Drink Customizations */
++    .customizations {
++      border: 1px solid var(--secondary);
++      border-radius: 6px;
++      padding: 10px 14px;
++      margin-top: 16px;
++      text-align: left;
++      background-color: var(--light);
++    }
++
++    .customizations-title {
++      font-size: 0.85rem;
++      font-weight: 600;
++      text-transform: uppercase;
++      letter-spacing: 0.05em;
++      color: var(--primary);
++      padding: 0 6px;
++    }
++
++    .customization-list {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .customization-select-all {
++      border-bottom: 1px dashed var(--secondary);
++      margin-bottom: 4px;
++      font-weight: 600;
++      color: var(--primary);
++    }
++
++    label {
++      display: inline-flex;
++      align-items: center;
++      gap: 0.65rem;
++      min-block-size: 44px;
++      cursor: pointer;
++      color: var(--text);
++      font-size: 0.92rem;
++      user-select: none;
++    }
++
++    label:has(:disabled) {
++      cursor: not-allowed;
++      color: #7a6a65;
++    }
++
++    /* Native checkbox customization */
++    .checkbox-native {
++      accent-color: var(--primary);
++      inline-size: 1.25em;
++      aspect-ratio: 1;
++      margin: 0;
++      cursor: pointer;
++    }
++
++    /* Custom checkbox */
++    .checkbox-custom {
++      --checkbox-size: 1.25em;
++      --checkbox-icon-size: 0.7em;
++
++      appearance: none;
++      display: inline-grid;
++      place-content: center;
++      inline-size: var(--checkbox-size);
++      aspect-ratio: 1;
++      margin: 0;
++      color: var(--primary);
++      background-color: white;
++      border: 2px solid currentColor;
++      border-radius: 4px;
++      cursor: pointer;
++      flex-shrink: 0;
++
++      &::before {
++        content: "";
++        inline-size: var(--checkbox-icon-size);
++        aspect-ratio: 1;
++        background-color: currentColor;
++        mask: var(--checkbox-icon) no-repeat center / contain;
++        scale: 0;
++
++        @media (prefers-reduced-motion: no-preference) {
++          transition: scale 150ms ease;
++        }
++
++        @media (forced-colors: active) {
++          background-color: CanvasText;
++        }
++      }
++
++      &:checked {
++        --checkbox-icon: var(--icon-check);
++        background-color: rgba(255, 171, 64, 0.25);
++      }
++
++      &:indeterminate {
++        --checkbox-icon: var(--icon-dash);
++        background-color: rgba(255, 171, 64, 0.25);
++      }
++
++      &:is(:checked, :indeterminate)::before {
++        scale: 1;
++      }
++
++      &:focus-visible {
++        outline: 2px solid currentColor;
++        outline-offset: 2px;
++      }
++
++      &:disabled {
++        cursor: not-allowed;
++        opacity: 0.5;
++      }
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -179,18 +300,87 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+-          <h3>Maple Oat Latte</h3>
+-          <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++          <div>
++            <h3>Maple Oat Latte</h3>
++            <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++            <fieldset class="customizations">
++              <legend class="customizations-title">Customize Drink</legend>
++              <div class="customization-list">
++                <label for="maple-select-all" class="customization-select-all">
++                  <input type="checkbox" id="maple-select-all" class="checkbox-custom" data-select-all>
++                  <span>Select All Add-ons</span>
++                </label>
++                <label for="maple-extra-shot">
++                  <input type="checkbox" id="maple-extra-shot" name="maple-addons" value="extra-shot" class="checkbox-custom" checked>
++                  <span>Extra Espresso Shot (+$1.25)</span>
++                </label>
++                <label for="maple-whipped-cream">
++                  <input type="checkbox" id="maple-whipped-cream" name="maple-addons" value="whipped-cream" class="checkbox-custom">
++                  <span>Whipped Cream (+$0.75)</span>
++                </label>
++                <label for="maple-cinnamon">
++                  <input type="checkbox" id="maple-cinnamon" name="maple-addons" value="cinnamon-dust" class="checkbox-custom">
++                  <span>Cinnamon Dusting</span>
++                </label>
++              </div>
++            </fieldset>
++          </div>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Dark Roast Espresso</h3>
+-          <p>Bold, smokey, and perfect for a morning boost.</p>
++          <div>
++            <h3>Dark Roast Espresso</h3>
++            <p>Bold, smokey, and perfect for a morning boost.</p>
++            <fieldset class="customizations">
++              <legend class="customizations-title">Customize Drink</legend>
++              <div class="customization-list">
++                <label for="espresso-select-all" class="customization-select-all">
++                  <input type="checkbox" id="espresso-select-all" class="checkbox-custom" data-select-all>
++                  <span>Select All Add-ons</span>
++                </label>
++                <label for="espresso-oat-splash">
++                  <input type="checkbox" id="espresso-oat-splash" name="espresso-addons" value="oat-splash" class="checkbox-custom" checked>
++                  <span>Steamed Oat Milk Splash (+$0.50)</span>
++                </label>
++                <label for="espresso-demerara">
++                  <input type="checkbox" id="espresso-demerara" name="espresso-addons" value="demerara-sugar" class="checkbox-custom">
++                  <span>Raw Demerara Sugar</span>
++                </label>
++                <label for="espresso-lemon-twist">
++                  <input type="checkbox" id="espresso-lemon-twist" name="espresso-addons" value="lemon-twist" class="checkbox-custom">
++                  <span>Fresh Lemon Twist</span>
++                </label>
++              </div>
++            </fieldset>
++          </div>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
+-          <h3>Cold Brew</h3>
+-          <p>Steeped for 18 hours for maximum smoothness.</p>
++          <div>
++            <h3>Cold Brew</h3>
++            <p>Steeped for 18 hours for maximum smoothness.</p>
++            <fieldset class="customizations">
++              <legend class="customizations-title">Customize Drink</legend>
++              <div class="customization-list">
++                <label for="coldbrew-select-all" class="customization-select-all">
++                  <input type="checkbox" id="coldbrew-select-all" class="checkbox-custom" data-select-all>
++                  <span>Select All Add-ons</span>
++                </label>
++                <label for="coldbrew-cold-foam">
++                  <input type="checkbox" id="coldbrew-cold-foam" name="coldbrew-addons" value="cold-foam" class="checkbox-custom" checked>
++                  <span>Vanilla Sweet Cream Cold Foam (+$1.25)</span>
++                </label>
++                <label for="coldbrew-caramel">
++                  <input type="checkbox" id="coldbrew-caramel" name="coldbrew-addons" value="caramel-drizzle" class="checkbox-custom">
++                  <span>Caramel Drizzle (+$0.75)</span>
++                </label>
++                <label for="coldbrew-nitro">
++                  <input type="checkbox" id="coldbrew-nitro" name="coldbrew-addons" value="nitro-infusion" class="checkbox-custom" disabled>
++                  <span>Nitro Infusion (Sold Out)</span>
++                </label>
++              </div>
++            </fieldset>
++          </div>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+         </div>
+       </div>
+@@ -207,6 +397,44 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.querySelectorAll('.customizations').forEach((fieldset) => {
++      const selectAll = fieldset.querySelector('[data-select-all]');
++      const options = Array.from(
++        fieldset.querySelectorAll('input[type="checkbox"]:not([data-select-all]):not(:disabled)')
++      );
++
++      if (!selectAll || options.length === 0) return;
++
++      const syncSelectAll = () => {
++        const checkedCount = options.filter((opt) => opt.checked).length;
++        if (checkedCount === 0) {
++          selectAll.checked = false;
++          selectAll.indeterminate = false;
++        } else if (checkedCount === options.length) {
++          selectAll.checked = true;
++          selectAll.indeterminate = false;
++        } else {
++          selectAll.checked = false;
++          selectAll.indeterminate = true;
++        }
++      };
++
++      selectAll.addEventListener('change', () => {
++        options.forEach((opt) => {
++          opt.checked = selectAll.checked;
++        });
++        selectAll.indeterminate = false;
++      });
++
++      options.forEach((opt) => {
++        opt.addEventListener('change', syncSelectAll);
++      });
++
++      syncSelectAll();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

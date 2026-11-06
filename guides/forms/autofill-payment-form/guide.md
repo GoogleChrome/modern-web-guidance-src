@@ -32,7 +32,7 @@ To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a
 
 ### Make the most of HTML attributes
 
-Make it easy for users to enter data, by using the appropriate `<input>` element `<type>` attribute to provide the right keyboard on mobile and enable basic built-in validation by the browser.
+Make it easy for users to enter data, by using the appropriate `<input>` element with a `type` attribute to provide the right keyboard on mobile and enable basic built-in validation by the browser.
 
 Always use `type="email"` for email addresses and `type="tel"` for phone numbers.
 
@@ -52,7 +52,11 @@ Give each form submit button a value that says what it does. For each step towar
 
 ### Use a single name input where possible
 
-Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler.
+Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler. Use `autocomplete="name"` for a single input for name.
+
+```html
+<input type="text" id="fullname" name="fullname" autocomplete="name">
+```
 
 Allow international names. For validation, avoid using regular expressions that only match Latin characters. Latin-only excludes users with names or addresses that include characters that aren't in the Latin alphabet. Allow Unicode letter matching instead—and ensure your backend supports Unicode securely as both input and output. Unicode in regular expressions is well supported by modern browsers.
 
@@ -107,6 +111,16 @@ Make sure to add appropriate `autocomplete` values in payment card forms. Withou
        inputmode="numeric" maxlength="4" pattern="[0-9]{3,4}" required>
 ```
 
+### Show format hints above the input
+
+Where a field has a required format (for example the `MM/YY` expiry date), put the hint in a visible element **above** the input and link the two with `aria-describedby`, as in the `cc-exp` example above. Hints that sit below an input are easily hidden by the mobile keyboard or by the autofill popover at the moment the user needs them.
+
+Don't rely on the `placeholder` attribute as the only format hint, and never use it instead of a `<label>`: placeholder text is hidden as soon as the user starts typing, so it can't be checked against while editing. A placeholder is fine as an extra cue alongside the label and the persistent hint.
+
+### Don't mask the security code
+
+Use `type="text"` with `inputmode="numeric"` for the card security code, not `type="password"`. Users can't check a masked three- or four-digit code for typos, so a mistyped digit isn't caught until the payment is declined, and masking adds little protection because the code is printed on the card the user is holding.
+
 ### Use a single input for payment card and phone numbers
 
 For payment card and phone numbers use a single input: don't split the number into parts. That makes it easier for users to enter data, makes validation simpler, and enables browsers to autofill. Consider doing the same for other numeric data such as PIN and bank codes.
@@ -125,7 +139,7 @@ Add the `required` attribute to mandatory fields. Modern browsers automatically 
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("enterkeyhint") }}
+{{ BASELINE_STATUS("enterkeyhint") }}
 {{ BASELINE_STATUS("input-email-tel-url") }}
 {{ BASELINE_STATUS("inputmode") }}
 

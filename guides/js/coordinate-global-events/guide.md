@@ -60,27 +60,6 @@ console.log(`Tokyo time: ${tokyoTime.toLocaleString('en-US', { hour: 'numeric', 
 -   **DO** use `.withTimeZone()` to calculate the equivalent time in other locations without mutating the original object (Temporal objects are immutable).
 -   **DO** use native `.toLocaleString()` formatting (such as `{ hour: 'numeric', minute: '2-digit' }`) for user-facing time displays instead of manual time calculations and padding.
 
-### Fallback strategies
+## Fallback Strategy
 
-{{ BASELINE_STATUS("temporal") }}
-
-For environments without native `Temporal` support, you must conditionally load the `@js-temporal/polyfill`.
-
-```javascript
-// Check if Temporal is supported natively
-(async () => {
-  if (typeof Temporal === 'undefined') {
-    // Load the polyfill conditionally
-    const module = await import("https://esm.sh/@js-temporal/polyfill");
-    globalThis.Temporal = module.Temporal;
-    // Extend Date.prototype if needed
-    Date.prototype.toTemporalInstant = module.toTemporalInstant;
-    initializeApp();
-  }
-})();
-
-function initializeApp() {
-  // Your app logic here
-  console.log("Temporal is ready:", typeof Temporal);
-}
-```
+{{ FEATURE_FALLBACKS("temporal") }}

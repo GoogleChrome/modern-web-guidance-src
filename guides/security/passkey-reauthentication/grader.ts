@@ -14,12 +14,16 @@ const demoName = path.basename(filePath);
 test.describe('Passkey Reauthentication Expectations', () => {
   test.beforeEach(async ({ page, TARGET_URL }) => {
     if (TARGET_URL.startsWith('http://localhost/') || TARGET_URL === `http://localhost/${demoName}`) {
-      await page.route('http://localhost/*', async (route) => {
+      await page.route('http://localhost/**', async (route) => {
         const requestPath = new URL(route.request().url()).pathname;
         const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
 
         if (fs.existsSync(localFilePath)) {
-          await route.fulfill({ path: localFilePath });
+          const isJs = /\.(m?js|cjs)$/i.test(localFilePath);
+          await route.fulfill({
+            path: localFilePath,
+            ...(isJs ? { contentType: 'application/javascript' } : {}),
+          });
         } else {
           await route.continue();
         }
@@ -78,7 +82,9 @@ test.describe('Passkey Reauthentication Expectations', () => {
           (window as any).__getOptions = options;
           return {
             id: 'fake-reauth-cred-id',
-            toJSON: () => ({ id: 'fake-reauth-cred-id' })
+            type: 'public-key',
+            toJSON: () => ({ id: 'fake-reauth-cred-id', type: 'public-key' }),
+            JSON: () => ({ id: 'fake-reauth-cred-id', type: 'public-key' })
           } as any;
         };
       }

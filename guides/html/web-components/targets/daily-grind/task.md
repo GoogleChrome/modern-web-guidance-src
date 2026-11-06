@@ -1,1 +1,1 @@
-- Build reusable UI components for the application.
+- Refactor the coffee cards and interactive sections on the Daily Grind homepage into reusable, accessible Web Components with encapsulated styling and behavior.

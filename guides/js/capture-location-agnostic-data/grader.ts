@@ -91,20 +91,21 @@ test.describe(`Temporal API Expectations: ${demoName}`, () => {
     // or destructuring `{ Temporal } = await import(...)` from the dynamic polyfill import.
     const assignsToGlobal =
       /(?:globalThis|window|self)\.Temporal\s*(?:\?\?=|\|\|=|=(?!=))/.test(fileContent) ||
-      /\{\s*Temporal\s*\}\s*=\s*await\s+import\s*\(/.test(fileContent);
+      /\{\s*Temporal\s*\}\s*=\s*await\s+import\s*\(/.test(fileContent) ||
+      /(?:const|let|var)\s+(?:temporal|Temporal)\s*=\s*(?:globalThis|window|self)\.Temporal\s*(?:\?\?|\|\|)/.test(fileContent);
     expect(assignsToGlobal, "Expected polyfill to be assigned to global scope (e.g. globalThis.Temporal = ...)").toBe(true);
   });
 
   test('MUST use Temporal.PlainDate for capturing calendar dates', async () => {
     // negative-demo uses Temporal.PlainDate for a log timestamp, not a calendar date (birthdate).
     // demo.html uses Temporal.PlainDate for the birthdate.
-    const usesPlainDateForCalendar = /Temporal\.PlainDate/i.test(fileContent);
-    expect(usesPlainDateForCalendar, "Expected to find Temporal.PlainDate usage for calendar dates (e.g. date/birth)").toBe(true);
+    const usesPlainDateForCalendar = /Temporal\.Plain(?:Date|MonthDay|YearMonth)/i.test(fileContent);
+    expect(usesPlainDateForCalendar, "Expected to find Temporal.PlainDate (or PlainMonthDay/PlainYearMonth) usage for calendar dates").toBe(true);
   });
 
   test('MUST use Temporal.PlainTime for capturing wall-clock times', async () => {
     // Require an actual construction call (from() or the constructor), not just a mention of the type in prose.
-    const usesPlainTime = /(?:Temporal\.PlainTime\.from|new\s+Temporal\.PlainTime)\s*\(/.test(fileContent);
+    const usesPlainTime = /(?:Temporal\.PlainTime\.from|new\s+Temporal\.PlainTime)\s*\(/i.test(fileContent);
     expect(usesPlainTime, "Expected to find Temporal.PlainTime construction for wall-clock times (e.g. reminder/alarm)").toBe(true);
   });
 

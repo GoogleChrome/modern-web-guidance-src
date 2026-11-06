@@ -1,0 +1,1 @@
+- Update the navigation links, footer links, "Seasonal Favorites" heading, and coffee card titles in `index.html` to feature decorative text lines—such as underlines, overlines, strikethroughs, or custom shapes—complete with animated reveal effects, custom vertical offsets and horizontal end insets, and clean ink skipping around letter descenders.

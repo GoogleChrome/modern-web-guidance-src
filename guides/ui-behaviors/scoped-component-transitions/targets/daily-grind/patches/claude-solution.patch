@@ -1,0 +1,139 @@
+diff --git a/index.html b/index.html
+index 66c9173..561226e 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,47 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Scoped view transitions */
++    .controls {
++      display: flex;
++      gap: 10px;
++      justify-content: center;
++      margin-top: 15px;
++    }
++
++    .controls button,
++    .card .remove-btn {
++      font: inherit;
++      cursor: pointer;
++      border: 1px solid var(--primary);
++      background: white;
++      color: var(--primary);
++      padding: 6px 14px;
++      border-radius: 5px;
++    }
++
++    .card .remove-btn {
++      margin-top: 15px;
++      margin-left: 8px;
++    }
++
++    .grid .card {
++      view-transition-name: match-element;
++    }
++
++    ::view-transition-group(*) {
++      animation-duration: 300ms;
++      animation-timing-function: ease-in-out;
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      ::view-transition-group(*),
++      ::view-transition-old(*),
++      ::view-transition-new(*) {
++        animation: none !important;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -177,21 +218,28 @@
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+-      <div class="grid">
++      <div class="controls">
++        <button type="button" id="sort-btn">Sort A–Z</button>
++        <button type="button" id="reset-btn">Reset order</button>
++      </div>
++      <div class="grid" id="favorites">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
++          <button type="button" class="remove-btn">Remove</button>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
++          <button type="button" class="remove-btn">Remove</button>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
++          <button type="button" class="remove-btn">Remove</button>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +255,56 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    const supportsScopedTransition = 'startViewTransition' in Element.prototype;
++
++    function runWithTransition(scopeEl, updateDOM) {
++      if (!supportsScopedTransition) {
++        updateDOM();
++        return;
++      }
++      const transition = scopeEl.startViewTransition(() => {
++        updateDOM();
++      });
++      transition.ready.catch(() => {});
++    }
++
++    const grid = document.getElementById('favorites');
++    const originalOrder = Array.from(grid.children);
++
++    // Reorder by moving existing nodes (required for match-element)
++    function reorder(cards) {
++      runWithTransition(grid, () => {
++        for (const card of cards) {
++          if (card.isConnected) grid.appendChild(card);
++        }
++      });
++    }
++
++    document.getElementById('sort-btn').addEventListener('click', () => {
++      const sorted = Array.from(grid.children).sort((a, b) =>
++        a.querySelector('h3').textContent.localeCompare(b.querySelector('h3').textContent));
++      reorder(sorted);
++    });
++
++    document.getElementById('reset-btn').addEventListener('click', () => {
++      reorder(originalOrder);
++    });
++
++    grid.addEventListener('click', (e) => {
++      const btn = e.target.closest('.remove-btn');
++      if (!btn) return;
++      const card = btn.closest('.card');
++      const next = card.nextElementSibling?.querySelector('button') ??
++        card.previousElementSibling?.querySelector('button') ??
++        document.getElementById('sort-btn');
++      const hadFocus = card.contains(document.activeElement);
++      runWithTransition(grid, () => {
++        card.remove();
++        if (hadFocus) next.focus();
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

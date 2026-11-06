@@ -2,7 +2,7 @@ import fs, { existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import zlib from "zlib";
-import { TfjsEmbedder } from "./tfjs-embedder.ts";
+import { StaticEmbedder } from "./static-embedder.ts";
 import { logToolResult } from "./logger.ts";
 import { buildBm25Index, rankBm25, reciprocalRankFusion, type Bm25Index } from "./bm25.ts";
 
@@ -14,6 +14,8 @@ export interface UseCaseResult {
   tokenCount: number;
   similarity: number;
 }
+
+export type CompactSearchResult = Pick<UseCaseResult, "id" | "description">;
 
 export interface UseCaseVector {
   id: string;
@@ -28,9 +30,16 @@ export interface UseCaseVector {
 
 export interface EmbedderLike {
   embed(text: string): Promise<number[]>;
+  countTokens?(text: string): number | Promise<number>;
 }
 
-/** Query-level cosine floor: if no chunk in the corpus reaches this similarity, `[]` is returned. */
+/**
+ * Query-level cosine floor: if dense top-1 is below this similarity AND BM25 has no matches, `[]` is returned.
+ * Across all non-stopword entries in `words.json`, single-word top-1 cosine starts at 0.475 ("chips", "bento" 0.532),
+ * and in-domain `wild-v2-dev` queries span 0.636..0.899 (median 0.821).
+ * Keeping 0.30 acts as a non-zero dense floor so 100% of in-vocab queries use their dense vector while zero-vector / unknown queries
+ * with no BM25 matches return `[]`.
+ */
 export const DEFAULT_MIN_SIMILARITY = 0.3;
 
 let cachedCorpus: { vectors: UseCaseVector[]; bm25: Bm25Index } | null = null;
@@ -53,7 +62,10 @@ function resolveSkillsCliDataDir(): string {
   return BUNDLE_DIR;
 }
 
-export function dotProduct(a: number[], b: number[]): number {
+export function dotProduct(a: ArrayLike<number>, b: ArrayLike<number>): number {
+  if (a.length !== b.length) {
+    throw new Error(`Vector dimension mismatch in dotProduct: ${a.length} !== ${b.length}`);
+  }
   let sum = 0;
   for (let i = 0; i < a.length; i++) {
     sum += a[i] * b[i];
@@ -71,7 +83,7 @@ function loadVectors(): UseCaseVector[] {
   const items: UseCaseVector[] = JSON.parse(jsonContent);
 
   for (const item of items) {
-    if (!item.id || !Array.isArray(item.vector) || item.vector.length === 0 || typeof item.chunkContent !== "string") {
+    if (!item.id || !Array.isArray(item.vector) || typeof item.chunkContent !== "string") {
       throw new Error(`Corrupt vector entry in ${VECTORS_FILE}: missing id, vector, or chunkContent`);
     }
   }
@@ -80,17 +92,17 @@ function loadVectors(): UseCaseVector[] {
 
 /**
  * Hybrid retrieval: guides are ranked by their best-matching chunk (dense cosine) and by per-chunk max-pooled BM25,
- * then merged with reciprocal rank fusion. `minSimilarity` gates the query, not individual guides: if no
- * chunk in the corpus reaches it, nothing is returned; otherwise lexical matches with weaker cosine can surface.
+ * then merged with reciprocal rank fusion. `minSimilarity` gates the query, not individual guides: `[]` is returned
+ * only when dense top-1 is below the floor AND BM25 has no matches; otherwise lexical matches with weaker cosine can surface.
  * The reported `similarity` is still the guide's best dense cosine.
  */
 export async function searchUseCases(
   query: string,
-  limit = 5,
+  limit = 10,
   minSimilarity = DEFAULT_MIN_SIMILARITY,
   embedder?: EmbedderLike
 ): Promise<UseCaseResult[]> {
-  const actualEmbedder = embedder ?? TfjsEmbedder.getInstance();
+  const actualEmbedder = embedder ?? StaticEmbedder.getInstance();
   const queryVector = await actualEmbedder.embed(query);
 
   if (!cachedCorpus) {
@@ -101,6 +113,7 @@ export async function searchUseCases(
   // Both query and corpus vectors are L2-normalized unit vectors, so cosine similarity is dot product
   const best = new Map<string, { item: UseCaseVector; similarity: number }>();
   for (const item of cachedCorpus.vectors) {
+    if (item.vector.length === 0) continue;
     const sim = dotProduct(queryVector, item.vector);
     const existing = best.get(item.id);
     if (!existing || sim > existing.similarity) {
@@ -108,23 +121,30 @@ export async function searchUseCases(
     }
   }
   const dense = [...best.values()].sort((a, b) => b.similarity - a.similarity);
-  if (dense.length === 0 || dense[0].similarity < minSimilarity) {
+  const bm25Matches = rankBm25(cachedCorpus.bm25, query);
+
+  const topDenseSim = dense.length > 0 ? dense[0].similarity : 0;
+  if (topDenseSim < minSimilarity && bm25Matches.length === 0) {
     logToolResult("search_use_cases", []);
     return [];
   }
 
-  const fused = reciprocalRankFusion([dense.map((r) => r.item.id), rankBm25(cachedCorpus.bm25, query).map((r) => r.id)]);
+  const fused = reciprocalRankFusion([
+    topDenseSim < minSimilarity ? [] : dense.map((r) => r.item.id),
+    bm25Matches.map((r) => r.id),
+  ]);
 
   const limitedResults = fused.slice(0, limit).map(({ id }) => {
     const r = best.get(id);
-    if (!r) throw new Error(`BM25 returned guide "${id}" that has no vectors`);
+    const item = r ? r.item : cachedCorpus!.vectors.find((v) => v.id === id)!;
+    const similarity = r ? r.similarity : 0;
     return {
-      id: r.item.id,
-      description: r.item.description,
-      category: r.item.category,
-      featuresUsed: r.item.featuresUsed.length > 0 ? r.item.featuresUsed : undefined,
-      tokenCount: r.item.tokenCount,
-      similarity: parseFloat(r.similarity.toFixed(4))
+      id: item.id,
+      description: item.description,
+      category: item.category,
+      featuresUsed: item.featuresUsed.length > 0 ? item.featuresUsed : undefined,
+      tokenCount: item.tokenCount,
+      similarity: parseFloat(similarity.toFixed(4)),
     };
   });
 

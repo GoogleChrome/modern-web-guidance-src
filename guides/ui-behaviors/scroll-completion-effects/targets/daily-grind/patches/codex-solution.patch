@@ -1,0 +1,287 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/app.js b/app.js
+new file mode 100644
+index 0000000..01d5fee
+--- /dev/null
++++ b/app.js
+@@ -0,0 +1,32 @@
++// A newer navigation invalidates any effects pending from an interrupted scroll.
++let currentScrollId = 0;
++
++/** @param {HTMLElement} target */
++async function scrollToAndHighlight(target) {
++  const scrollId = ++currentScrollId;
++  document.querySelectorAll('section.highlight').forEach((section) => {
++    section.classList.remove('highlight');
++  });
++
++  // Browsers without scroll promises gracefully await undefined.
++  await target.scrollIntoView({ behavior: 'smooth', block: 'start' });
++
++  if (scrollId !== currentScrollId) return;
++
++  target.classList.add('highlight');
++  target.querySelector('h2')?.focus({ preventScroll: true });
++}
++
++document.querySelectorAll('a[data-scroll-target]').forEach((link) => {
++  link.addEventListener('click', async (event) => {
++    if (!(event instanceof MouseEvent) || event.button !== 0 ||
++        event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++
++    if (!(link instanceof HTMLAnchorElement)) return;
++    const target = document.getElementById(link.hash.slice(1));
++    if (!target) return;
++
++    event.preventDefault();
++    await scrollToAndHighlight(target);
++  });
++});
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..68d86c0
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,4 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++await mkdir('dist', { recursive: true });
++await Promise.all(['index.html', 'app.js'].map((file) => copyFile(file, `dist/${file}`)));
+diff --git a/index.html b/index.html
+index 66c9173..57cd02d 100644
+--- a/index.html
++++ b/index.html
+@@ -100,6 +100,43 @@
+       padding: 0 20px;
+     }
+ 
++    section[id] {
++      scroll-margin-top: 110px;
++      margin-bottom: 64px;
++      padding: 24px;
++      border-radius: 8px;
++    }
++
++    section.highlight {
++      background: #fff3df;
++      outline: 3px solid var(--accent);
++    }
++
++    section h2:focus-visible {
++      outline: 2px solid var(--primary);
++      outline-offset: 4px;
++    }
++
++    @media (max-width: 650px) {
++      nav {
++        flex-wrap: wrap;
++        gap: 12px;
++      }
++
++      nav ul {
++        flex-wrap: wrap;
++        gap: 10px 16px;
++      }
++
++      nav ul li {
++        margin-left: 0;
++      }
++
++      section[id] {
++        scroll-margin-top: 160px;
++      }
++    }
++
+     .grid {
+       display: grid;
+       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+@@ -160,9 +197,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="#menu" data-scroll-target>Menu</a></li>
++      <li><a href="#locations" data-scroll-target>Locations</a></li>
++      <li><a href="#rewards" data-scroll-target>Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -175,8 +212,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" tabindex="-1" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +232,16 @@
+         </div>
+       </div>
+     </section>
++    <section id="locations" aria-labelledby="locations-heading">
++      <h2 id="locations-heading" tabindex="-1">Locations</h2>
++      <p>Find your next favorite coffee spot and enjoy a freshly roasted cup with us.</p>
++      <a href="/locations" class="btn">Find a Coffee Shop</a>
++    </section>
++    <section id="rewards" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading" tabindex="-1">Rewards</h2>
++      <p>Make every coffee count. Explore rewards for your daily coffee ritual.</p>
++      <a href="/rewards" class="btn">Explore Rewards</a>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +254,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="app.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..3fff91a 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,12 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "pnpm dlx statikk --port ${PORT:-11222}",
++    "build": "tsc --project tsconfig.json && node build.mjs",
++    "test": "node --test tests/scroll.test.mjs"
++  },
++  "devDependencies": {
++    "typescript": "^5.9.3"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/tests/scroll.test.mjs b/tests/scroll.test.mjs
+new file mode 100644
+index 0000000..be05996
+--- /dev/null
++++ b/tests/scroll.test.mjs
+@@ -0,0 +1,92 @@
++import assert from 'node:assert/strict';
++import { readFile } from 'node:fs/promises';
++import test from 'node:test';
++import vm from 'node:vm';
++
++const source = await readFile(new URL('../app.js', import.meta.url), 'utf8');
++
++function setup() {
++  const sections = [];
++  const context = vm.createContext({
++    document: {
++      querySelectorAll(selector) {
++        return selector === 'section.highlight'
++          ? sections.filter((section) => section.highlighted)
++          : [];
++      },
++    },
++  });
++  vm.runInContext(source, context);
++  function target(result) {
++    const section = {
++      highlighted: false,
++      focused: false,
++      classList: {
++        add(name) { assert.equal(name, 'highlight'); section.highlighted = true; },
++        remove(name) { assert.equal(name, 'highlight'); section.highlighted = false; },
++      },
++      scrollIntoView(options) {
++        assert.equal(options.behavior, 'smooth');
++        assert.equal(options.block, 'start');
++        return result;
++      },
++      querySelector() {
++        return { focus(options) {
++          assert.equal(options.preventScroll, true);
++          section.focused = true;
++        } };
++      },
++    };
++    sections.push(section);
++    return section;
++  }
++  return { target, navigate: context.scrollToAndHighlight };
++}
++
++test('clears old state immediately and waits for the scroll promise before effects', async () => {
++  const { target, navigate } = setup();
++  const previous = target(Promise.resolve());
++  await navigate(previous);
++  let finish;
++  const next = target(new Promise((resolve) => { finish = resolve; }));
++  const pending = navigate(next);
++  assert.equal(previous.highlighted, false);
++  assert.equal(next.highlighted, false);
++  assert.equal(next.focused, false);
++  finish();
++  await pending;
++  assert.equal(next.highlighted, true);
++  assert.equal(next.focused, true);
++});
++
++test('superseded scrolls cannot highlight or focus their old targets', async () => {
++  const { target, navigate } = setup();
++  let finish;
++  const old = target(new Promise((resolve) => { finish = resolve; }));
++  const pending = navigate(old);
++  const latest = target(Promise.resolve());
++  await navigate(latest);
++  finish();
++  await pending;
++  assert.equal(old.highlighted, false);
++  assert.equal(old.focused, false);
++  assert.equal(latest.highlighted, true);
++});
++
++test('an already-positioned target with a resolved promise works on repeated navigation', async () => {
++  const { target, navigate } = setup();
++  const section = target(Promise.resolve());
++  await navigate(section);
++  const pending = navigate(section);
++  assert.equal(section.highlighted, false);
++  await pending;
++  assert.equal(section.highlighted, true);
++  assert.equal(section.focused, true);
++});
++
++test('legacy browsers returning undefined still apply effects', async () => {
++  const { target, navigate } = setup();
++  const section = target(undefined);
++  await navigate(section);
++  assert.equal(section.highlighted, true);
++});
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..641e7bd
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "strict": true,
++    "noEmit": true,
++    "target": "ES2022",
++    "types": [],
++    "lib": ["ES2022", "DOM"]
++  },
++  "include": ["app.js"]
++}

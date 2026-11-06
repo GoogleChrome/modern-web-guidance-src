@@ -7,7 +7,7 @@
 {"qid":"h0006","query":"modal dialog backdrop","stratum":"antigravity_cli","expectedGuide":"light-dismiss-a-dialog","agent":"antigravity_cli","runDate":"2026-10-01","words":3}
 {"qid":"h0007","query":"modal dialog smooth CSS animation backdrop enter exit","stratum":"antigravity_cli","expectedGuide":"animate-to-from-top-layer","agent":"antigravity_cli","runDate":"2026-10-01","words":8}
 {"qid":"h0008","query":"scroll back to top button animation","stratum":"antigravity_cli","expectedGuide":"scroll-position-aware-elements","agent":"antigravity_cli","runDate":"2026-10-07","words":6}
-{"qid":"h0009","query":"Temporal API date reactive state","stratum":"antigravity_cli","expectedGuide":"stabilize-reactive-state","agent":"antigravity_cli","runDate":"2026-10-02","words":5}
+{"qid":"h0009","query":"Temporal API date reactive state","stratum":"antigravity_cli","expectedGuide":"capture-location-agnostic-data","agent":"antigravity_cli","runDate":"2026-10-02","words":5}
 {"qid":"h0010","query":"WebAssembly canvas render image","stratum":"antigravity_cli","expectedGuide":"cpp-on-the-web","agent":"antigravity_cli","runDate":"2026-10-09","words":4}
 {"qid":"h0011","query":"LCP font image fetchpriority","stratum":"antigravity_cli","expectedGuide":"optimize-preload-priority","agent":"antigravity_cli","runDate":"2026-10-02","words":4}
 {"qid":"h0012","query":"interest-triggered preview hover focus button","stratum":"antigravity_cli","expectedGuide":"interest-triggered-action-previews","agent":"antigravity_cli","runDate":"2026-10-09","words":5}
@@ -27,7 +27,7 @@
 {"qid":"h0026","query":"identify causes of poor INP","stratum":"antigravity_cli","expectedGuide":"identify-inp-causes","agent":"antigravity_cli","runDate":"2026-10-07","words":5}
 {"qid":"h0027","query":"interest preview hover focus","stratum":"antigravity_cli","expectedGuide":"interest-triggered-action-previews","agent":"antigravity_cli","runDate":"2026-10-01","words":4}
 {"qid":"h0028","query":"anchor positioning popover dropdown","stratum":"antigravity_cli","expectedGuide":"viewport-aware-dropdowns","agent":"antigravity_cli","runDate":"2026-10-01","words":4}
-{"qid":"h0029","query":"date calculation credit card expires leap year","stratum":"antigravity_cli","expectedGuide":"model-partial-time-concepts","agent":"antigravity_cli","runDate":"2026-10-09","words":7}
+{"qid":"h0029","query":"date calculation credit card expires leap year","stratum":"antigravity_cli","expectedGuide":"capture-location-agnostic-data","agent":"antigravity_cli","runDate":"2026-10-09","words":7}
 {"qid":"h0030","query":"scroll-driven parallax effect","stratum":"antigravity_cli","expectedGuide":"parallax-scroll-effects","agent":"antigravity_cli","runDate":"2026-10-06","words":3}
 {"qid":"h0031","query":"anchor positioning onboarding tour popover","stratum":"antigravity_cli","expectedGuide":"persistent-app-tours","agent":"antigravity_cli","runDate":"2026-10-01","words":5}
 {"qid":"h0032","query":"language detection","stratum":"antigravity_cli","expectedGuide":"language-detection","agent":"antigravity_cli","runDate":"2026-10-07","words":2}
@@ -50,7 +50,7 @@
 {"qid":"h0049","query":"CSS mask-image repeating SVG texture mask-repeat tiling background","stratum":"claude_code","expectedGuide":"visually-texture-content","agent":"claude_code","runDate":"2026-08-06","words":8}
 {"qid":"h0050","query":"slide-out drawer navigation menu with swipe to dismiss, backdrop click and escape to close","stratum":"claude_code","expectedGuide":"navigation-drawer","agent":"claude_code","runDate":"2026-08-26","words":14}
 {"qid":"h0051","query":"register a client-side tool for AI assistants to look up menu item details","stratum":"claude_code","expectedGuide":"agentic-javascript-tools","agent":"claude_code","runDate":"2026-09-14","words":13}
-{"qid":"h0052","query":"format a duration in hours and minutes into a localized human readable string","stratum":"claude_code","expectedGuide":"format-human-readable-durations","agent":"claude_code","runDate":"2026-08-21","words":13}
+{"qid":"h0052","query":"format a duration in hours and minutes into a localized human readable string","stratum":"claude_code","expectedGuide":"calculate-event-differentials","agent":"claude_code","runDate":"2026-08-21","words":13}
 {"qid":"h0053","query":"yielding to the main thread during a long-running JS loop for responsiveness","stratum":"claude_code","expectedGuide":"break-up-long-tasks","agent":"claude_code","runDate":"2026-09-16","words":12}
 {"qid":"h0054","query":"style checkbox radio range slider progress bar custom colors dark mode","stratum":"claude_code","expectedGuide":"brand-consistent-forms","agent":"claude_code","runDate":"2026-09-18","words":11}
 {"qid":"h0055","query":"LCP optimization poster image video fetchpriority preload font woff2","stratum":"claude_code","expectedGuide":"optimize-preload-priority","agent":"claude_code","runDate":"2026-08-07","words":9}
@@ -59,7 +59,7 @@
 {"qid":"h0058","query":"scroll-snap carousel with active/centered item highlighting using CSS :has() or scroll-driven detection, prefers-reduced-motion","stratum":"claude_code","expectedGuide":"carousel-snap-highlights","agent":"claude_code","runDate":"2026-10-02","words":13}
 {"qid":"h0059","query":"render HTML element to canvas for image export download","stratum":"claude_code","expectedGuide":"export-html-media-from-canvas","agent":"claude_code","runDate":"2026-09-16","words":9}
 {"qid":"h0060","query":"measure and report Core Web Vitals metrics to an analytics endpoint","stratum":"claude_code","expectedGuide":"batch-analytics-events","agent":"claude_code","runDate":"2026-08-24","words":11}
-{"qid":"h0061","query":"Temporal API immutable date state reactive updates","stratum":"claude_code","expectedGuide":"stabilize-reactive-state","agent":"claude_code","runDate":"2026-07-29","words":7}
+{"qid":"h0061","query":"Temporal API immutable date state reactive updates","stratum":"claude_code","expectedGuide":"capture-location-agnostic-data","agent":"claude_code","runDate":"2026-07-29","words":7}
 {"qid":"h0062","query":"CSS only form validation red border wrapping div invalid input :has :user-invalid","stratum":"claude_code","expectedGuide":"style-parent-with-has","agent":"claude_code","runDate":"2026-10-02","words":12}
 {"qid":"h0063","query":"client-side language translation i18n switcher static site","stratum":"claude_code","expectedGuide":"translator","agent":"claude_code","runDate":"2026-09-16","words":7}
 {"qid":"h0064","query":"custom select dropdown with rich HTML options icons and descriptions","stratum":"claude_code","expectedGuide":"rich-media-picker","agent":"claude_code","runDate":"2026-08-24","words":10}

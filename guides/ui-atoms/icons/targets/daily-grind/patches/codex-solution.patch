@@ -1,0 +1,251 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..51e2193
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,5 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++// The application is static HTML with embedded styles and vector assets.
++await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('./dist/index.html', import.meta.url));
+diff --git a/index.html b/index.html
+index 66c9173..86af15d 100644
+--- a/index.html
++++ b/index.html
+@@ -12,6 +12,162 @@
+       --accent: #ffab40;
+       --text: #3e2723;
+       --light: #fafafa;
++      --icon-style-size: 1em;
++      --icon-style-spacing: 0.4em;
++      /* Embedded vectors avoid extra requests and stay sharp at every size. */
++      --icon-cup: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 8h13v7a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5ZM17 9h2a3 3 0 0 1 0 6h-2M7 2v3m4-3v3m4-3v3M2 22h19'/%3E%3C/svg%3E");
++      --icon-pin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E");
++      --icon-star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='m12 2 3 6 7 1-5 5 1 8-6-4-6 4 1-8-5-5 7-1Z'/%3E%3C/svg%3E");
++      --icon-user: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3Cpath d='M4 21v-2a8 8 0 0 1 16 0v2'/%3E%3C/svg%3E");
++      --icon-logout: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 4H4v16h5m5-13 5 5-5 5m-6-5h13'/%3E%3C/svg%3E");
++      --icon-leaf: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 19C-2 8 12 3 21 3c0 9-5 23-16 16ZM3 21 15 9'/%3E%3C/svg%3E");
++      --icon-snowflake: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2v20M3.34 7l17.32 10M3.34 17 20.66 7M9 4l3 3 3-3M9 20l3-3 3 3M4 10l4-1-1-4m10 14-1-4 4-1M4 14l4 1-1 4M17 5l-1 4 4 1'/%3E%3C/svg%3E");
++      --icon-cart: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 3h3l3 12h11l3-9H6'/%3E%3Ccircle cx='9' cy='20' r='1'/%3E%3Ccircle cx='18' cy='20' r='1'/%3E%3C/svg%3E");
++      --icon-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12h16m-6-6 6 6-6 6'/%3E%3C/svg%3E");
++    }
++
++    @property --icon-start {
++      syntax: "*";
++      inherits: false;
++    }
++
++    @property --icon-end {
++      syntax: "*";
++      inherits: false;
++    }
++
++    .icon:empty {
++      --icon-start: var(--icon);
++    }
++
++    /* Class hooks also work without style queries. Unassigned icons have no content. */
++    :where(.icon-start, .icon:empty)::before {
++      --icon-start: inherit;
++      content: image-set(linear-gradient(transparent 0 100%), var(--icon-start)) / var(--icon-style-alt, "");
++      display: inline-block;
++      width: var(--icon-style-size, 1em);
++      height: var(--icon-style-size, 1em);
++      background-color: var(--icon-style-color, currentColor);
++      -webkit-mask: var(--icon-start) no-repeat center / contain;
++      mask: var(--icon-start) no-repeat center / contain;
++      vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++      flex: none;
++      pointer-events: none;
++      forced-color-adjust: none;
++    }
++
++    :where(.icon:empty)::before {
++      --icon-start: var(--icon);
++    }
++
++    :where(.icon-start:not(.icon, :empty))::before {
++      margin-inline-end: var(--icon-style-spacing, 0.3em);
++    }
++
++    :where(.icon-end)::after {
++      --icon-end: inherit;
++      content: image-set(linear-gradient(transparent 0 100%), var(--icon-end)) / var(--icon-style-alt, "");
++      display: inline-block;
++      width: var(--icon-style-size, 1em);
++      height: var(--icon-style-size, 1em);
++      background-color: var(--icon-style-color, currentColor);
++      -webkit-mask: var(--icon-end) no-repeat center / contain;
++      mask: var(--icon-end) no-repeat center / contain;
++      vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++      flex: none;
++      pointer-events: none;
++      forced-color-adjust: none;
++    }
++
++    :where(.icon-end:not(.icon, :empty))::after {
++      margin-inline-start: var(--icon-style-spacing, 0.3em);
++    }
++
++    /* A CSS assignment alone enables an icon in browsers with style queries. */
++    @container style(--icon-start) {
++      ::before {
++        --icon-start: inherit;
++        content: "" / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        -webkit-mask: var(--icon-start) no-repeat center / contain;
++        mask: var(--icon-start) no-repeat center / contain;
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++
++      :where(:not(.icon, :empty))::before {
++        margin-inline-end: var(--icon-style-spacing, 0.3em);
++      }
++    }
++
++    @container style(--icon-end) {
++      ::after {
++        --icon-end: inherit;
++        content: "" / var(--icon-style-alt, "");
++        display: inline-block;
++        width: var(--icon-style-size, 1em);
++        height: var(--icon-style-size, 1em);
++        background-color: var(--icon-style-color, currentColor);
++        -webkit-mask: var(--icon-end) no-repeat center / contain;
++        mask: var(--icon-end) no-repeat center / contain;
++        vertical-align: calc(0.5cap - var(--icon-style-size, 1em) / 2 + var(--icon-style-voffset, -0.02em));
++        flex: none;
++        pointer-events: none;
++        forced-color-adjust: none;
++      }
++
++      :where(:not(.icon, :empty))::after {
++        margin-inline-start: var(--icon-style-spacing, 0.3em);
++      }
++    }
++
++    /* Prevent inherited copies when @property is unavailable. */
++    @layer icon-inheritance-reset {
++      @container style(--icon-start) {
++        * { --icon-start: initial; }
++      }
++      @container style(--icon-end) {
++        * { --icon-end: initial; }
++      }
++    }
++
++    @keyframes webkit-301609 {}
++
++    @supports ((-webkit-nbsp-mode: normal) or (-webkit-touch-callout: none) or (font: -apple-system-body)) and (content-visibility: auto) {
++      /* WebKit rendering and direct-override workarounds from the icon guide. */
++      @property --icon-start {
++        syntax: "*";
++        inherits: true;
++      }
++      @property --icon-end {
++        syntax: "*";
++        inherits: true;
++      }
++      @layer webkit-icon-fix {
++        ::before, ::after { animation: webkit-301609 0s; }
++      }
++    }
++
++    /* Component defaults: change the token or presentation entirely in CSS. */
++    nav a[href="/menu"] { --icon-start: var(--icon-cup); }
++    nav a[href="/locations"] { --icon-start: var(--icon-pin); }
++    nav a[href="/rewards"] { --icon-start: var(--icon-star); }
++    nav a[href="/account"] { --icon-start: var(--icon-user); }
++    .logout-link { --icon-end: var(--icon-logout); }
++    .card-maple h3 { --icon-start: var(--icon-leaf); }
++    .card-espresso h3 { --icon-start: var(--icon-cup); }
++    .card-cold-brew h3 { --icon-start: var(--icon-snowflake); }
++    .hero .btn { --icon-start: var(--icon-cart); }
++    .card .btn { --icon-end: var(--icon-arrow); }
++
++    .card h3 {
++      --icon-style-size: 1.25em;
++      --icon-style-spacing: 0.45em;
+     }
+ 
+     * {
+@@ -160,38 +316,38 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li><a href="/menu" class="icon-start">Menu</a></li>
++      <li><a href="/locations" class="icon-start">Locations</a></li>
++      <li><a href="/rewards" class="icon-start">Rewards</a></li>
++      <li><a href="/account" class="icon-start">My Account</a></li>
++      <li><a href="/logout" class="logout-link icon-end">Logout</a></li>
+     </ul>
+   </nav>
+ 
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn icon-start">Order Now</a>
+   </header>
+ 
+   <main class="container">
+     <section>
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+-        <div class="card">
+-          <h3>Maple Oat Latte</h3>
++        <div class="card card-maple">
++          <h3 class="icon-start">Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn icon-end">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Dark Roast Espresso</h3>
++        <div class="card card-espresso">
++          <h3 class="icon-start">Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn icon-end">View Details</a>
+         </div>
+-        <div class="card">
+-          <h3>Cold Brew</h3>
++        <div class="card card-cold-brew">
++          <h3 class="icon-start">Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn icon-end">View Details</a>
+         </div>
+       </div>
+     </section>
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

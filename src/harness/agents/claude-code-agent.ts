@@ -8,6 +8,7 @@ import {
   type StandardizedStep,
   type SubagentMetadata,
   type TrajectorySummary,
+  extractRetrievedGuidesFromCommand,
   extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
@@ -240,13 +241,8 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
               toolsUsed.add(tool.input.name);
             } else if (toolNameLower === 'bash' && tool.input?.command) {
               const command = tool.input.command;
-              if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
-                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-                if (match) {
-                  for (const g of match[1].split(',').map((s: string) => s.trim())) {
-                    retrievedGuides.add(g);
-                  }
-                }
+              for (const g of extractRetrievedGuidesFromCommand(command)) {
+                retrievedGuides.add(g);
               }
             } else if (toolNameLower === 'read' && tool.input?.file_path) {
               const filePath = tool.input.file_path;

@@ -322,7 +322,7 @@
       // Check Support and load polyfill if needed
       if (typeof Temporal === 'undefined') {
         try {
-          const module = await import("https://esm.sh/@js-temporal/polyfill");
+          const module = await import("https://esm.sh/temporal-polyfill");
           globalThis.Temporal = module.Temporal;
           initializeDemo();
         } catch (e) {
