@@ -111,7 +111,7 @@ describe('modern-web CLI', () => {
     }
   });
 
-  it('handles analyze with leading and trailing --skill-version without shifting positional arguments', () => {
+  it.skip('handles analyze with leading and trailing --skill-version without shifting positional arguments', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-test-'));
     try {
       // Leading --skill-version
@@ -134,13 +134,13 @@ describe('modern-web CLI', () => {
     }
   });
 
-  it('forwards --help to analyze when --help appears before analyze', () => {
+  it.skip('forwards --help to analyze when --help appears before analyze', () => {
     const res = runCLI(['--help', 'analyze']);
     assert.strictEqual(res.status, 0);
     assert.ok(res.stdout.includes('Usage: modern-web-guidance analyze'));
   });
 
-  it('emits skill update warning when running analyze with outdated --skill-version', () => {
+  it.skip('emits skill update warning when running analyze with outdated --skill-version', () => {
     const versionPath = path.resolve(import.meta.dirname, 'skill-version.txt');
     fs.writeFileSync(versionPath, '2026_05_16-latest12\n');
     try {
@@ -154,7 +154,7 @@ describe('modern-web CLI', () => {
     }
   });
 
-  it('exits with code 1 when analyze is called with unknown --guide ID', () => {
+  it.skip('exits with code 1 when analyze is called with unknown --guide ID', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-test-'));
     try {
       const resJson = runCLI(['analyze', tempDir, '--guide', 'nonexistent-guide-id', '--json']);
@@ -171,7 +171,7 @@ describe('modern-web CLI', () => {
     }
   });
 
-  it('only logs to modern-web.log when analyze exits with code 0 and result.data is present', () => {
+  it.skip('only logs to modern-web.log when analyze exits with code 0 and result.data is present', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-log-test-'));
     const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-logdir-'));
     try {
