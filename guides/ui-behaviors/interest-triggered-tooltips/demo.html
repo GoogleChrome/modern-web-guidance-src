@@ -111,6 +111,20 @@
       #tooltip-attrs {
         position-anchor: --tooltip-attrs;
       }
+      button[interestfor="shipping-help"] {
+        anchor-name: --shipping-help;
+      }
+      #shipping-help {
+        position-anchor: --shipping-help;
+      }
+
+      .toggletip {
+        inline-size: 1.5em;
+        block-size: 1.5em;
+        border-radius: 50%;
+        font: inherit;
+        font-size: 0.8em;
+      }
     </style>
   </head>
   <body>
@@ -130,6 +144,16 @@
     <div id="tooltip-attrs" popover="hint">
       Key-value pairs on HTML elements that configure behavior or provide
       metadata, such as class or id.
+    </div>
+
+    <p>
+      <label>Shipping <input name="shipping" value="Standard"></label>
+      <!-- Toggletip: both invokers, so hover/focus and click/tap/Enter all open it. -->
+      <button type="button" class="toggletip" interestfor="shipping-help" commandfor="shipping-help" command="show-popover" aria-label="More about shipping">?</button>
+    </p>
+    <div id="shipping-help" popover="hint">
+      Free shipping applies to orders over $50. Orders placed before 2pm ship
+      the same day.
     </div>
   </body>
 </html>

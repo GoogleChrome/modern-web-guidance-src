@@ -8,9 +8,17 @@ web-feature-ids:
   - anchor-positioning
 ---
 
-# Show a tooltip when hovering
+# Tooltips
 
 Users expect to see additional related information without completely changing their context. Showing a tooltip when a user is interested in more information can be useful to provide definitions for a term, clarifying the action an icon-only button will take, or provide additional form field guidance.
+
+## Should you use a tooltip?
+
+A toggletip is a small button, usually an "i" or "?" icon, placed next to a control or a piece of content, whose only job is to reveal more information. The choice between tooltip, toggletip, and inline content is about how important and how long the information is:
+
+- **Tooltip** (on the control itself): a short clarification of what the control does. Missing it costs the user little.
+- **Toggletip** (an "i" or "?" next to the control or content): information users may well want but most don't need every time, such as why a field is required, how a total was computed, or what a policy means, or anything longer than a phrase. Showing it inline would add clutter, but it deserves an explicit, visible affordance so every user can find it deliberately rather than by happening to hover, including on touch and with a screen reader. See below for guidance on creating toggletips.
+- **Inline content**: information most users need in order to act, or need while they act (password rules while typing, a value they copy). A popover closes as soon as they click or focus elsewhere.
 
 ## Creating the tooltip
 
@@ -66,7 +74,25 @@ In modern browsers supporting native anchor positioning, you do **not** need to 
 }
 ```
 
+## Toggletips: an "i" or "?" button
+
+Give a toggletip both invokers: `interestfor` opens it on hover, focus, and long-press; `commandfor` opens it on click, tap, and `Enter`.
+
+```html
+<label>Shipping <input name="shipping"></label>
+<!-- The name says what the button reveals; the "?" alone is not a name. -->
+<button type="button" interestfor="shipping-help" commandfor="shipping-help" command="show-popover" aria-label="More about shipping">?</button>
+<!-- Right after the trigger, so it reads in sequence. -->
+<div id="shipping-help" popover="hint">Free shipping applies to orders over $50. Orders placed before 2pm ship the same day.</div>
+```
+
+- Use `command="show-popover"`, not `toggle-popover`: hover has usually opened the popover already, and a toggle would close it on the click that follows. `Escape`, light dismiss, and losing interest close it.
+- Keep `popover="hint"`: hovering across a toggletip must not close an open menu, which an `auto` popover would.
+- Position it like any tooltip. The button is the popover's implicit anchor through either invoker.
+
 ## Fallback strategies
+
+{{ FEATURE_FALLBACKS("command-invokers") }}
 
 {{ FEATURE_FALLBACKS("interest-invokers") }}
 
