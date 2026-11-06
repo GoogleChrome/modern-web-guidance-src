@@ -2,7 +2,7 @@
 
 The Modern Web Guidance Analyzer scans brownfield web codebases for legacy idioms, obsolete polyfills, and userland workarounds, mapping every finding directly to a corresponding [Modern Web Guidance](../../guides) standard. It is designed for dual operation: fast, human-readable terminal reports for developers and structured machine-readable JSON for autonomous coding agents.
 
-See [LEXICON.md](./LEXICON.md) for the canonical vocabulary (`Modernize`, `analyze`, `Guide Triage`, `Static Matcher`, `LLM Verifier`, `Detection Eval Judge`, and the `rule-writing` and `held-out` splits).
+See [LEXICON.md](./LEXICON.md) for the canonical vocabulary (`Modernize`, `legacy-scan`, `Guide Triage`, `Static Matcher`, `LLM Verifier`, `Detection Eval Judge`, and the `rule-writing` and `held-out` splits).
 
 ---
 
@@ -14,10 +14,10 @@ The analyzer can be run locally via the repository runner `gd` or in downstream 
 
 ```bash
 # In the modern-web-guidance repository:
-node bin/gd.ts analyze [path/to/project] [options]
+node bin/gd.ts legacy-scan [path/to/project] [options]
 
 # In any brownfield project via npx:
-npx -y modern-web-guidance@latest analyze [path/to/project] [options]
+npx -y modern-web-guidance@latest legacy-scan [path/to/project] [options]
 ```
 
 ### CLI Options
@@ -61,7 +61,7 @@ Skipped 53 docs and test files (pass --include-docs-and-tests to scan).
   - src/static/js/admin/settings.js:30
     $('.settings').autosize();
 
-Retrieve a guide: npx modern-web-guidance retrieve <guide-id> (or pass --json for coding agents)
+Retrieve a guide: npx modern-web-guidance retrieve <guide-id>
 ```
 
 ### Structured JSON Output (`--json`, abridged)
@@ -112,20 +112,20 @@ Coding agents receive structured JSON containing exact file coordinates, message
 
 ## 2. Modernize Workflow
 
-For autonomous AI coding agents (such as Claude Code or Codex), modernizing existing code follows the **Modernize** workflow. The `analyze` subcommand serves as the detection step—finding legacy patterns and stopping there—while the agent carries out the planning, guidance retrieval, modern standard application, and verification:
+For autonomous AI coding agents (such as Claude Code or Codex), modernizing existing code follows the **Modernize** workflow. The `legacy-scan` subcommand (with `analyze` supported as an alias) serves as the detection step—finding legacy patterns and stopping there—while the agent carries out the planning, guidance retrieval, modern standard application, and verification:
 
 ```mermaid
 flowchart TD
-    Scan["1. Detect Legacy Patterns<br/><code>analyze [path] --json</code>"] --> Report["2. Report & Plan<br/>Summarize verified findings"]
+    Scan["1. Detect Legacy Patterns<br/><code>legacy-scan [path] --json</code>"] --> Report["2. Report & Plan<br/>Summarize verified findings"]
     Report --> Retrieve["3. Retrieve Guidance<br/><code>retrieve &lt;guideId&gt;</code>"]
-    Retrieve --> Modernize["4. Modernize & Verify<br/>Apply modern platform standard<br/>Re-run <code>analyze</code> to verify"]
+    Retrieve --> Modernize["4. Modernize & Verify<br/>Apply modern platform standard<br/>Re-run <code>legacy-scan</code> to verify"]
     Modernize --> Disclose["5. Disclose & Summarize<br/>Report modernizations & Baseline targets"]
 ```
 
-1. **Detect Legacy Patterns (`analyze`)**: Execute `npx modern-web-guidance analyze <path> --json` to detect candidate modernization targets across a directory or file. `analyze` finds legacy patterns and stops there.
+1. **Detect Legacy Patterns (`legacy-scan`)**: Execute `npx modern-web-guidance legacy-scan <path> --json` to detect candidate modernization targets across a directory or file. `legacy-scan` finds legacy patterns and stops there.
 2. **Verify & Report**: Inspect detected findings against each rule's verification rubric (`keepWhen`/`dropWhen`), drop false positives, and report verified findings (alongside the modernization plan, if editing) to the user.
 3. **Retrieve Guidance**: When modernizing rather than only reporting, run `npx modern-web-guidance retrieve "<guideId>"` to fetch the complete canonical guidance, including edge cases, accessibility invariants, and fallback strategies.
-4. **Modernize & Verify**: Update legacy code to standard web platform features (e.g. native `<dialog>`, `content-visibility`, `autocomplete`). Re-run `analyze <path> --json` on modified files to confirm that findings are eliminated without regressions.
+4. **Modernize & Verify**: Update legacy code to standard web platform features (e.g. native `<dialog>`, `content-visibility`, `autocomplete`). Re-run `legacy-scan <path> --json` on modified files to confirm that findings are eliminated without regressions.
 5. **Disclose & Summarize**: End the turn with a concise summary describing the modernized APIs and any browser Baseline implications.
 
 ---
