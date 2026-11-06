@@ -86,7 +86,7 @@ Choose a vertical toolbar when controls stack along a side edge (a tool palette 
 
 * Keep a clear `:focus-visible` outline with an offset; never remove it.
 * Style toggled state from the ARIA attribute (`[aria-pressed="true"]`), not a separate class, so visual and accessible state cannot diverge.
-* Show the toggled state by changing the button background; if the contrast between the button background and the adjacent background color is less than 3:1, provide an additional visual cue such as an outline around the background.
+* Show the toggled state by changing the button background; if the contrast between the button background and the adjacent background color is less than 3:1 in each supported color scheme, provide an additional visual cue such as an outline around the background that meets the 3:1 threshold. For more information, see {{ GUIDE_REF("color") }}.
 * Under `forced-colors: active`, use system colors (`ButtonText`, `Highlight`).
 * Draw separators and tooltip boxes with a border (a `transparent` one is fine), not `background` alone, which forced colors replaces with the page color.
 * Wrap hover styles in `@media (hover: hover)` and transitions in `@media (prefers-reduced-motion: no-preference)`.
