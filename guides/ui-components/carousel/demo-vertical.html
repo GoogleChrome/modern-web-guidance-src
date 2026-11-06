@@ -37,7 +37,6 @@
     }
 
     .carousel-track {
-      anchor-name: --carousel-track;
       display: flex;
       flex-direction: column;
       overflow-y: auto;
@@ -63,7 +62,7 @@
     /*
      * Looping without clones: at or one step from the first slide, park the last slide before it
      * (order: -1); at or one step from the last slide, park the first slide after it (order: 1). The
-     * neighbor is already in place before scrolling reaches an end, so native scroll buttons never
+     * neighbor is already in place before scrolling reaches an end, so the previous and next buttons never
      * disable. Only the first and last slides ever get `order`.
      * Without support the carousel stays a finite list.
      */
@@ -103,95 +102,7 @@
       }
     }
 
-    @supports selector(::scroll-button(*)) and (anchor-name: --carousel-track) {
-      .carousel-track::scroll-button(block-start) {
-        content: "‹" / "Previous slide";
-        rotate: 90deg;
-        inset-block-start: calc(anchor(start) + 0.5rem);
-      }
-
-      .carousel-track::scroll-button(block-end) {
-        content: "›" / "Next slide";
-        rotate: 90deg;
-        inset-block-end: calc(anchor(end) + 0.5rem);
-      }
-
-      .carousel-track::scroll-button(*) {
-        /* Pull the buttons out of the flex flow and center them on the track */
-        position: absolute;
-        position-anchor: --carousel-track;
-        inset-inline-start: anchor(center);
-        translate: -50% 0;
-        font-size: 1.5rem;
-        line-height: 1;
-        inline-size: 2.5rem;
-        block-size: 2.5rem;
-        border-radius: 50%;
-        border: 1px solid var(--line);
-        background: var(--surface);
-        color: var(--ink);
-        cursor: pointer;
-      }
-
-      .carousel-track::scroll-button(*):disabled {
-        opacity: 0.3;
-        pointer-events: none;
-      }
-
-      /* WORKAROUND (Chrome bug, remove when fixed): set from script on the first Tab, because native
-         buttons lose focus when looping reorders the slides.
-         Bug: https://issues.chromium.org/issues/581318163 */
-      .carousel-track[data-html-buttons]::scroll-button(*) {
-        display: none;
-      }
-    }
-
-    @supports selector(::scroll-marker) {
-      .carousel-track {
-        scroll-marker-group: after;
-      }
-
-      ::scroll-marker-group {
-        position: absolute;
-        position-anchor: --carousel-track;
-        inset-inline-start: calc(anchor(end) + 0.75rem);
-        inset-block-start: anchor(center);
-        translate: 0 -50%;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        gap: 0.5rem;
-      }
-
-      .carousel-track > *::scroll-marker {
-        content: "" / attr(data-marker-name);
-        inline-size: 0.8rem;
-        block-size: 0.8rem;
-        border-radius: 50%;
-        background: var(--line);
-        border: none;
-        cursor: pointer;
-      }
-
-      .carousel-track > *::scroll-marker:target-current {
-        background: var(--accent);
-      }
-
-      /* Without :target-current, the settled-scroll handler marks the current slide */
-      @supports not selector(:target-current) {
-        .carousel-track > *[data-current]::scroll-marker {
-          background: var(--accent);
-        }
-      }
-
-      /* WORKAROUND (Chrome bug, remove when fixed): set from script on the first Tab, because native
-         markers lose focus when activated. Bug: https://issues.chromium.org/issues/582416742 */
-      .carousel-track[data-html-markers] {
-        scroll-marker-group: none;
-      }
-    }
-
-    .fallback-controls {
+    .carousel-controls {
       position: absolute;
       z-index: 1;
       inset-block: 0.5rem;
@@ -203,7 +114,7 @@
       gap: 1rem;
     }
 
-    .fallback-controls button {
+    .carousel-controls button {
       font: inherit;
       inline-size: 2.5rem;
       block-size: 2.5rem;
@@ -215,25 +126,19 @@
       cursor: pointer;
     }
 
-    .fallback-controls button:disabled {
+    .carousel-controls button:disabled {
       opacity: 0.3;
       cursor: not-allowed;
     }
 
-    .fallback-markers {
+    .carousel-markers {
       display: flex;
       flex-direction: column;
       justify-content: center;
       gap: 0.5rem;
     }
 
-    /* display on the classes above would otherwise override the hidden attribute */
-    .fallback-controls[hidden],
-    .fallback-markers[hidden] {
-      display: none;
-    }
-
-    .fallback-markers button {
+    .carousel-markers button {
       inline-size: 0.8rem;
       block-size: 0.8rem;
       padding: 0;
@@ -243,27 +148,16 @@
       cursor: pointer;
     }
 
-    .fallback-markers button[aria-current="true"] {
+    .carousel-markers button[aria-current="true"] {
       background: var(--accent);
     }
 
     .carousel-track,
-    :where(.fallback-controls, .fallback-markers) button {
+    :where(.carousel-controls, .carousel-markers) button {
       touch-action: manipulation;
     }
 
     :focus-visible {
-      outline: 0.2rem solid #f90;
-      outline-offset: 0.15rem;
-    }
-
-    /* Bare :focus-visible only matches elements; keep pseudo-element rules separate so unsupported browsers don't drop :focus-visible */
-    .carousel-track::scroll-button(*):focus-visible {
-      outline: 0.2rem solid #f90;
-      outline-offset: 0.15rem;
-    }
-
-    .carousel-track > *::scroll-marker:focus-visible {
       outline: 0.2rem solid #f90;
       outline-offset: 0.15rem;
     }
@@ -282,8 +176,7 @@
 
 <body>
   <section class="carousel" aria-roledescription="carousel" aria-label="Featured products">
-    <!-- Rendered only when the browser lacks native ::scroll-button() support -->
-    <div class="fallback-controls" hidden>
+    <div class="carousel-controls">
       <button type="button" class="carousel-prev" data-direction="previous" aria-label="Previous slide">‹</button>
       <button type="button" class="carousel-next" data-direction="next" aria-label="Next slide">›</button>
     </div>
@@ -298,20 +191,16 @@
     <!-- MANDATORY: announces the current slide regardless of which control moved the carousel -->
     <p class="visually-hidden" role="status" aria-live="polite"></p>
 
-    <!-- Rendered only when the browser lacks native ::scroll-marker support -->
-    <nav class="fallback-markers" aria-label="Choose a slide" hidden></nav>
+    <nav class="carousel-markers" aria-label="Choose a slide"></nav>
   </section>
 
   <script type="module">
     const track = document.querySelector(".carousel-track");
     const slides = [...track.children];
     const status = document.querySelector('.carousel [role="status"]');
-    const controls = document.querySelector(".fallback-controls");
-    const markerNav = document.querySelector(".fallback-markers");
+    const controls = document.querySelector(".carousel-controls");
+    const markerNav = document.querySelector(".carousel-markers");
     const [prevBtn, nextBtn] = controls.querySelectorAll("button");
-    const hasButtons = CSS.supports("selector(::scroll-button(*))") &&
-      CSS.supports("anchor-name: --carousel-track");
-    const hasMarkers = CSS.supports("selector(::scroll-marker)");
     let markers = [];
     const loops = CSS.supports("order: mod(sibling-index(), 2)");
     let parkedFor = -1;
@@ -353,16 +242,15 @@
       }, { passive: true });
     }
 
-    // Fallback clicks made mid-scroll build on the pending target, so rapid clicks are not lost.
+    // Clicks made mid-scroll build on the pending target, so rapid clicks are not lost.
     let pending = null;
-    // Highlight the active marker right away, as native :target-current does, rather than after scrolling settles.
+    // Highlight the active marker right away rather than after scrolling settles.
     let marked = null;
     const mark = (item) => {
       // Writing the same attributes every frame makes Safari stutter, so only write on change
       if (item === marked) return;
       marked = item;
       const i = slides.indexOf(item);
-      slides.forEach((s, j) => s.toggleAttribute("data-current", j === i));
       markers.forEach((m, j) => m.setAttribute("aria-current", String(j === i)));
     };
     const aim = (item) => {
@@ -382,38 +270,8 @@
       markFrame = requestAnimationFrame(() => mark(pending ?? nearest()));
     }, { passive: true });
 
-    // Native scroll buttons aim from the in-flight position, so a click mid-scroll would repeat the same slide.
-    // Finish the running scroll first; presses on the buttons and markers target the track itself.
-    let lastPos = track.scrollLeft + track.scrollTop;
-    let heading = 0;
-    track.addEventListener("scroll", () => {
-      const pos = track.scrollLeft + track.scrollTop;
-      heading = Math.sign(pos - lastPos) || heading;
-      lastPos = pos;
-    }, { passive: true });
-    track.addEventListener("scrollend", () => { heading = 0; });
-    const settleBeforePress = (e) => {
-      const current = nearest();
-      // Not aligned with a slide means a scroll is running; scroll events can lag, so derive the direction if needed.
-      if (e.target !== track || Math.abs(offsetToCenter(current)) < 1) return;
-      const dir = heading || (offsetToCenter(current) < 0 ? 1 : -1);
-      const ahead = slides.filter((s) => offsetToCenter(s) * dir >= 0);
-      ahead.sort((x, y) => Math.abs(offsetToCenter(x)) - Math.abs(offsetToCenter(y)));
-      show(ahead[0], "instant");
-      // Park the end slides now, so the native button already has a neighbor to aim at.
-      sync();
-    };
-    track.addEventListener("pointerdown", settleBeforePress);
-    // Keyboard activation of a native scroll button needs the same preparation as a pointer press.
-    track.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") settleBeforePress(e);
-    });
-
-    controls.hidden = hasButtons;
     prevBtn.addEventListener("click", () => step(-1));
     nextBtn.addEventListener("click", () => step(1));
-    markerNav.hidden = hasMarkers;
-    // Built even where native markers exist, because the Chrome workaround below can swap these in.
     markers = slides.map((slide, i) => {
       const button = Object.assign(document.createElement("button"), { type: "button" });
       button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
@@ -421,28 +279,6 @@
       markerNav.append(button);
       return button;
     });
-
-    // WORKAROUND (Chrome bugs, remove when fixed): Chrome drops keyboard focus from native scroll buttons
-    // when looping reorders the slides (https://issues.chromium.org/issues/581318163) and from native scroll markers when they
-    // are activated (https://issues.chromium.org/issues/582416742). Script can't refocus a pseudo-element, so on the
-    // first Tab, swap in the HTML controls, which keep focus. Delete each flag with its bug.
-    const swapButtons = hasButtons && loops;
-    const swapMarkers = hasMarkers;
-    if (swapButtons || swapMarkers) {
-      const swapToHtmlControls = (e) => {
-        if (e.key !== "Tab") return;
-        document.removeEventListener("keydown", swapToHtmlControls);
-        if (swapButtons) {
-          controls.hidden = false;
-          track.dataset.htmlButtons = "";
-        }
-        if (swapMarkers) {
-          markerNav.hidden = false;
-          track.dataset.htmlMarkers = "";
-        }
-      };
-      document.addEventListener("keydown", swapToHtmlControls);
-    }
 
     // Park an end slide beside the current one, then cancel the layout shift with an instant scroll.
     function park(item) {

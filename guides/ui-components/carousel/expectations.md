@@ -4,10 +4,6 @@
 - Every carousel slide has `scroll-snap-align: center` (or start) applied so it acts as a snap target.
 - The carousel container is exposed as a labeled region with `aria-roledescription="carousel"` and an accessible name.
 - Each slide is exposed as a group with `role="group"`, `aria-roledescription="slide"`, and a position in its accessible name (such as "2 of 4").
-- Native `::scroll-button()` controls have an accessible name defined using the alternative-text form of CSS `content` (e.g. `content: "‹" / "Previous slide"`).
-- Native `::scroll-marker` controls navigate to their corresponding slides when activated.
-- The active slide's native scroll marker is visually distinguished using the `:target-current` pseudo-class.
-- The native marker group follows the slides in keyboard focus order using `scroll-marker-group: after`.
 - Previous and next controls stay enabled at the first and last slides, because the carousel loops.
 - Activating Next while the last slide is current brings the first slide into view, and activating Previous while the first slide is current brings the last slide into view.
 - Looping does not duplicate slides: the track contains exactly one slide element per slide, with no cloned or `aria-hidden` copies.
@@ -17,20 +13,17 @@
 - A parked slide is `inert` while it is parked.
 - Looping does not change the DOM order of the slides.
 - The polite live status reads "Slide N of M" with the correct slide after wrapping from the last slide to the first.
-- Interactive carousel controls, markers, and fallback buttons have a visible `:focus-visible` indicator.
+- Interactive carousel controls and marker buttons have a visible `:focus-visible` indicator.
 - A polite live region (`role="status"` or `aria-live="polite"`) starts empty on initial load and announces the current slide position after user-initiated scrolling settles.
 - Without JavaScript, the first slide is the one in view when the page loads.
-- The track and the fallback buttons set `touch-action: manipulation`.
+- The track and the control buttons set `touch-action: manipulation`.
 - The carousel track remains scrollable via touch, pointer, and native keyboard scrolling without requiring JavaScript.
-- Native controls retain their keyboard behavior; custom key handling does not intercept keys from focused links, form fields, scroll buttons, or markers.
+- Custom key handling does not intercept keys from focused links, form fields, or buttons.
 - Keyboard users can Tab sequentially through controls without encountering a keyboard trap.
-- When `::scroll-button()` or `::scroll-marker` is unsupported, support for each is detected independently using `CSS.supports`.
-- When `::scroll-button()` or `::scroll-marker` is unsupported, fallback HTML controls stay hidden while their corresponding native controls are shown (unless swapped in for keyboard focus, which hides the native scroll markers, and the native scroll buttons while looping), without rendering duplicate controls when support is partial.
-- When `::scroll-button()` or anchor positioning is unsupported, fallback previous/next buttons precede the track in DOM order so they come before any native marker group in sequential focus order.
-- When `::scroll-button()` or anchor positioning is unsupported, activating fallback previous/next buttons moves the carousel to the adjacent slide.
-- When `::scroll-marker` is unsupported, activating a fallback marker button navigates to its corresponding slide.
-- When `::scroll-marker` is unsupported, every fallback marker button has an accessible name identifying its destination slide.
-- When `::scroll-marker` is unsupported, fallback markers update `aria-current="true"` to reflect the active slide as soon as a marker or fallback previous/next button is clicked and while the track scrolls, without waiting for scrolling to settle.
-- When `:target-current` is unsupported, the active native marker is still visually distinguished from script state.
+- The carousel uses HTML Previous and Next `<button>` elements, each with an accessible name, that precede the track in DOM order, and does not use native `::scroll-button()` or `::scroll-marker`.
+- Activating the Previous or Next button moves the carousel to the adjacent slide in visual order.
+- The carousel has one HTML marker `<button>` per slide, and activating a marker button navigates to its corresponding slide.
+- Every marker button has an accessible name identifying its destination slide.
+- The active marker button has `aria-current="true"`, updated to reflect the active slide as soon as a marker or previous/next button is clicked and while the track scrolls, without waiting for scrolling to settle.
 - Smooth scrolling (`scroll-behavior: smooth`) and any optional scroll-driven slide effects or transitions are wrapped in `@media (prefers-reduced-motion: no-preference)`.
 - The carousel does not autoplay slides or continuously poll scroll positions on every animation frame.
