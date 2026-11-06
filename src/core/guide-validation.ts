@@ -4,11 +4,21 @@ import matter from '@11ty/gray-matter';
 import { marked } from 'marked';
 
 import { validateMacros, stripComments, maskComments } from './macros.ts';
-import { validateFeature, resolveFeatureId } from './baseline.ts';
+import { validateFeature, resolveFeatureId, getBaselineTargetsForGrader, type BaselineTarget } from './baseline.ts';
+import { isKnownCategory, CATEGORIES } from './categories.ts';
+import { buildHeadingMap } from './headings.ts';
 import { features } from 'web-features';
 import { stripTmpPrefix } from './feature-parser.ts';
 import { rootDir, guidesDir } from './paths.ts';
 import { Agents } from '../harness/config.ts';
+import {
+  getOriginTrialsRegistry,
+  getGuideOriginTrials,
+  getGuideVolatileFeatures,
+  type OriginTrialEntry,
+  type OriginTrialMetadata,
+  type VolatileFeatureMetadata,
+} from './feature-gates.ts';
 
 const REPO_ROOT = rootDir;
 
@@ -38,13 +48,17 @@ export const DISCIPLINE_GUIDES = new Set([
   // Named orientation guides
   'browser-ui-theming',
   'color',
+  'content-first-noise-reduction',
   'cpp-on-the-web',
   'css-conditionals',
   'css-layout',
+  'form-factor-adaptation',
+  'guided-navigation',
   'motion',
+  'natural-interactions',
   'passkeys',
+  'preference-aware-ui',
   'responsive-design',
-  'selector-atrule-combinations',
   'typography',
   'visual-effects',
   'web-components',
@@ -64,48 +78,7 @@ export interface PreparedGuide {
   relativeSubdir: string;
   statusName: ProjectStatus | null;
   originTrials?: OriginTrialMetadata[];
-}
-
-export interface OriginTrialMetadata {
-  id?: string;
-  name?: string;
-  chromestatus_url?: string;
-}
-
-const ORIGIN_TRIALS_FILE = path.join(REPO_ROOT, 'features', 'origin-trials.json');
-let cachedOriginTrials: Record<string, OriginTrialMetadata> | null = null;
-
-export function getOriginTrialsRegistry(): Record<string, OriginTrialMetadata> {
-  if (!cachedOriginTrials) {
-    try {
-      const raw = fs.readFileSync(ORIGIN_TRIALS_FILE, 'utf8');
-      cachedOriginTrials = JSON.parse(raw);
-    } catch (e: unknown) {
-      if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: unknown }).code === 'ENOENT') {
-        cachedOriginTrials = {};
-      } else {
-        throw new Error(`Failed to parse Origin Trials registry at ${ORIGIN_TRIALS_FILE}: ${(e as Error).message}`);
-      }
-    }
-  }
-  return cachedOriginTrials!;
-}
-
-export function getOriginTrialMetadata(featureId: string): OriginTrialMetadata | undefined {
-  const registry = getOriginTrialsRegistry();
-  const entry = registry[featureId];
-  return entry ? { ...entry, id: featureId } : undefined;
-}
-
-export function getGuideOriginTrials(featureIds: string[]): OriginTrialMetadata[] {
-  const registry = getOriginTrialsRegistry();
-  const found: OriginTrialMetadata[] = [];
-  for (const id of featureIds) {
-    if (registry[id]) {
-      found.push({ ...registry[id], id });
-    }
-  }
-  return found;
+  volatileFeatures?: VolatileFeatureMetadata[];
 }
 
 export interface GraduatedOriginTrial {
@@ -113,12 +86,8 @@ export interface GraduatedOriginTrial {
   supportedBrowsers: string[];
 }
 
-/**
- * Checks all features in the Origin Trials registry against the web-features package.
- * Returns any Origin Trial feature that now has browser support in web-features.
- */
 export function checkOriginTrialGraduations(
-  registry: Record<string, OriginTrialMetadata> = getOriginTrialsRegistry()
+  registry: Record<string, OriginTrialEntry> = getOriginTrialsRegistry(),
 ): GraduatedOriginTrial[] {
   const graduated: GraduatedOriginTrial[] = [];
   for (const featureId of Object.keys(registry)) {
@@ -143,6 +112,21 @@ export function checkOriginTrialGraduations(
   }
   return graduated;
 }
+
+export {
+  FEATURE_GATES,
+  getOriginTrialsRegistry,
+  getVolatileFeaturesRegistry,
+  getOriginTrialMetadata,
+  getGuideOriginTrials,
+  getGuideVolatileFeatures,
+  isVolatileActive,
+  type FeatureGateSpec,
+  type OriginTrialEntry,
+  type VolatileFeatureEntry,
+  type OriginTrialMetadata,
+  type VolatileFeatureMetadata,
+} from './feature-gates.ts';
 
 
 export interface GuideInventoryResult {
@@ -358,9 +342,14 @@ export function validateGuide(filePath: string): ValidationResult {
 
   const maskedBody = maskComments(body);
   const isPublished = isGuidePublished(stripAllComments(body).trim().length > 0, data.draft);
-  errors.push(...validateMacros(maskedBody, relativePath, isPublished ? { target: 'static-site' } : {}));
+  errors.push(...validateCategory(filePath, relativePath));
+  errors.push(...validateMacros(maskedBody, relativePath, isPublished ? { target: 'devsite' } : {}));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
+  errors.push(...validateHeadingHtmlTags(maskedBody, relativePath));
+  errors.push(...validateSecureSrc(maskedBody, relativePath));
+  errors.push(...validateCodeFences(body, relativePath));
   errors.push(...validateCallouts(maskedBody, relativePath));
+  errors.push(...validateAnchorLinks(maskedBody, relativePath));
   errors.push(...validatePendingGuideRefs(body, relativePath));
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
   errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
@@ -498,6 +487,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       relativeSubdir,
       statusName,
       originTrials: getGuideOriginTrials(featureIds),
+      volatileFeatures: getGuideVolatileFeatures(featureIds),
     });
   }
 
@@ -601,6 +591,15 @@ export interface TaskInfo {
   baseApp: string;
   prompt: string;
   guideDir: string;
+  baselineTarget?: BaselineTarget;
+}
+
+export function resolveTaskGraderPath(taskInfo: Pick<TaskInfo, 'guideDir' | 'baseApp'>, taskName: string): string {
+  const targetGraderPath = path.join(taskInfo.guideDir, TARGETS_DIR, taskName, GRADER_FILE);
+  if (fs.existsSync(targetGraderPath)) return targetGraderPath;
+  const baseAppGraderPath = path.join(taskInfo.guideDir, TARGETS_DIR, taskInfo.baseApp, GRADER_FILE);
+  if (fs.existsSync(baseAppGraderPath)) return baseAppGraderPath;
+  return path.join(taskInfo.guideDir, GRADER_FILE);
 }
 
 /**
@@ -630,6 +629,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
         baseApp: data?.base_app || 'daily-grind',
         prompt: prompt,
         guideDir: guideDir,
+        baselineTarget: 'widely',
       };
 
       taskMap.set(`${guideName}/${taskName}`, info);
@@ -655,9 +655,20 @@ export function getTaskMap(): Map<string, TaskInfo> {
         baseApp: baseAppName,
         prompt: prompt,
         guideDir: guideDir,
+        baselineTarget: 'widely',
       };
 
       taskMap.set(`${guideName}/${baseAppName}`, info);
+
+      const graderPath = path.join(targetsDir, baseAppName, GRADER_FILE);
+      for (const target of getBaselineTargetsForGrader(graderPath)) {
+        taskMap.set(`${guideName}/${baseAppName}-${target}`, {
+          baseApp: baseAppName,
+          prompt: prompt,
+          guideDir: guideDir,
+          baselineTarget: target,
+        });
+      }
     }
   }
 
@@ -1148,6 +1159,108 @@ export function validateBaselineClaims(body: string, relativePath: string, data?
     }
   });
 
+  return errors;
+}
+
+/**
+ * Validates that a guide located inside guides/ resides in a recognized category directory.
+ */
+export function validateCategory(filePath: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const relToGuides = path.relative(guidesDir, filePath);
+  if (!relToGuides.startsWith('..') && !path.isAbsolute(relToGuides)) {
+    const parts = relToGuides.split(path.sep);
+    if (parts.length >= 2) {
+      const category = parts[0];
+      if (!isKnownCategory(category)) {
+        errors.push(`Unknown category "${category}" for guide ${relativePath}. Registered categories: ${CATEGORIES.map(c => c.slug).join(', ')}.`);
+      }
+    }
+  }
+  return errors;
+}
+
+/**
+ * Validates that headings do not contain unescaped HTML tags (e.g. `## Using <dialog>`).
+ * Tags must be wrapped in backticks to prevent DevSite TOC / HTML rendering corruption.
+ */
+export function validateHeadingHtmlTags(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const tokens = marked.lexer(body);
+  marked.walkTokens(tokens, token => {
+    if (token.type === 'heading') {
+      const textWithoutCode = token.raw.replace(/`[^`]*`/g, '');
+      const match = textWithoutCode.match(/<([a-zA-Z0-9:-]+)(?:\s+[^>]*)?\/?>/);
+      if (match) {
+        errors.push(`Unescaped HTML tag <${match[1]}> in heading "${token.text}" in ${relativePath}. Wrap tag names in backticks.`);
+      }
+    }
+  });
+  return errors;
+}
+
+/**
+ * Validates that `src="..."` attributes do not use insecure HTTP URLs outside of code blocks.
+ */
+export function validateSecureSrc(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const textWithoutCode = body
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/~~~[\s\S]*?~~~/g, '')
+    .replace(/`[^`]*`/g, '');
+  const httpMatches = textWithoutCode.match(/src=["']http:\/\/[^"']+/g);
+  if (httpMatches) {
+    for (const m of httpMatches) {
+      errors.push(`Insecure HTTP url in ${m} in ${relativePath}. Use HTTPS instead.`);
+    }
+  }
+  return errors;
+}
+
+/**
+ * Validates code fence indentation and ensures all code fences are properly closed.
+ */
+export function validateCodeFences(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const lines = body.split('\n');
+  let openFence: { indent: string; char: string; length: number; line: number } | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const match = line.match(/^([ \t]*)(`{3,}|~{3,})/);
+    if (!openFence) {
+      if (match) {
+        openFence = { indent: match[1], char: match[2][0], length: match[2].length, line: i + 1 };
+      }
+    } else {
+      const closeMatch = line.match(/^([ \t]*)(`{3,}|~{3,})[ \t]*$/);
+      if (closeMatch && closeMatch[2][0] === openFence.char && closeMatch[2].length >= openFence.length) {
+        if (closeMatch[1] !== openFence.indent) {
+          errors.push(`Closing code fence indentation (${closeMatch[1].length} spaces on line ${i + 1}) does not match opening fence (${openFence.indent.length} spaces on line ${openFence.line}) in ${relativePath}.`);
+        }
+        openFence = null;
+      }
+    }
+  }
+  if (openFence) {
+    errors.push(`Unclosed code fence opened on line ${openFence.line} in ${relativePath}.`);
+  }
+  return errors;
+}
+
+/**
+ * Validates that all internal page `#anchor` links resolve to headings present on the page.
+ */
+export function validateAnchorLinks(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const { headingMap } = buildHeadingMap(body);
+  const anchorMatches = body.matchAll(/\[([^\]]+)\]\(#([^)]+)\)/g);
+  for (const match of anchorMatches) {
+    const fragment = match[2];
+    const resolved = headingMap.get(fragment) ?? headingMap.get(fragment.replace(/-/g, '_'));
+    if (!resolved) {
+      errors.push(`Unresolved anchor "#${fragment}" in ${relativePath}. No matching heading found on this page.`);
+    }
+  }
   return errors;
 }
 

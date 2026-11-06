@@ -101,7 +101,8 @@ You can use `scrollbar-color` together with `light-dark()` to set custom scrollb
 ```css
 :root {
   --color-scrollbar-track: light-dark(#eee, #222);
-  --color-scrollbar-thumb: light-dark(#999, #666);
+  /* Example values: the thumb needs at least 3:1 contrast against the track */
+  --color-scrollbar-thumb: light-dark(#6b6b6b, #8a8a8a);
   scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
 }
 ```

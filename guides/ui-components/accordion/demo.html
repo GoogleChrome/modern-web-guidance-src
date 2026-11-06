@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<meta name="color-scheme" content="light dark">
+<title>Accordion</title>
+<style>
+	:root {
+		--color-text: light-dark(oklch(25% 0.02 255), oklch(93% 0.01 255));
+		--color-text-muted: light-dark(oklch(48% 0.02 255), oklch(72% 0.015 255));
+		--color-surface: light-dark(oklch(100% 0 0), oklch(21% 0.012 255));
+		--color-page: light-dark(oklch(98% 0.004 255), oklch(17% 0.01 255));
+		--color-border: light-dark(oklch(91% 0.008 255), oklch(32% 0.015 255));
+		--color-hover: light-dark(oklch(97% 0.006 255), oklch(25% 0.014 255));
+		--color-focus: light-dark(oklch(55% 0.18 255), oklch(72% 0.14 255));
+
+		font-family: system-ui;
+		line-height: 1.5;
+		color: var(--color-text);
+		background: var(--color-page);
+	}
+
+	body {
+		max-inline-size: 40rem;
+		margin-inline: auto;
+		padding: 2rem 1rem 4rem;
+	}
+
+	h2 {
+		margin-block: 3rem 1rem;
+		font-size: 0.8125rem;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--color-text-muted);
+	}
+
+	h3 {
+		margin-block: 0 0.75rem;
+		font-size: 1.25rem;
+		font-weight: 600;
+	}
+
+	button {
+		font: inherit;
+		font-size: 0.875rem;
+		padding: 0.375rem 0.75rem;
+		border: 1px solid var(--color-border);
+		border-radius: 0.5rem;
+		color: inherit;
+		background: var(--color-surface);
+		cursor: pointer;
+
+		&:hover {
+			background: var(--color-hover);
+		}
+
+	}
+
+	[command="--toggle-all"][aria-expanded="true"] .expand,
+	[command="--toggle-all"][aria-expanded="false"] .collapse {
+		display: none;
+	}
+
+	:focus-visible {
+		outline: 2px solid var(--color-focus);
+		outline-offset: 2px;
+	}
+
+	.accordion > :is(details, div) {
+		--accordion-radius: 0.75rem;
+		--accordion-border-width: 1px;
+		/* Radius of the summary, so it sits flush inside the item's border */
+		--accordion-inner-radius: calc(var(--accordion-radius) - var(--accordion-border-width));
+		--accordion-padding: 1rem;
+
+		border: var(--accordion-border-width) solid var(--color-border);
+		background: var(--color-surface);
+
+		&:first-of-type {
+			margin-block-start: 0.75rem;
+			border-start-start-radius: var(--accordion-radius);
+			border-start-end-radius: var(--accordion-radius);
+
+			> :is(summary, h1, h2, h3, h4, h5, h6) {
+				border-start-start-radius: var(--accordion-inner-radius);
+				border-start-end-radius: var(--accordion-inner-radius);
+			}
+		}
+
+		&:last-of-type {
+			border-end-start-radius: var(--accordion-radius);
+			border-end-end-radius: var(--accordion-radius);
+
+			/* When open, the content sits below the summary, so its bottom stays square */
+			&:where(:not([open]), :has(> :is(h1, h2, h3, h4, h5, h6) > [aria-expanded="false"])) > :is(summary, h1, h2, h3, h4, h5, h6) {
+				border-end-start-radius: var(--accordion-inner-radius);
+				border-end-end-radius: var(--accordion-inner-radius);
+			}
+		}
+
+		& + :is(details, div) {
+			border-block-start: 0;
+		}
+	}
+
+	.accordion :is(summary, :is(h1, h2, h3, h4, h5, h6) > button) {
+		padding: 0.875rem var(--accordion-padding);
+		font-weight: 500;
+		list-style: none;
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+
+		&:where(:not([aria-disabled="true"])) {
+			cursor: pointer;
+
+			&:hover {
+				background: var(--color-hover);
+			}
+		}
+
+		&:focus-visible {
+			/* Inset, so neighboring items don't paint over the ring */
+			outline-offset: -2px;
+		}
+
+		&::before {
+			content: "";
+			inline-size: 1em;
+			block-size: 1em;
+			flex-shrink: 0;
+			background-color: var(--color-text-muted);
+			mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat center / contain;
+			rotate: -90deg;
+		}
+
+		&:dir(rtl)::before {
+			rotate: 90deg;
+		}
+
+		details[open] > &::before,
+		&[aria-expanded="true"]::before {
+			rotate: 0deg;
+		}
+
+		@media (prefers-reduced-motion: no-preference) {
+			&::before {
+				transition: rotate 0.2s;
+			}
+		}
+	}
+
+	/* Custom item: the heading wraps the trigger, so reset both to look like a summary */
+	.accordion > div > :is(h1, h2, h3, h4, h5, h6) {
+		margin: 0;
+		font-size: inherit;
+
+		> button {
+			font-size: inherit;
+			inline-size: 100%;
+			border: 0;
+			border-radius: inherit;
+			background: none;
+			text-align: start;
+		}
+	}
+
+	details::details-content,
+	.accordion > div > :not(h1, h2, h3, h4, h5, h6) {
+		padding-inline: var(--accordion-padding);
+		color: var(--color-text-muted);
+	}
+
+	details > :not(summary),
+	.accordion > div > :not(h1, h2, h3, h4, h5, h6) > * {
+		margin-block: 0 1rem;
+	}
+
+	@supports (interpolate-size: allow-keywords) {
+		details::details-content {
+			interpolate-size: allow-keywords;
+			overflow: clip;
+			contain: layout;
+		}
+
+		details:not([open])::details-content {
+			block-size: 0;
+		}
+
+		@media (prefers-reduced-motion: no-preference) {
+			details::details-content {
+				transition: block-size, content-visibility, display;
+				transition-duration: 0.3s;
+				transition-timing-function: ease-in-out;
+				transition-behavior: allow-discrete;
+			}
+		}
+	}
+
+	.accordion.unsearchable > details {
+		/* Excludes closed contents from find-in-page */
+		&:not([open])::details-content {
+			display: none;
+		}
+
+		/* Where the opening transition starts from, since display: none has no size */
+		&[open]::details-content {
+			@starting-style {
+				block-size: 0;
+			}
+		}
+	}
+</style>
+
+<h1>Accordion</h1>
+
+<section>
+	<h2>Accordion using details</h2>
+	<div class="accordion" id="resources-accordion" role="region" aria-labelledby="resources">
+		<h3 id="resources">Resources</h3>
+		<button type="button" commandfor="resources-accordion" command="--toggle-all" aria-expanded="false">
+			<span class="expand">Expand all</span>
+			<span class="collapse">Collapse all</span>
+		</button>
+		<details open>
+			<summary>Articles</summary>
+			<p>Articles contents</p>
+		</details>
+		<details>
+			<summary>Videos</summary>
+			<p>Videos contents</p>
+		</details>
+	</div>
+</section>
+
+<section>
+	<h2>Exclusive accordion using details</h2>
+	<nav class="accordion" aria-labelledby="topics">
+		<h3 id="topics">Topics</h3>
+		<details name="topics">
+			<summary>Development</summary>
+			<p>Development contents</p>
+		</details>
+		<details name="topics">
+			<summary>Design</summary>
+			<p>Design contents</p>
+		</details>
+	</nav>
+</section>
+
+<section>
+	<h2>Accordion excluded from find-in-page</h2>
+	<div class="accordion unsearchable" role="region" aria-labelledby="archive">
+		<h3 id="archive">Archive</h3>
+		<details>
+			<summary>2024</summary>
+			<p>2024 contents</p>
+		</details>
+		<details>
+			<summary>2023</summary>
+			<p>2023 contents</p>
+		</details>
+	</div>
+</section>
+
+<section>
+	<h2>Always-open exclusive accordion using details</h2>
+	<div class="accordion always-open" role="region" aria-labelledby="plans">
+		<h3 id="plans">Plans</h3>
+		<details name="plans" open>
+			<summary aria-disabled="true">Basic</summary>
+			<p>Basic contents</p>
+		</details>
+		<details name="plans">
+			<summary>Pro</summary>
+			<p>Pro contents</p>
+		</details>
+	</div>
+</section>
+
+<section>
+	<h2>Custom accordion with headings</h2>
+	<div class="accordion" role="region" aria-labelledby="faq">
+		<h3 id="faq">FAQ</h3>
+		<div>
+			<h4><button type="button" commandfor="reset-password" command="--toggle" aria-expanded="true">How do I reset my password?</button></h4>
+			<div id="reset-password"><p>Reset password contents</p></div>
+		</div>
+		<div>
+			<h4><button type="button" commandfor="delete-account" command="--toggle" aria-expanded="false">How do I delete my account?</button></h4>
+			<div id="delete-account" hidden="until-found"><p>Delete account contents</p></div>
+		</div>
+	</div>
+</section>
+
+<script>
+document.addEventListener("command", event => {
+	if (event.command !== "--toggle") return;
+	const content = event.target;
+
+	content.hidden = content.hidden ? false : "until-found";
+	event.source.setAttribute("aria-expanded", !content.hidden);
+}, { capture: true });
+
+document.addEventListener("beforematch", event => {
+	document.querySelector(`[commandfor="${CSS.escape(event.target.id)}"]`)?.setAttribute("aria-expanded", "true");
+});
+
+document.addEventListener("command", event => {
+	if (event.command !== "--toggle-all") return;
+	const expand = event.source.getAttribute("aria-expanded") !== "true";
+
+	for (const details of event.target.querySelectorAll(":scope > details")) details.open = expand;
+}, { capture: true });
+
+document.addEventListener("toggle", event => {
+	if (!event.target.matches(".accordion > details")) return;
+	const accordion = event.target.parentElement;
+	const button = accordion.querySelector(':scope > [command="--toggle-all"]');
+	if (!button) return;
+
+	const items = accordion.querySelectorAll(":scope > details");
+	button.setAttribute("aria-expanded", Array.prototype.every.call(items, details => details.open));
+}, { capture: true });
+
+document.addEventListener("click", event => {
+	if (event.target.closest(".accordion.always-open details[open] > summary")) event.preventDefault();
+});
+
+document.addEventListener("toggle", event => {
+	if (!event.target.matches(".accordion.always-open details")) return;
+	event.target.querySelector(":scope > summary").setAttribute("aria-disabled", event.target.open);
+}, { capture: true });
+</script>
