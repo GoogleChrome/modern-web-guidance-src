@@ -1,6 +1,6 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { forbiddenTokens } from './forbidden-tokens.ts';
+import { forbiddenTokens, forbiddenTokensVersion } from './forbidden-tokens.ts';
 import { FAKE_LDAP, FAKE_OS_USER, OTHER_FAKE_LDAP } from './fixtures/leak-samples.ts';
 
 const osUser = FAKE_OS_USER;
@@ -36,5 +36,20 @@ describe('forbiddenTokens', () => {
   test('requireList enforces the environment list outside CI too', () => {
     assert.throws(() => forbiddenTokens([], {}, { requireList: true, osUser }), /PUBLIC_EVALS_FORBIDDEN_TOKENS/);
     assert.deepEqual(forbiddenTokens([], { PUBLIC_EVALS_FORBIDDEN_TOKENS: FAKE_LDAP }, { requireList: true, osUser }), [FAKE_LDAP, FAKE_OS_USER]);
+  });
+});
+
+describe('forbiddenTokensVersion', () => {
+  test('defaults to 0 when unset or blank and parses decimal integers', () => {
+    assert.equal(forbiddenTokensVersion({}), 0);
+    assert.equal(forbiddenTokensVersion({ PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION: '  ' }), 0);
+    assert.equal(forbiddenTokensVersion({ PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION: '0' }), 0);
+    assert.equal(forbiddenTokensVersion({ PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION: ' 42 ' }), 42);
+  });
+
+  test('refuses negative, fractional, non-decimal, or non-numeric values', () => {
+    for (const bad of ['-1', '1.5', '0x10', '1e2', 'two']) {
+      assert.throws(() => forbiddenTokensVersion({ PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION: bad }), /non-negative integer/, bad);
+    }
   });
 });

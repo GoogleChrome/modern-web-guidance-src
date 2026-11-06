@@ -1,0 +1,710 @@
+import { describe, test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { PENDING_CHANGE_TTL_MS, selectSuites } from './allowlist.ts';
+import type { PublicAllowlist } from './allowlist.ts';
+import {
+  addPendingChange,
+  buildSelectedSuites,
+  buildSuite,
+  effectiveAllowlist,
+  pendingChanges,
+  publishedForbiddenTokensVersion,
+  runRelativePath,
+  writeManifest,
+} from './builder.ts';
+import type { BuildOptions } from './builder.ts';
+import type { PublicEvals } from './rebuild-evals.ts';
+import { LeakError } from './scrub.ts';
+import { LocalSuiteStore } from './suite-store.ts';
+import { CLOUDTOP_HOST, FAKE_LDAP, OTHER_FAKE_LDAP } from './fixtures/leak-samples.ts';
+import { FIXTURE_MODEL, FIXTURE_SUITE, makeFixtureStore, PASSKEY_RUN, SECURITY_RUN, write } from './fixtures/make-store.ts';
+
+const SUITE = FIXTURE_SUITE;
+const NOW = new Date('2026-10-25T12:00:00Z');
+const CREATED_AT = NOW.toISOString();
+
+const allowlist: PublicAllowlist = {
+  include: ['nightly-*-codex_cli', 'nightly-*-claude_code'],
+  exclude: [],
+  overrides: [],
+  releasedModels: [FIXTURE_MODEL],
+};
+
+function makeOptions(overrides: Partial<BuildOptions> = {}): BuildOptions & { storeRoot: string } {
+  const { root, baseApps } = makeFixtureStore();
+  return {
+    store: new LocalSuiteStore(root),
+    storeRoot: root,
+    outDir: fs.mkdtempSync(path.join(os.tmpdir(), 'public-evals-out-')),
+    allowlist,
+    baseAppsDir: baseApps,
+    now: NOW,
+    ...overrides,
+  };
+}
+
+function listFiles(dir: string): string[] {
+  return fs.readdirSync(dir, { recursive: true, encoding: 'utf8' })
+    .filter(rel => fs.statSync(path.join(dir, rel)).isFile())
+    .sort();
+}
+
+describe('runRelativePath', () => {
+  test('maps a result key and run number to the suite folder layout', () => {
+    assert.equal(runRelativePath('daily-grind - security - guided', 1), '1/security/daily-grind/guided');
+    assert.equal(runRelativePath('task - passkey-authentication - unguided', 2), '2/passkey-authentication/task/unguided');
+  });
+
+  test('refuses segments that could escape the suite directory or are not plain names', () => {
+    for (const key of ['.. - security - guided', 'task - ../../etc - guided', 'task - security - guided/x', 'task - sec urity - guided', 'task - . - guided', 'task - security']) {
+      assert.throws(() => runRelativePath(key, 1), /Unsafe path segment/, key);
+    }
+  });
+});
+
+describe('buildSuite', () => {
+  test('writes only evals.json, agent.patch and modern-web.log', async () => {
+    const options = makeOptions();
+    const result = await buildSuite(SUITE, options);
+    assert.equal(result.status, 'built', result.reason);
+
+    const suiteDir = path.join(options.outDir, 'public-evals', SUITE);
+    assert.deepEqual(listFiles(suiteDir), [
+      `${PASSKEY_RUN}/agent.patch`,
+      `${PASSKEY_RUN}/modern-web.log`,
+      `${SECURITY_RUN}/agent.patch`,
+      `${SECURITY_RUN}/modern-web.log`,
+      'evals.json',
+    ]);
+    assert.equal(result.files, 5);
+  });
+
+  test('filters captured patches and scrubs logs', async () => {
+    const options = makeOptions();
+    await buildSuite(SUITE, options);
+    const suiteDir = path.join(options.outDir, 'public-evals', SUITE);
+
+    const patch = fs.readFileSync(path.join(suiteDir, SECURITY_RUN, 'agent.patch'), 'utf8');
+    assert.ok(patch.includes('a/src/app.ts'));
+    assert.ok(!patch.includes('pnpm-lock.yaml'));
+
+    const log = fs.readFileSync(path.join(suiteDir, SECURITY_RUN, 'modern-web.log'), 'utf8');
+    assert.equal(log, 'GET /guides/security from guides\n');
+  });
+
+  test('harvests usernames from rewritten paths and rejects bare occurrences across the suite', async () => {
+    // `makeFixtureStore` puts `/usr/local/google/home/${FAKE_LDAP}/...` in SECURITY_RUN's modern-web.log.
+    // Even without `forbiddenTokens` configured, a bare mention of `FAKE_LDAP` in another run or evals.json must fail.
+    const inOtherRun = makeOptions();
+    write(path.join(inOtherRun.storeRoot, SUITE, PASSKEY_RUN, 'modern-web.log'), `ran as ${OTHER_FAKE_LDAP}\n`);
+    write(
+      path.join(inOtherRun.storeRoot, SUITE, SECURITY_RUN, 'modern-web.log'),
+      `GET /guides/security from /home/${OTHER_FAKE_LDAP}/modern-web-guidance-src/guides\n`,
+    );
+    const res1 = await buildSuite(SUITE, inOtherRun);
+    assert.equal(res1.status, 'skipped');
+    assert.equal(res1.code, 'leak');
+    assert.match(res1.reason ?? '', /forbidden token/);
+    assert.ok(!fs.existsSync(path.join(inOtherRun.outDir, 'public-evals', SUITE)));
+
+    // Also when the path is only in a run artifact and the bare name is in evals.json.
+    const inEvals = makeOptions();
+    const evalsPath = path.join(inEvals.storeRoot, SUITE, 'evals.json');
+    const raw = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+    raw.results['daily-grind - security - guided'][0].prompt = `authored by ${FAKE_LDAP}`;
+    fs.writeFileSync(evalsPath, JSON.stringify(raw));
+    const res2 = await buildSuite(SUITE, inEvals);
+    assert.equal(res2.status, 'skipped');
+    assert.equal(res2.code, 'leak');
+    assert.match(res2.reason ?? '', /forbidden token/);
+  });
+
+  test('generates a diff against the base app for legacy runs', async () => {
+    const options = makeOptions();
+    await buildSuite(SUITE, options);
+    const patch = fs.readFileSync(path.join(options.outDir, 'public-evals', SUITE, PASSKEY_RUN, 'agent.patch'), 'utf8');
+    assert.ok(patch.startsWith('diff --git a/index.html b/index.html\n'));
+    assert.match(patch, /^-<p>base version<\/p>$/m);
+    assert.match(patch, /^\+<p>agent version<\/p>$/m);
+  });
+
+  test('records written artifacts on each public run and strips private fields', async () => {
+    const options = makeOptions();
+    await buildSuite(SUITE, options);
+    const evals = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', SUITE, 'evals.json'), 'utf8')) as PublicEvals;
+
+    assert.deepEqual(evals.results['daily-grind - security - guided'][0].files, ['agent.patch', 'modern-web.log']);
+    assert.deepEqual(evals.results['task - passkey-authentication - guided'][0].files, ['agent.patch', 'modern-web.log']);
+    assert.deepEqual(evals.results['daily-grind - security - unguided'][0].files, []);
+    assert.ok(!('serving' in evals));
+    assert.ok(!('targetFile' in evals.results['daily-grind - security - guided'][0]));
+  });
+
+  test('skips an unreleased model with a reason and leaves no output', async () => {
+    const options = makeOptions();
+    const result = await buildSuite('nightly-2026-10-21_00-00-00-claude_code', options);
+    assert.equal(result.status, 'skipped');
+    assert.match(result.reason ?? '', /secret-model/);
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', 'nightly-2026-10-21_00-00-00-claude_code')));
+  });
+
+  test('skips and removes partial output when an artifact still leaks', async () => {
+    const options = makeOptions();
+    write(path.join(options.storeRoot, SUITE, PASSKEY_RUN, 'modern-web.log'), `host ${CLOUDTOP_HOST}\n`);
+
+    const result = await buildSuite(SUITE, options);
+    assert.equal(result.status, 'skipped');
+    assert.match(result.reason ?? '', /googlers hostname/);
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE)));
+  });
+
+  test('skips when a forbidden token appears in a suite id', async () => {
+    const options = makeOptions({ forbiddenTokens: ['codex_cli'] });
+    const result = await buildSuite(SUITE, options);
+    assert.equal(result.status, 'skipped');
+    assert.match(result.reason ?? '', /forbidden token/);
+  });
+
+  test('applies excludeGuides from the allowlist', async () => {
+    const options = makeOptions({
+      allowlist: { ...allowlist, overrides: [{ id: SUITE, excludeGuides: ['security'] }] },
+    });
+    await buildSuite(SUITE, options);
+    const suiteDir = path.join(options.outDir, 'public-evals', SUITE);
+    assert.ok(!fs.existsSync(path.join(suiteDir, SECURITY_RUN)));
+    const evals = JSON.parse(fs.readFileSync(path.join(suiteDir, 'evals.json'), 'utf8')) as PublicEvals;
+    assert.ok(Object.keys(evals.results).every(key => !key.includes(' - security - ')));
+  });
+
+  test('reports a missing evals.json as skipped', async () => {
+    const options = makeOptions();
+    const result = await buildSuite('nightly-2026-01-01_00-00-00-codex_cli', options);
+    assert.deepEqual([result.status, result.reason], ['skipped', 'no evals.json']);
+  });
+});
+
+describe('buildSelectedSuites + writeManifest', () => {
+  test('builds only allowlisted suites and writes a manifest over what was built', async () => {
+    const options = makeOptions();
+    const results = await buildSelectedSuites(options);
+
+    assert.deepEqual(
+      results.map(result => [result.suiteId, result.status]).sort(),
+      [
+        [SUITE, 'built'],
+        ['nightly-2026-10-21_00-00-00-claude_code', 'skipped'],
+      ],
+    );
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', 'suites.gen.json'), 'utf8'));
+    assert.equal(manifest.length, 1);
+    assert.equal(manifest[0].testId, SUITE);
+    assert.equal(manifest[0].model, 'example-model');
+    assert.ok(manifest[0].guidedStats.total > 0);
+  });
+
+  test('writeManifest reflects the directories present, so removing a suite removes its entry', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    fs.rmSync(path.join(options.outDir, 'public-evals', SUITE), { recursive: true });
+    assert.equal(writeManifest(options.outDir, []), 0);
+    const manifest = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', 'suites.gen.json'), 'utf8'));
+    assert.deepEqual(manifest, []);
+  });
+});
+
+describe('incremental builds', () => {
+  function stateFor(outDir: string) {
+    return JSON.parse(fs.readFileSync(path.join(outDir, 'public-evals', 'build-state.json'), 'utf8'));
+  }
+
+  test('second run leaves unchanged suites alone and preserves their state entry', async () => {
+    const options = makeOptions();
+    assert.equal(publishedForbiddenTokensVersion(options.outDir), undefined);
+    const first = await buildSelectedSuites(options);
+    assert.equal(first.find(r => r.suiteId === SUITE)?.status, 'built');
+    const firstGen = stateFor(options.outDir).suites[SUITE].generation;
+    assert.ok(firstGen);
+    assert.equal(publishedForbiddenTokensVersion(options.outDir), 0);
+
+    const second = await buildSelectedSuites(options);
+    assert.equal(second.find(r => r.suiteId === SUITE)?.status, 'unchanged');
+    assert.equal(stateFor(options.outDir).suites[SUITE]?.generation, firstGen, 'unchanged run preserves recorded state');
+    assert.equal(second.find(r => r.suiteId === 'nightly-2026-10-21_00-00-00-claude_code')?.status, 'skipped');
+  });
+
+  test('bumping forbiddenTokensVersion or changing builderVersion triggers a rebuild', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+
+    const bumped = await buildSelectedSuites({ ...options, forbiddenTokensVersion: 1 });
+    assert.equal(bumped.find(r => r.suiteId === SUITE)?.status, 'built');
+    assert.equal(publishedForbiddenTokensVersion(options.outDir), 1);
+
+    const statePath = path.join(options.outDir, 'public-evals', 'build-state.json');
+    const tampered = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+    tampered.builderVersion = '000000000000';
+    fs.writeFileSync(statePath, JSON.stringify(tampered));
+
+    const rebuilt = await buildSelectedSuites({ ...options, forbiddenTokensVersion: 1 });
+    assert.equal(rebuilt.find(r => r.suiteId === SUITE)?.status, 'built');
+  });
+
+  test('a skipped suite is remembered and not re-fetched until its inputs change', async () => {
+    const options = makeOptions();
+    const unreleased = 'nightly-2026-10-21_00-00-00-claude_code';
+    const reads: string[] = [];
+    const inner = options.store;
+    options.store = {
+      listSuites: () => inner.listSuites(),
+      readFile: (relPath: string) => { reads.push(relPath); return inner.readFile(relPath); },
+    };
+
+    await buildSelectedSuites(options);
+    const remembered = stateFor(options.outDir).suites[unreleased].skipped;
+    assert.equal(remembered.code, 'unreleased-model');
+    assert.ok(!JSON.stringify(stateFor(options.outDir)).includes('secret-model'), 'state must not quote the rejected model');
+
+    reads.length = 0;
+    const second = await buildSelectedSuites(options);
+    assert.equal(second.find(r => r.suiteId === unreleased)?.status, 'skipped');
+    assert.deepEqual(reads.filter(r => r.startsWith(unreleased)), [], 'skipped suite must not be fetched again');
+
+    // Releasing the model is a reason to try again.
+    const released = { ...options, allowlist: { ...allowlist, releasedModels: [FIXTURE_MODEL, 'secret-model'] } };
+    const third = await buildSelectedSuites(released);
+    assert.equal(third.find(r => r.suiteId === unreleased)?.status, 'built');
+  });
+
+  test('un-releasing a model takes an already published suite down', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    assert.ok(fs.existsSync(path.join(options.outDir, 'public-evals', SUITE, 'evals.json')));
+
+    const withdrawn = await buildSelectedSuites({ ...options, allowlist: { ...allowlist, releasedModels: [] } });
+    const mine = withdrawn.find(r => r.suiteId === SUITE);
+    assert.equal(mine?.status, 'skipped');
+    assert.equal(mine?.code, 'unreleased-model');
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE)));
+    const manifest = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', 'suites.gen.json'), 'utf8'));
+    assert.deepEqual(manifest, []);
+  });
+
+  test('a changed raw evals.json triggers a rebuild', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const evalsPath = path.join(options.storeRoot, SUITE, 'evals.json');
+    const future = new Date(Date.now() + 60_000);
+    fs.utimesSync(evalsPath, future, future);
+
+    const second = await buildSelectedSuites(options);
+    assert.equal(second.find(r => r.suiteId === SUITE)?.status, 'built');
+  });
+
+  test('a new excludeGuides override triggers a rebuild', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const withOverride = { ...options, allowlist: { ...allowlist, overrides: [{ id: SUITE, excludeGuides: ['security'] }] } };
+    const second = await buildSelectedSuites(withOverride);
+    assert.equal(second.find(r => r.suiteId === SUITE)?.status, 'built');
+    assert.deepEqual(stateFor(options.outDir).suites[SUITE].excludeGuides, ['security']);
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE, SECURITY_RUN)));
+  });
+
+  test('--force rebuilds an unchanged suite', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const forced = await buildSelectedSuites({ ...options, force: true });
+    assert.equal(forced.find(r => r.suiteId === SUITE)?.status, 'built');
+  });
+
+  test('a suite that drops out of selection is removed from disk, state, and manifest', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const excluded = await buildSelectedSuites({ ...options, allowlist: { ...allowlist, exclude: [SUITE] } });
+    assert.equal(excluded.find(r => r.suiteId === SUITE)?.status, 'removed');
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE)));
+    assert.ok(!(SUITE in stateFor(options.outDir).suites));
+    const manifest = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', 'suites.gen.json'), 'utf8'));
+    assert.deepEqual(manifest, []);
+  });
+
+  test('retention uses the run time in the suite id, not the file mtime', async () => {
+    const options = makeOptions();
+    // The fixture id says 2026-10-20 and NOW is 2026-10-25; maxAgeDays: 1 drops it despite fresh mtime.
+    const results = await buildSelectedSuites({ ...options, allowlist: { ...allowlist, retention: { maxAgeDays: 1 } } });
+    assert.equal(results.find(r => r.suiteId === SUITE), undefined);
+  });
+
+  test('maxSuites counts publishable suites, so an unreleased newer suite does not use up a slot', async () => {
+    const options = makeOptions();
+    const unreleased = 'nightly-2026-10-21_00-00-00-claude_code';
+    const retained = { ...options, allowlist: { ...allowlist, retention: { maxSuites: 1 } } };
+
+    const first = await buildSelectedSuites(retained);
+    assert.equal(first.find(r => r.suiteId === SUITE)?.status, 'built', 'the older released suite fills the one slot');
+    assert.equal(first.find(r => r.suiteId === unreleased)?.code, 'unreleased-model');
+
+    // Releasing the newer model displaces the older suite; the older one is remembered as deferred, not re-fetched.
+    const reads: string[] = [];
+    const inner = options.store;
+    retained.store = {
+      listSuites: () => inner.listSuites(),
+      readFile: (relPath: string) => { reads.push(relPath); return inner.readFile(relPath); },
+    };
+    const released = await buildSelectedSuites({ ...retained, allowlist: { ...retained.allowlist, releasedModels: [FIXTURE_MODEL, 'secret-model'] } });
+    assert.equal(released.find(r => r.suiteId === unreleased)?.status, 'built');
+    assert.equal(released.find(r => r.suiteId === SUITE)?.status, 'removed');
+    assert.equal(stateFor(options.outDir).suites[SUITE].deferred, true);
+
+    reads.length = 0;
+    const again = await buildSelectedSuites({ ...retained, allowlist: { ...retained.allowlist, releasedModels: [FIXTURE_MODEL, 'secret-model'] } });
+    assert.equal(again.find(r => r.suiteId === unreleased)?.status, 'unchanged');
+    assert.deepEqual(reads.filter(r => r.startsWith(SUITE)), [], 'deferred suite is not fetched to be classified again');
+  });
+
+  test('a published suite that fails transiently at the gate keeps its maxSuites slot without churning an older suite', async () => {
+    const options = makeOptions({ allowlist: { ...allowlist, retention: { maxSuites: 1 } } });
+    const newer = 'nightly-2026-10-22_00-00-00-codex_cli';
+    fs.cpSync(path.join(options.storeRoot, SUITE), path.join(options.storeRoot, newer), { recursive: true });
+
+    const first = await buildSelectedSuites(options);
+    assert.equal(first.find(r => r.suiteId === newer)?.status, 'built');
+    assert.equal(stateFor(options.outDir).suites[SUITE]?.deferred, true);
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE)));
+
+    // Transient gate failure on `newer` when forced to re-read: `newer` stays published and `SUITE` stays deferred.
+    const inner = options.store;
+    let failNewer = true;
+    options.store = {
+      listSuites: () => inner.listSuites(),
+      readFile: (relPath: string) => {
+        if (failNewer && relPath === `${newer}/evals.json`) {
+          throw new Error('storage unavailable');
+        }
+        return inner.readFile(relPath);
+      },
+    };
+    const transient = await buildSelectedSuites({ ...options, force: true });
+    assert.equal(transient.find(r => r.suiteId === newer)?.status, 'failed');
+    assert.equal(transient.find(r => r.suiteId === SUITE), undefined, 'older deferred suite is not built');
+    assert.ok(fs.existsSync(path.join(options.outDir, 'public-evals', newer, 'evals.json')), 'newer copy stays on disk');
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE)), 'older suite was not churned in');
+    assert.equal(stateFor(options.outDir).suites[SUITE]?.deferred, true);
+
+    failNewer = false;
+    const recovered = await buildSelectedSuites(options);
+    assert.equal(recovered.find(r => r.suiteId === newer)?.status, 'built');
+    assert.equal(recovered.find(r => r.suiteId === SUITE), undefined);
+  });
+
+  test('a suite whose id trips the leak check is skipped and kept out of state', async () => {
+    const options = makeOptions();
+    const leakyId = `nightly-2026-10-22_00-00-00-${CLOUDTOP_HOST}-codex_cli`;
+    fs.cpSync(path.join(options.storeRoot, SUITE), path.join(options.storeRoot, leakyId), { recursive: true });
+
+    const results = await buildSelectedSuites(options);
+    const leaky = results.find(r => r.suiteId === leakyId);
+    assert.equal(leaky?.status, 'skipped');
+    assert.equal(leaky?.code, 'suite-id');
+    assert.ok(!fs.readFileSync(path.join(options.outDir, 'public-evals', 'build-state.json'), 'utf8').includes(CLOUDTOP_HOST));
+  });
+
+  test('a leaking id is rejected before the model gate, so it is neither remembered nor fetched', async () => {
+    const options = makeOptions();
+    const leakyId = `nightly-2026-10-22_00-00-00-${CLOUDTOP_HOST}-claude_code`;
+    fs.cpSync(path.join(options.storeRoot, 'nightly-2026-10-21_00-00-00-claude_code'), path.join(options.storeRoot, leakyId), { recursive: true });
+    const reads: string[] = [];
+    const inner = options.store;
+    options.store = {
+      listSuites: () => inner.listSuites(),
+      readFile: (relPath: string) => { reads.push(relPath); return inner.readFile(relPath); },
+    };
+
+    const results = await buildSelectedSuites(options);
+    const leaky = results.find(r => r.suiteId === leakyId);
+    assert.equal(leaky?.code, 'suite-id', 'the id check wins over the unreleased model');
+    assert.deepEqual(reads.filter(r => r.startsWith(leakyId)), []);
+    assert.ok(!fs.readFileSync(path.join(options.outDir, 'public-evals', 'build-state.json'), 'utf8').includes(CLOUDTOP_HOST));
+  });
+
+  test('a leaking id never takes a retention slot or a deferred entry', async () => {
+    const options = makeOptions({ allowlist: { ...allowlist, retention: { maxSuites: 1 } } });
+    const leakyId = `nightly-2026-10-22_00-00-00-${CLOUDTOP_HOST}-codex_cli`;
+    fs.cpSync(path.join(options.storeRoot, SUITE), path.join(options.storeRoot, leakyId), { recursive: true });
+
+    const results = await buildSelectedSuites(options);
+    assert.equal(results.find(r => r.suiteId === SUITE)?.status, 'built', 'the clean, older suite gets the one slot');
+    assert.ok(!fs.readFileSync(path.join(options.outDir, 'public-evals', 'build-state.json'), 'utf8').includes(CLOUDTOP_HOST));
+  });
+
+  test('a suite that fails at the gate keeps its published copy and is reported once', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const inner = options.store;
+    options.store = {
+      listSuites: () => inner.listSuites(),
+      readFile: (relPath: string) => {
+        if (relPath === `${SUITE}/evals.json`) {
+          throw new Error('storage unavailable');
+        }
+        return inner.readFile(relPath);
+      },
+    };
+
+    const retried = await buildSelectedSuites({ ...options, force: true });
+    assert.deepEqual(retried.filter(r => r.suiteId === SUITE).map(r => r.status), ['failed']);
+    assert.ok(fs.existsSync(path.join(options.outDir, 'public-evals', SUITE, 'evals.json')), 'old copy stays');
+    const manifest = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', 'suites.gen.json'), 'utf8'));
+    assert.deepEqual(manifest.map((entry: { testId: string }) => entry.testId), [SUITE], 'old copy stays listed');
+    assert.ok(!(SUITE in stateFor(options.outDir).suites), 'not remembered, so it is retried');
+  });
+
+  test('a suite removed by policy is reported once, not also as removed', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const withdrawn = await buildSelectedSuites({ ...options, allowlist: { ...allowlist, releasedModels: [] } });
+    assert.deepEqual(withdrawn.filter(r => r.suiteId === SUITE).map(r => r.status), ['skipped']);
+  });
+
+  test('the gate hands its parsed evals.json to the build, so a forced rebuild downloads it once', async () => {
+    const options = makeOptions();
+    const reads: string[] = [];
+    const inner = options.store;
+    options.store = {
+      listSuites: () => inner.listSuites(),
+      readFile: (relPath: string) => { reads.push(relPath); return inner.readFile(relPath); },
+    };
+    await buildSelectedSuites({ ...options, force: true });
+    assert.equal(reads.filter(r => r === `${SUITE}/evals.json`).length, 1);
+  });
+
+  test('a result key that would escape the suite directory fails the suite', async () => {
+    const options = makeOptions();
+    const evalsPath = path.join(options.storeRoot, SUITE, 'evals.json');
+    const raw = JSON.parse(fs.readFileSync(evalsPath, 'utf8'));
+    raw.results['daily-grind - ../../escape - guided'] = raw.results['daily-grind - security - guided'];
+    fs.writeFileSync(evalsPath, JSON.stringify(raw));
+
+    const results = await buildSelectedSuites(options);
+    const mine = results.find(r => r.suiteId === SUITE);
+    assert.equal(mine?.status, 'failed');
+    assert.match(mine?.reason ?? '', /Unsafe path segment/);
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'escape')));
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE)));
+  });
+
+  test('the manifest is leak-checked even when its entries are reused from the previous manifest', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const manifestPath = path.join(options.outDir, 'public-evals', 'suites.gen.json');
+    const entries = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    entries[0].model = `run on ${CLOUDTOP_HOST}`;
+    fs.writeFileSync(manifestPath, JSON.stringify(entries));
+
+    await assert.rejects(buildSelectedSuites(options), LeakError);
+    assert.throws(() => writeManifest(options.outDir, []), LeakError);
+
+    entries[0].model = `run by ${FAKE_LDAP}`;
+    fs.writeFileSync(manifestPath, JSON.stringify(entries));
+    assert.equal(writeManifest(options.outDir, []), 1, 'a bare name is only a leak when it is a forbidden token');
+    assert.throws(() => writeManifest(options.outDir, [], [FAKE_LDAP]), LeakError);
+  });
+
+  test('an unexpected store error is reported as failed, not remembered, and leaves no output', async () => {
+    const options = makeOptions();
+    const inner = options.store;
+    let fail = true;
+    options.store = {
+      listSuites: () => inner.listSuites(),
+      readFile: (relPath: string) => {
+        if (fail && relPath.endsWith('modern-web.log')) {
+          throw new Error('storage unavailable');
+        }
+        return inner.readFile(relPath);
+      },
+    };
+
+    const first = await buildSelectedSuites(options);
+    assert.equal(first.find(r => r.suiteId === SUITE)?.status, 'failed');
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE)));
+    assert.ok(!(SUITE in stateFor(options.outDir).suites));
+
+    fail = false;
+    const second = await buildSelectedSuites(options);
+    assert.equal(second.find(r => r.suiteId === SUITE)?.status, 'built');
+  });
+
+  test('a transient failure keeps the previously published copy of the suite', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const inner = options.store;
+    options.store = {
+      listSuites: () => inner.listSuites(),
+      readFile: (relPath: string) => {
+        if (relPath.endsWith('modern-web.log')) {
+          throw new Error('storage unavailable');
+        }
+        return inner.readFile(relPath);
+      },
+    };
+
+    const retried = await buildSelectedSuites({ ...options, force: true });
+    assert.equal(retried.find(r => r.suiteId === SUITE)?.status, 'failed');
+    assert.ok(fs.existsSync(path.join(options.outDir, 'public-evals', SUITE, 'evals.json')), 'old copy stays');
+    const manifest = JSON.parse(fs.readFileSync(path.join(options.outDir, 'public-evals', 'suites.gen.json'), 'utf8'));
+    assert.equal(manifest.length, 1, 'old copy stays listed');
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals-staging', SUITE)), 'staging is cleaned up');
+  });
+
+  test('a suite directory without evals.json is rebuilt', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const suiteDir = path.join(options.outDir, 'public-evals', SUITE);
+    fs.rmSync(path.join(suiteDir, 'evals.json'));
+
+    const second = await buildSelectedSuites(options);
+    assert.equal(second.find(r => r.suiteId === SUITE)?.status, 'built');
+    assert.ok(fs.existsSync(path.join(suiteDir, 'evals.json')));
+  });
+
+  test('manifest reuses previous entries without re-reading evals.json', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+    const manifestPath = path.join(options.outDir, 'public-evals', 'suites.gen.json');
+    const before = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    // Corrupt the on-disk evals.json: if writeManifest re-parsed it, this would throw.
+    fs.writeFileSync(path.join(options.outDir, 'public-evals', SUITE, 'evals.json'), '{not json');
+    const second = await buildSelectedSuites(options);
+    assert.equal(second.find(r => r.suiteId === SUITE)?.status, 'unchanged');
+    assert.deepEqual(JSON.parse(fs.readFileSync(manifestPath, 'utf8')), before);
+  });
+});
+
+describe('pending allowlist changes', () => {
+  function stateFor(outDir: string) {
+    return JSON.parse(fs.readFileSync(path.join(outDir, 'public-evals', 'build-state.json'), 'utf8'));
+  }
+
+  test('pending unpublish keeps the suite down under the old allowlist until the exclude merges', async () => {
+    const options = makeOptions();
+    await buildSelectedSuites(options);
+
+    addPendingChange(options.outDir, { command: 'unpublish', suiteId: SUITE, guides: [], createdAt: CREATED_AT }, NOW);
+    const now = await buildSelectedSuites(options);
+    assert.equal(now.find(r => r.suiteId === SUITE)?.status, 'removed');
+    assert.equal(pendingChanges(options.outDir, NOW).length, 1, 'pending change survives the run that created it');
+
+    const later = await buildSelectedSuites(options);
+    assert.equal(later.find(r => r.suiteId === SUITE), undefined);
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE)));
+
+    // Once the allowlist excludes it, the pending change has done its job.
+    await buildSelectedSuites({ ...options, allowlist: { ...allowlist, exclude: [SUITE] } });
+    assert.deepEqual(pendingChanges(options.outDir, NOW), []);
+  });
+
+  test('pending guide-level unpublish is honoured by the old allowlist too', async () => {
+    const options = makeOptions();
+    addPendingChange(options.outDir, { command: 'unpublish', suiteId: SUITE, guides: ['security'], createdAt: CREATED_AT }, NOW);
+    await buildSelectedSuites(options);
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE, SECURITY_RUN)));
+    assert.deepEqual(stateFor(options.outDir).suites[SUITE].excludeGuides, ['security']);
+
+    const unchanged = await buildSelectedSuites(options);
+    assert.equal(unchanged.find(r => r.suiteId === SUITE)?.status, 'unchanged');
+  });
+
+  test('addPendingChange merges guide-level unpublishes, preserves promote, and never weakens a whole-suite takedown', () => {
+    const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'public-evals-pending-'));
+
+    addPendingChange(outDir, { command: 'unpublish', suiteId: SUITE, guides: ['security'], createdAt: CREATED_AT }, NOW);
+    addPendingChange(outDir, { command: 'unpublish', suiteId: SUITE, guides: ['passkey-authentication'], createdAt: CREATED_AT }, NOW);
+    assert.deepEqual(pendingChanges(outDir, NOW), [
+      { command: 'unpublish', suiteId: SUITE, guides: ['security', 'passkey-authentication'], createdAt: CREATED_AT },
+    ]);
+
+    // Whole-suite takedown supersedes guide-level ones, and a subsequent guide-level takedown does not weaken it.
+    addPendingChange(outDir, { command: 'unpublish', suiteId: SUITE, guides: [], createdAt: CREATED_AT }, NOW);
+    addPendingChange(outDir, { command: 'unpublish', suiteId: SUITE, guides: ['security'], createdAt: CREATED_AT }, NOW);
+    assert.deepEqual(pendingChanges(outDir, NOW), [
+      { command: 'unpublish', suiteId: SUITE, guides: [], createdAt: CREATED_AT },
+    ]);
+
+    // Promoting an ad-hoc suite and then hiding one guide keeps both entries active.
+    const adhoc = 'test-2026-07-30T13-02-05';
+    addPendingChange(outDir, { command: 'promote', suiteId: adhoc, guides: [], createdAt: CREATED_AT }, NOW);
+    addPendingChange(outDir, { command: 'unpublish', suiteId: adhoc, guides: ['security'], createdAt: CREATED_AT }, NOW);
+    const layered = effectiveAllowlist({ ...allowlist, include: ['nightly-*'] }, outDir, NOW);
+    assert.deepEqual(selectSuites(layered.allowlist, [adhoc]), [adhoc]);
+    assert.deepEqual(layered.allowlist.overrides, [{ id: adhoc, excludeGuides: ['security'] }]);
+  });
+
+  test('effectiveAllowlist layers pending changes for single-suite builds too', async () => {
+    const options = makeOptions();
+    addPendingChange(options.outDir, { command: 'unpublish', suiteId: SUITE, guides: [], createdAt: CREATED_AT }, NOW);
+    const unpub = effectiveAllowlist(options.allowlist, options.outDir, NOW);
+    assert.deepEqual(selectSuites(unpub.allowlist, [SUITE]), [], '--suite rejects a pending unpublished suite');
+
+    const guideOutDir = fs.mkdtempSync(path.join(os.tmpdir(), 'public-evals-suite-guide-'));
+    addPendingChange(guideOutDir, { command: 'unpublish', suiteId: SUITE, guides: ['security'], createdAt: CREATED_AT }, NOW);
+    const guideLayered = effectiveAllowlist(options.allowlist, guideOutDir, NOW);
+    await buildSuite(SUITE, { ...options, outDir: guideOutDir, allowlist: guideLayered.allowlist });
+    assert.ok(!fs.existsSync(path.join(guideOutDir, 'public-evals', SUITE, SECURITY_RUN)));
+  });
+
+  test('pending changes expire after PENDING_CHANGE_TTL_MS and report via onExpiredPending', async () => {
+    const options = makeOptions({ allowlist: { ...allowlist, include: ['nightly-*-claude_code'] } });
+    addPendingChange(options.outDir, { command: 'promote', suiteId: SUITE, guides: [], createdAt: CREATED_AT }, NOW);
+    const built = await buildSelectedSuites(options);
+    assert.equal(built.find(r => r.suiteId === SUITE)?.status, 'built');
+
+    const expiredSeen: string[] = [];
+    const afterTtl = new Date(NOW.getTime() + PENDING_CHANGE_TTL_MS + 1);
+    const expiredRun = await buildSelectedSuites({
+      ...options,
+      now: afterTtl,
+      onExpiredPending: expired => expiredSeen.push(...expired.map(e => e.suiteId)),
+    });
+    assert.deepEqual(expiredSeen, [SUITE]);
+    assert.equal(expiredRun.find(r => r.suiteId === SUITE)?.status, 'removed');
+    assert.deepEqual(pendingChanges(options.outDir, afterTtl), []);
+  });
+
+  test('pending promote keeps the suite up under an old allowlist whose patterns do not match it', async () => {
+    const options = makeOptions({ allowlist: { ...allowlist, include: ['nightly-*-claude_code'] } });
+    addPendingChange(options.outDir, { command: 'promote', suiteId: SUITE, guides: [], createdAt: CREATED_AT }, NOW);
+    const now = await buildSelectedSuites(options);
+    assert.equal(now.find(r => r.suiteId === SUITE)?.status, 'built');
+
+    const later = await buildSelectedSuites(options);
+    assert.equal(later.find(r => r.suiteId === SUITE)?.status, 'unchanged');
+
+    await buildSelectedSuites({ ...options, allowlist });
+    assert.deepEqual(pendingChanges(options.outDir, NOW), []);
+  });
+
+  test('pending promote cannot override an exclude that went through review', async () => {
+    const options = makeOptions({ allowlist: { ...allowlist, exclude: [SUITE] } });
+    addPendingChange(options.outDir, { command: 'promote', suiteId: SUITE, guides: [], createdAt: CREATED_AT }, NOW);
+    const results = await buildSelectedSuites(options);
+    assert.equal(results.find(r => r.suiteId === SUITE), undefined);
+    assert.ok(!fs.existsSync(path.join(options.outDir, 'public-evals', SUITE)));
+    assert.deepEqual(pendingChanges(options.outDir, NOW), [], 'the pending promote is dropped, not kept for later');
+  });
+
+  test('pending promote replaces a pending unpublish for the same suite', async () => {
+    const options = makeOptions();
+    addPendingChange(options.outDir, { command: 'unpublish', suiteId: SUITE, guides: [], createdAt: CREATED_AT }, NOW);
+    await buildSelectedSuites(options);
+    assert.equal(pendingChanges(options.outDir, NOW).length, 1);
+
+    addPendingChange(options.outDir, { command: 'promote', suiteId: SUITE, guides: [], createdAt: CREATED_AT }, NOW);
+    const restored = await buildSelectedSuites(options);
+    assert.equal(restored.find(r => r.suiteId === SUITE)?.status, 'built');
+    assert.deepEqual(pendingChanges(options.outDir, NOW), [], 'allowlist already includes it, so nothing stays pending');
+  });
+});
