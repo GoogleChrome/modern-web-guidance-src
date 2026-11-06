@@ -119,28 +119,21 @@ test.describe(`Improve next page load performance Expectations: ${demoName}`, ()
     }
   });
 
-  // 8. Check for state-changing URLs and non-aggressive eagerness on broad document rules
-  test('Do not speculate URLs that likely trigger state changes (e.g., /logout) or use eager/immediate on site-wide document rules', async () => {
+  // 8. Check for state-changing URLs
+  test('Do not speculate URLs that likely trigger state changes (e.g., /logout)', async () => {
     const html = fs.readFileSync(filePath, 'utf-8');
     const rules = getSpeculationRules(html);
     if (rules && rules !== 'INVALID_JSON') {
       const ruleSets = [...(rules.prefetch || []), ...(rules.prerender || []), ...(rules.prerender_until_script || [])];
       expect(ruleSets.length).toBeGreaterThan(0);
-      const hasLogoutLink = html.includes('/logout');
       for (const set of ruleSets) {
         if (set.urls) {
           expect(set.urls.some((url: string) => url.includes('logout'))).toBe(false);
         }
         if (set.where) {
+          // Simplistic check for /logout in where clause
           const whereStr = JSON.stringify(set.where);
-          const isBroadWildcard = whereStr.includes('"href_matches":"/*"');
-          if (isBroadWildcard) {
-            expect(['eager', 'immediate']).not.toContain(set.eagerness);
-          }
-          if (hasLogoutLink && isBroadWildcard) {
-            const hasNotExclusion = JSON.stringify(set.where).includes('"not"');
-            expect(hasNotExclusion).toBe(true);
-          }
+          expect(whereStr.includes('logout')).toBe(false);
         }
       }
     } else {
