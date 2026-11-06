@@ -285,61 +285,62 @@
       announceTimer = setTimeout(() => { announcer.textContent = label + spokenText(error); }, 500);
     };
 
-    // Mandatory Aria-Invalid synchronization for Native Mode. With announce, an error that
-    // appears is announced.
-    const syncNativeAriaInvalid = (input, announce = false) => {
-      if (input.matches(':user-invalid')) {
-        if (announce && !announced.has(input)) {
-          announceError(input);
-          announced.add(input);
+    // Sync aria-invalid with the CSS :user-invalid state. Only form fields are synced, and
+    // an aria-invalid="true" that this script didn't set (for example from a server check)
+    // is left alone.
+    const flagged = new WeakSet();
+    const syncAria = (el, announce = false) => {
+      if (!el.matches?.('input, select, textarea')) return;
+      const invalid = el.matches(':user-invalid');
+      if (invalid) {
+        if (announce && !announced.has(el)) {
+          announceError(el);
+          announced.add(el);
         }
-        input.setAttribute('aria-invalid', 'true');
-      } else {
-        input.setAttribute('aria-invalid', 'false');
-        announced.delete(input);
+        el.setAttribute('aria-invalid', 'true');
+        flagged.add(el);
+      } else if (flagged.has(el) || el.getAttribute('aria-invalid') !== 'true') {
+        el.setAttribute('aria-invalid', 'false');
+        flagged.delete(el);
+        announced.delete(el);
         // Clear a fixed field's announcement so it isn't found later when reading the page.
-        if (announcedField === input) {
+        if (announcedField === el) {
           clearTimeout(announceTimer);
           announcer.textContent = '';
         }
       }
-      linkError(input, input.matches(':user-invalid'));
+      linkError(el, invalid);
     };
 
-    form.addEventListener('blur', (e) => {
-      if (useNativeLogic && e.target.matches('input[required]')) {
-        syncNativeAriaInvalid(e.target, true);
-      }
+    // Update on blur (to show and announce an error) and input (to clear it)
+    document.addEventListener('blur', (e) => {
+      if (useNativeLogic) syncAria(e.target, true);
     }, true);
 
-    form.addEventListener('submit', () => {
-      if (useNativeLogic) {
-        form.querySelectorAll('input[required]').forEach((input) => syncNativeAriaInvalid(input));
-      }
+    document.addEventListener('input', (e) => {
+      if (useNativeLogic && e.target.hasAttribute('aria-invalid')) syncAria(e.target);
     });
 
-    form.addEventListener('input', (e) => {
-      if (useNativeLogic && e.target.matches('input[required]')) {
-        syncNativeAriaInvalid(e.target);
-      }
-    });
+    // Checkboxes, radio buttons and other controls that commit on 'change' can become
+    // :user-invalid without losing focus, so update on change too.
+    document.addEventListener('change', (e) => {
+      if (useNativeLogic) syncAria(e.target, true);
+    }, true);
 
     // A failed submit fires 'invalid' on each failing field, including required fields the
     // user never touched, so update those too. 'invalid' doesn't bubble. Focus moving to the
     // first invalid field announces its error, so these aren't announced.
-    form.addEventListener('invalid', (e) => {
+    document.addEventListener('invalid', (e) => {
       if (useNativeLogic) {
         announced.add(e.target);
-        syncNativeAriaInvalid(e.target);
+        syncAria(e.target);
       }
     }, true);
 
     // Reset clears :user-invalid after the 'reset' event, so update each field afterwards.
-    form.addEventListener('reset', () => {
-      if (useNativeLogic) {
-        setTimeout(() => form.querySelectorAll('input[required]').forEach((input) => syncNativeAriaInvalid(input)));
-      }
-    });
+    document.addEventListener('reset', (e) => {
+      if (useNativeLogic) setTimeout(() => [...e.target.elements].forEach((el) => syncAria(el)));
+    }, true);
 
     // Submit: the form uses novalidate for its custom error UI, so the browser doesn't block
     // submission or move focus. Do both here so a failed submit is announced.
@@ -351,6 +352,9 @@
 
     // Init
     updateFeatureState();
+
+    // Start every field at aria-invalid="false" in native mode.
+    if (useNativeLogic) document.querySelectorAll('input, select, textarea').forEach((el) => syncAria(el));
   </script>
 </body>
 

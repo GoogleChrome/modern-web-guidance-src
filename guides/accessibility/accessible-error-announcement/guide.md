@@ -78,6 +78,4 @@ Since there is no "UserInvalidChanged" event, hook into standard form events to 
 
 ## Fallbacking & Browser Support
 
-{{ BASELINE_STATUS("user-pseudos") }}
-
 {{ FEATURE_FALLBACKS("user-pseudos") }}

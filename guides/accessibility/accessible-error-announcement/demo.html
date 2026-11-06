@@ -326,8 +326,6 @@
                 // an aria-invalid="true" that this script didn't set (for example from a server check)
                 // is left alone.
                 const flagged = new WeakSet();
-                // Fields whose current error has been announced, or read out by focus after a failed
-                // submit. A field can become invalid while the user types, so this is tracked separately.
                 const syncAria = (el, announce = false) => {
                   if (!el.matches?.('input, select, textarea')) return;
                   const invalid = el.matches(':user-invalid');
