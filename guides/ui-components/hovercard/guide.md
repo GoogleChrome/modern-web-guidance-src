@@ -23,7 +23,7 @@ If you need plain-text, non-interactive tooltips rather than structured link pre
 
 ## 1. Triggering the hovercard
 
-Use the **Interest Invokers** API to trigger the hovercard. This ensures the card appears on both hover and focus, and handles accessibility wiring automatically.
+Use the **Interest Invokers** API to trigger the hovercard. This ensures the card appears on both hover and focus.
 
 - Add the `popover="hint"` attribute to your card container. Use `hint` to avoid closing unrelated popover menus that may be open.
 - Add the `interestfor` attribute to the trigger link, pointing to the card's `id`.
