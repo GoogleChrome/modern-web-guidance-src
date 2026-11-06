@@ -649,6 +649,14 @@ dialog#modal.frame-modal { max-inline-size: 1200px; inline-size: 95dvw; }
   border-radius: 4px;
 }
 
+.dashboard-grid:not(.is-sorted-flat) .row-category-tag {
+  display: none;
+}
+
+.dashboard-grid:not(.is-sorted-flat) .task-badges-row:not(:has(> :not(.row-category-tag))) {
+  display: none;
+}
+
 .dashboard-grid {
   --evals-cols: minmax(0, 1fr) 72px 72px 84px 190px 88px;
 }
