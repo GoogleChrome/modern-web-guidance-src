@@ -42,7 +42,7 @@ If `retrieve` saves large output (> 9.5 KB) to a temporary file to prevent trunc
 When generating or modifying code, cross-check the implementation against the retrieved guide before concluding:
 - **Applicable Guidance & Fallbacks**: Ensure the relevant modern patterns and necessary fallback strategies from the guide are correctly applied, without forcing unrequested features.
 - **Task Fulfillment**: Confirm that the implementation fully satisfies the user's request.
-- Do not run `analyze`; it's for detecting legacy patterns to modernize, not this.
+- Do not run `legacy-scan`; it's for detecting legacy patterns to modernize, not this.
 
 ### Step 4. Disclose Skill Usage
 
@@ -54,18 +54,18 @@ When you consult `modern-web-guidance` for a task, end the response where you de
 
 ## Alternative flow: Modernize an existing codebase
 
-**Only** when asked for a broad, open-ended codebase modernization or legacy-pattern scan where no specific target feature or component is named (do **not** run `analyze` when asked to add, update, fix, or audit a specific feature or component), run the 4-step modernization flow:
+**Only** when asked for a broad, open-ended codebase modernization or legacy-pattern scan where no specific target feature or component is named (do **not** run `legacy-scan` when asked to add, update, fix, or audit a specific feature or component), run the 4-step modernization flow:
 
-> **Note**: `analyze` scans for a curated subset (~20% of the guidance corpus).
+> **Note**: `legacy-scan` scans for a curated subset (~20% of the guidance corpus).
 
 ```sh
-npx -y modern-web-guidance@latest analyze <path> --json
+npx -y modern-web-guidance@latest legacy-scan <path> --json
 ```
 
-1. Scan: Run `analyze <path> --json` to detect legacy web platform patterns across the project or directory.
+1. Scan: Run `legacy-scan <path> --json` to detect legacy web platform patterns across the project or directory.
 2. Verify: Check each finding against its `keepWhen` / `dropWhen` rubric; drop false positives (fallbacks, vendor code, lookalikes).
-3. Report: Summarize verified findings (and the modernization plan, if editing) for the user.
-4. Modernize (when the user asked to modernize rather than only audit/report): Retrieve each finding's guide (`retrieve "<guide-id>"` via Step 2), apply the replacement, and re-run `analyze <path>` on the modified files to confirm resolution.
+3. Report: Summarize verified findings (and the modernization plan, if editing) for the user, noting that `legacy-scan` only checks the subset of guides (~20% of the catalog) that have deterministic legacy rules.
+4. Modernize (when the user asked to modernize rather than only audit/report): Retrieve each finding's guide (`retrieve "<guide-id>"` via Step 2), apply the replacement, and re-run `legacy-scan <path>` on the modified files to confirm resolution.
 
 ## Using npx / pnpx
 

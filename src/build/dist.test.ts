@@ -372,7 +372,7 @@ test('bundled analyze.mjs executes cleanly and excludes inlined TypeScript .d.ts
 
   // Executes --help cleanly
   const helpOut = execSync(`node ${JSON.stringify(analyzePath)} --help`, { encoding: 'utf8', cwd: ROOT_DIR });
-  assert.ok(helpOut.includes('Usage: modern-web-guidance analyze'), 'analyze.mjs --help should show usage');
+  assert.ok(helpOut.includes('Usage: modern-web-guidance legacy-scan'), 'analyze.mjs --help should show usage');
 
   // Executes --json cleanly
   const jsonOut = execSync(`node ${JSON.stringify(analyzePath)} ${JSON.stringify(STAGING_DIR)} --json`, { encoding: 'utf8', cwd: ROOT_DIR });

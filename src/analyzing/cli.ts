@@ -102,7 +102,7 @@ export function sampleDiversifiedFindings(
 }
 
 export const ANALYZE_CLI_HELP = `
-Usage: modern-web-guidance analyze [path] [options]
+Usage: modern-web-guidance legacy-scan [path] [options]
 
 Analyze a codebase for legacy web platform patterns to detect modernization opportunities.
 
@@ -184,7 +184,7 @@ export function formatHumanReadable(
           `0 findings from ${plural(activeGuideCount, 'qualified guide')}.`,
           fmt(
             'dim',
-            `Note: analyze covers legacy patterns for ~20% of the guidance corpus. Use 'modern-web-guidance search <topic>' for general UI/platform guidance.`,
+            `Note: legacy-scan covers legacy patterns for ${activeGuideCount} guides (~20% of the guidance corpus). Use 'modern-web-guidance search <topic>' for general UI/platform guidance.`,
           ),
           ...(skippedNotice ? [skippedNotice] : []),
         ]
@@ -197,7 +197,7 @@ export function formatHumanReadable(
 
   const lines: string[] = [
     `${fmt('bold', 'Modern Web Guidance Analyzer')} — ${targetDir}`,
-    `Found ${fmt('bold', String(totalFindings))} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${fmt('bold', String(guides.length))} ${guides.length === 1 ? 'guide' : 'guides'}:`,
+    `Found ${fmt('bold', String(totalFindings))} modernization ${totalFindings === 1 ? 'opportunity' : 'opportunities'} across ${fmt('bold', String(guides.length))} ${guides.length === 1 ? 'guide' : 'guides'}${isDefaultMode ? ` (scanned ${activeGuideCount} guides with deterministic rules; ~20% of the guidance corpus)` : ''}:`,
     fmt('dim', 'Note: Static analysis results are provisional — verify against the Keep/Drop criteria below.'),
     ...(skippedNotice ? [skippedNotice] : []),
     '',
@@ -295,7 +295,7 @@ export async function runAnalyzeCli(
   args: readonly string[],
   options?: AnalyzeCliExecutionOptions,
 ): Promise<AnalyzeCliResult> {
-  const cleanArgs = args[0] === 'analyze' ? args.slice(1) : args;
+  const cleanArgs = (args[0] === 'legacy-scan' || args[0] === 'legacyscan' || args[0] === 'analyze') ? args.slice(1) : args;
 
   let parsed: ReturnType<typeof parseArgs>;
   try {
@@ -385,9 +385,12 @@ export async function runAnalyzeCli(
     guides,
     activeRuleCount,
     activeGuideCount,
-    ...(totalFindings === 0 && isDefaultQualifiedMode
+    ...(isDefaultQualifiedMode
       ? {
-          note: `No legacy patterns found from the ${activeRuleCount} supported analyzer rules (~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
+          note:
+            totalFindings === 0
+              ? `No legacy patterns found across ${activeGuideCount} guides (${activeRuleCount} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`
+              : `Checked ${activeGuideCount} guides (${activeRuleCount} deterministic rules; ~20% of the guidance corpus). Finding ${totalFindings} ${totalFindings === 1 ? 'item' : 'items'} here only reflects deterministic legacy patterns; use 'search <topic>' for the rest of the catalog.`,
         }
       : {}),
     ...(skippedDocsAndTestsCount > 0 ? { skippedDocsAndTestsCount } : {}),

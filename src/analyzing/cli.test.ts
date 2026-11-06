@@ -34,13 +34,23 @@ describe('runAnalyzeCli', () => {
   it('handles help flags (-h, --help)', async () => {
     const res1 = await runAnalyzeCli(['--help']);
     assert.equal(res1.exitCode, 0);
-    assert.match(res1.output, /Usage: modern-web-guidance analyze/);
+    assert.match(res1.output, /Usage: modern-web-guidance legacy-scan/);
     assert.equal(res1.output, `${ANALYZE_CLI_HELP}\n`);
 
-    const res2 = await runAnalyzeCli(['analyze', '-h']);
+    const res2 = await runAnalyzeCli(['legacy-scan', '-h']);
     assert.equal(res2.exitCode, 0);
-    assert.match(res2.output, /Usage: modern-web-guidance analyze/);
+    assert.match(res2.output, /Usage: modern-web-guidance legacy-scan/);
     assert.equal(res2.output, `${ANALYZE_CLI_HELP}\n`);
+
+    const res3 = await runAnalyzeCli(['legacyscan', '-h']);
+    assert.equal(res3.exitCode, 0);
+    assert.match(res3.output, /Usage: modern-web-guidance legacy-scan/);
+    assert.equal(res3.output, `${ANALYZE_CLI_HELP}\n`);
+
+    const res4 = await runAnalyzeCli(['analyze', '-h']);
+    assert.equal(res4.exitCode, 0);
+    assert.match(res4.output, /Usage: modern-web-guidance legacy-scan/);
+    assert.equal(res4.output, `${ANALYZE_CLI_HELP}\n`);
   });
 
   it('handles non-existent target path with error and exit code 1', async () => {
@@ -118,7 +128,9 @@ describe('runAnalyzeCli', () => {
       );
       assert.match(
         resDefault.output,
-        /Note: analyze covers legacy patterns for ~20% of the guidance corpus\. Use 'modern-web-guidance search <topic>' for general UI\/platform guidance\./,
+        new RegExp(
+          `Note: legacy-scan covers legacy patterns for ${QUALIFIED_GUIDE_IDS.length} guides \\(~20% of the guidance corpus\\)\\. Use 'modern-web-guidance search <topic>' for general UI/platform guidance\\.`,
+        ),
       );
 
       const resDefaultJson = await runAnalyzeCli([emptyDir, '--json']);
@@ -131,7 +143,7 @@ describe('runAnalyzeCli', () => {
       assert.equal(parsedDefault.activeGuideCount, QUALIFIED_GUIDE_IDS.length);
       assert.equal(
         parsedDefault.note,
-        `No legacy patterns found from the ${QUALIFIED_RULES.length} supported analyzer rules (~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
+        `No legacy patterns found across ${QUALIFIED_GUIDE_IDS.length} guides (${QUALIFIED_RULES.length} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
       );
     });
   });
@@ -144,7 +156,7 @@ describe('runAnalyzeCli', () => {
     assert.match(reducedZeroOutput, /0 findings from 1 qualified guide\./);
     assert.match(
       reducedZeroOutput,
-      /Note: analyze covers legacy patterns for ~20% of the guidance corpus\. Use 'modern-web-guidance search <topic>' for general UI\/platform guidance\./,
+      /Note: legacy-scan covers legacy patterns for 1 guides \(~20% of the guidance corpus\)\. Use 'modern-web-guidance search <topic>' for general UI\/platform guidance\./,
     );
   });
 
@@ -162,7 +174,7 @@ describe('runAnalyzeCli', () => {
       assert.equal(resJson.data.totalFindings, 0);
       assert.equal(
         resJson.data.note,
-        `No legacy patterns found from the ${QUALIFIED_RULES.length} supported analyzer rules (~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
+        `No legacy patterns found across ${QUALIFIED_GUIDE_IDS.length} guides (${QUALIFIED_RULES.length} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
       );
     });
   });
@@ -188,11 +200,16 @@ describe('runAnalyzeCli', () => {
 }`;
       await writeFile(join(testDir, 'accordion.css'), cssContent, 'utf8');
 
-      const res = await runAnalyzeCli(['analyze', testDir]);
+      const res = await runAnalyzeCli(['legacy-scan', testDir]);
       assert.equal(res.exitCode, 0);
 
       assert.match(res.output, /Modern Web Guidance Analyzer —/);
-      assert.match(res.output, /Found \d+ modernization opportunities across \d+ guides:/);
+      assert.match(
+        res.output,
+        new RegExp(
+          `Found \\d+ modernization opportunities across \\d+ guides \\(scanned ${QUALIFIED_GUIDE_IDS.length} guides with deterministic rules; ~20% of the guidance corpus\\):`,
+        ),
+      );
       assert.match(
         res.output,
         /Note: Static analysis results are provisional — verify against the Keep\/Drop criteria below\./,
@@ -235,6 +252,10 @@ describe('runAnalyzeCli', () => {
       const parsed = JSON.parse(res.output) as AnalyzeJsonOutput;
       assert.equal(parsed.targetDir, testDir);
       assert.ok(parsed.totalFindings >= 1);
+      assert.equal(
+        parsed.note,
+        `Checked ${QUALIFIED_GUIDE_IDS.length} guides (${QUALIFIED_RULES.length} deterministic rules; ~20% of the guidance corpus). Finding ${parsed.totalFindings} ${parsed.totalFindings === 1 ? 'item' : 'items'} here only reflects deterministic legacy patterns; use 'search <topic>' for the rest of the catalog.`,
+      );
       assert.ok(Array.isArray(parsed.guides));
       assert.ok(parsed.guides.length >= 1);
 
@@ -721,6 +742,58 @@ describe('runAnalyzeCli', () => {
       const parsedClean = JSON.parse(resClean.output) as AnalyzeJsonOutput;
       assert.equal(parsedClean.totalFindings, 0);
       assert.deepEqual(parsedClean.guides, []);
+    });
+  });
+
+  it('supports legacy-scan, legacyscan, and analyze aliases with dynamic activeGuideCount note across 0 and >0 findings', async () => {
+    await withTempDir(async (testDir) => {
+      // 0 findings case:
+      for (const cmd of ['legacy-scan', 'legacyscan', 'analyze']) {
+        const resHumanZero = await runAnalyzeCli([cmd, testDir]);
+        assert.equal(resHumanZero.exitCode, 0);
+        assert.match(
+          resHumanZero.output,
+          new RegExp(
+            `Note: legacy-scan covers legacy patterns for ${QUALIFIED_GUIDE_IDS.length} guides \\(~20% of the guidance corpus\\)\\.`,
+          ),
+        );
+
+        const resJsonZero = await runAnalyzeCli([cmd, testDir, '--json']);
+        assert.equal(resJsonZero.exitCode, 0);
+        const parsedZero = JSON.parse(resJsonZero.output) as AnalyzeJsonOutput;
+        assert.equal(parsedZero.totalFindings, 0);
+        assert.equal(
+          parsedZero.note,
+          `No legacy patterns found across ${QUALIFIED_GUIDE_IDS.length} guides (${QUALIFIED_RULES.length} rules; ~20% of the guidance corpus). Use 'search <topic>' for feature-specific guidance.`,
+        );
+      }
+
+      // >0 findings case:
+      await writeFile(
+        join(testDir, 'login.html'),
+        '<form action="/login"><input type="password" name="password"></form>',
+        'utf8',
+      );
+
+      for (const cmd of ['legacy-scan', 'legacyscan', 'analyze']) {
+        const resHuman = await runAnalyzeCli([cmd, testDir]);
+        assert.equal(resHuman.exitCode, 0);
+        assert.match(
+          resHuman.output,
+          new RegExp(
+            `Found 1 modernization opportunity across 1 guide \\(scanned ${QUALIFIED_GUIDE_IDS.length} guides with deterministic rules; ~20% of the guidance corpus\\):`,
+          ),
+        );
+
+        const resJson = await runAnalyzeCli([cmd, testDir, '--json']);
+        assert.equal(resJson.exitCode, 0);
+        const parsed = JSON.parse(resJson.output) as AnalyzeJsonOutput;
+        assert.equal(parsed.totalFindings, 1);
+        assert.equal(
+          parsed.note,
+          `Checked ${QUALIFIED_GUIDE_IDS.length} guides (${QUALIFIED_RULES.length} deterministic rules; ~20% of the guidance corpus). Finding 1 item here only reflects deterministic legacy patterns; use 'search <topic>' for the rest of the catalog.`,
+        );
+      }
     });
   });
 });

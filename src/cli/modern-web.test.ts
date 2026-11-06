@@ -23,6 +23,7 @@ describe('modern-web CLI', () => {
   it('prints usage when no arguments provided', () => {
     const { stdout } = runCLI([]);
     assert.ok(stdout.includes('Usage: modern-web <command> [args]'));
+    assert.ok(stdout.includes('legacy-scan [path] [options]'));
   });
 
   it('lists use cases in compact format with id and description', () => {
@@ -111,42 +112,46 @@ describe('modern-web CLI', () => {
     }
   });
 
-  it('handles analyze with leading and trailing --skill-version without shifting positional arguments', () => {
+  it('handles legacy-scan with leading and trailing --skill-version without shifting positional arguments', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-test-'));
     try {
       // Leading --skill-version
-      const leadingRes = runCLI(['--skill-version', '2026_01_01-test', 'analyze', tempDir, '--json']);
+      const leadingRes = runCLI(['--skill-version', '2026_01_01-test', 'legacy-scan', tempDir, '--json']);
       assert.strictEqual(leadingRes.status, 0);
       const leadingData = JSON.parse(leadingRes.stdout);
       assert.strictEqual(leadingData.totalFindings, 0);
       assert.strictEqual(leadingData.targetDir, tempDir);
-      assert.match(leadingData.note, /\d+ supported analyzer rules/);
+      assert.match(leadingData.note, /No legacy patterns found across \d+ guides \(\d+ rules; ~20% of the guidance corpus\)/);
 
       // Trailing --skill-version
-      const trailingRes = runCLI(['analyze', tempDir, '--json', '--skill-version', '2026_01_01-test']);
+      const trailingRes = runCLI(['legacy-scan', tempDir, '--json', '--skill-version', '2026_01_01-test']);
       assert.strictEqual(trailingRes.status, 0);
       const trailingData = JSON.parse(trailingRes.stdout);
       assert.strictEqual(trailingData.totalFindings, 0);
       assert.strictEqual(trailingData.targetDir, tempDir);
-      assert.match(trailingData.note, /\d+ supported analyzer rules/);
+      assert.match(trailingData.note, /No legacy patterns found across \d+ guides \(\d+ rules; ~20% of the guidance corpus\)/);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  it('forwards --help to analyze when --help appears before analyze', () => {
-    const res = runCLI(['--help', 'analyze']);
-    assert.strictEqual(res.status, 0);
-    assert.ok(res.stdout.includes('Usage: modern-web-guidance analyze'));
+  it('forwards --help to legacy-scan when --help appears before command', () => {
+    const res1 = runCLI(['--help', 'legacy-scan']);
+    assert.strictEqual(res1.status, 0);
+    assert.ok(res1.stdout.includes('Usage: modern-web-guidance legacy-scan'));
+
+    const res2 = runCLI(['--help', 'analyze']);
+    assert.strictEqual(res2.status, 0);
+    assert.ok(res2.stdout.includes('Usage: modern-web-guidance legacy-scan'));
   });
 
-  it('emits skill update warning when running analyze with outdated --skill-version', () => {
+  it('emits skill update warning when running legacy-scan with outdated --skill-version', () => {
     const versionPath = path.resolve(import.meta.dirname, 'skill-version.txt');
     fs.writeFileSync(versionPath, '2026_05_16-latest12\n');
     try {
-      const res = runCLI(['--skill-version', '2025_01_01-oldsha', 'analyze', '--help']);
+      const res = runCLI(['--skill-version', '2025_01_01-oldsha', 'legacy-scan', '--help']);
       assert.strictEqual(res.status, 0);
-      assert.ok(res.stdout.includes('Usage: modern-web-guidance analyze'));
+      assert.ok(res.stdout.includes('Usage: modern-web-guidance legacy-scan'));
       assert.ok(res.stderr.includes('Warning: a new SKILL.md is available'));
       assert.ok(res.stderr.includes('PROBLEM DETECTED: The modern-web-guidance skill is very out-of-date'));
     } finally {
@@ -154,18 +159,40 @@ describe('modern-web CLI', () => {
     }
   });
 
-  it('exits with code 1 when analyze is called with unknown --guide ID', () => {
+  it('exits with code 1 when legacy-scan is called with unknown --guide ID', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-test-'));
     try {
-      const resJson = runCLI(['analyze', tempDir, '--guide', 'nonexistent-guide-id', '--json']);
+      const resJson = runCLI(['legacy-scan', tempDir, '--guide', 'nonexistent-guide-id', '--json']);
       assert.strictEqual(resJson.status, 1);
       const data = JSON.parse(resJson.stdout);
       assert.strictEqual(data.totalFindings, 0);
       assert.match(data.error ?? '', /Unknown or unsupported analyzer guide ID: nonexistent-guide-id/);
 
-      const resHuman = runCLI(['analyze', tempDir, '--guide', 'nonexistent-guide-id']);
+      const resHuman = runCLI(['legacy-scan', tempDir, '--guide', 'nonexistent-guide-id']);
       assert.strictEqual(resHuman.status, 1);
       assert.match(resHuman.stderr, /Unknown or unsupported analyzer guide ID: nonexistent-guide-id/);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('supports legacy-scan, legacyscan, and analyze subcommands cleanly in modern-web CLI', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-subcommands-test-'));
+    try {
+      for (const cmd of ['legacy-scan', 'legacyscan', 'analyze']) {
+        const resJson = runCLI([cmd, tempDir, '--json']);
+        assert.strictEqual(resJson.status, 0);
+        const data = JSON.parse(resJson.stdout);
+        assert.strictEqual(data.totalFindings, 0);
+        assert.match(
+          data.note ?? '',
+          /No legacy patterns found across \d+ guides \(\d+ rules; ~20% of the guidance corpus\)/,
+        );
+
+        const resHuman = runCLI([cmd, tempDir]);
+        assert.strictEqual(resHuman.status, 0);
+        assert.match(resHuman.stdout, /Note: legacy-scan covers legacy patterns for \d+ guides/);
+      }
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }

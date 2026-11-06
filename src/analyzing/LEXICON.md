@@ -6,14 +6,14 @@ The canonical domain language for the Modern Web Guidance Analyzer (`src/analyzi
 
 ### Modernize
 
-The people-facing name for the end-to-end workflow of finding legacy web platform code in an existing project and changing it to modern platform standards across three steps: **Detection** (via `analyze`), **Verification** (reviewing findings against `verifierRubric`), and **Update** (retrieving `guide.md`, updating the code, and verifying the result). Distinct from **`analyze`**, which is the detection step only.
+The people-facing name for the end-to-end workflow of finding legacy web platform code in an existing project and changing it to modern platform standards across three steps: **Detection** (via `legacy-scan`), **Verification** (reviewing findings against `verifierRubric`), and **Update** (retrieving `guide.md`, updating the code, and verifying the result). Distinct from **`legacy-scan`**, which is the detection step only.
 
 * _Reference_: `guides/modern-web-guidance/SKILL.md#modernize-an-existing-codebase`, `src/analyzing/README.md#2-modernize-workflow`
 * _Avoid_: `Modern Web Refactor`, `Refactor` (as a feature or workflow name), `Uplift`, `Modern Web Uplift`
 
-### `analyze`
+### `legacy-scan` (formerly `analyze`)
 
-The CLI subcommand (`modern-web-guidance analyze`) that scans a codebase for legacy web platform patterns matching qualified rules. It performs the detection step only and stops there; the AI coding agent and developer carry out the verification and update steps of the **Modernize** workflow.
+The CLI subcommand (`modern-web-guidance legacy-scan`, supporting `analyze` and `legacyscan` as aliases) that scans a codebase for legacy web platform patterns matching qualified rules. It performs the detection step only and stops there; the AI coding agent and developer carry out the verification and update steps of the **Modernize** workflow.
 
 * _Reference_: `src/analyzing/cli.ts#runAnalyzeCli`, `guides/modern-web-guidance/SKILL.md#modernize-an-existing-codebase`
 * _Avoid_: `modern-web-guidance refactor`, `modern-web-guidance uplift`, `scan` (as a CLI command name)
