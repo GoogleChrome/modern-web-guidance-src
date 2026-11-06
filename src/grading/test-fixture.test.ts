@@ -544,16 +544,28 @@ const isComplete = value < 100;
     test('checkTargetPageLoad records buildWarning when build fails but start succeeds and page loads cleanly', { skip: NO_CHROMIUM }, async () => {
       const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-buildwarning-'));
       try {
+        const buildAttemptsLog = path.join(tempDir, 'build-attempts.log');
+        const buildAttempts = () => (fs.existsSync(buildAttemptsLog) ? fs.readFileSync(buildAttemptsLog, 'utf8').length : 0);
         fs.writeFileSync(
           path.join(tempDir, 'package.json'),
           JSON.stringify({
             name: 'fixture-buildwarning-app',
             type: 'module',
             scripts: {
-              build: 'node -e "console.error(\'em++ not found\'); process.exit(1)"',
+              build: 'node build.mjs',
               start: 'node server.mjs',
             },
           }),
+          'utf8',
+        );
+        fs.writeFileSync(
+          path.join(tempDir, 'build.mjs'),
+          [
+            `import fs from 'node:fs';`,
+            `fs.appendFileSync(${JSON.stringify(buildAttemptsLog)}, 'x');`,
+            `console.error('em++ not found');`,
+            `process.exit(1);`,
+          ].join('\n'),
           'utf8',
         );
         fs.writeFileSync(
@@ -574,6 +586,13 @@ const isComplete = value < 100;
         assert.strictEqual(res.ok, true, 'Page load should remain ok when start succeeds and page loads');
         assert.deepStrictEqual(res.errors, []);
         assert.match(res.buildWarning || '', /em\+\+ not found/);
+        assert.strictEqual(buildAttempts(), 1);
+
+        // A caller that already saw the build fail passes the warning along, so the check skips install and build.
+        const reused = await checkTargetPageLoad(tempDir, undefined, { buildWarning: res.buildWarning });
+        assert.strictEqual(buildAttempts(), 1, 'Passing buildWarning must not build again');
+        assert.strictEqual(reused?.ok, true);
+        assert.strictEqual(reused?.buildWarning, res.buildWarning);
 
         // Regression test: a browser grader (using TARGET_URL) on the same failed-build target
         // must still fail its test (nothing started by the diagnostic page-load check is exposed to TARGET_URL).
@@ -594,6 +613,7 @@ const isComplete = value < 100;
         const graderRun = await runPlaywright(tempDir, browserGraderFile, 'ignore');
         assert.strictEqual(graderRun.stats.expected, 0, 'Browser test must not pass when scripts.build fails');
         assert.strictEqual(graderRun.stats.unexpected, 1, 'Browser test must fail on failed build as before');
+        assert.strictEqual(buildAttempts(), 2, 'runPlaywright builds once (the prebuild) and reuses that failure for the page-load check');
         assert.ok(graderRun.pageLoad, 'pageLoad must still be recorded');
         assert.strictEqual(graderRun.pageLoad.ok, true, 'Diagnostic page-load check records ok: true');
         assert.deepStrictEqual(graderRun.pageLoad.errors, []);

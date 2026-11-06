@@ -235,12 +235,9 @@ export async function runPlaywright(
     let pageLoad: PageLoadResult | undefined;
     try {
       if (stopTargetServer && prebuiltTargetUrl) {
-        pageLoad = await checkTargetPageLoad(effectiveAppDir, undefined, {
-          serverUrl: prebuiltTargetUrl,
-          buildWarning: prebuiltBuildWarning,
-        });
+        pageLoad = await checkTargetPageLoad(effectiveAppDir, undefined, { serverUrl: prebuiltTargetUrl });
       } else {
-        pageLoad = await checkTargetPageLoad(effectiveAppDir);
+        pageLoad = await checkTargetPageLoad(effectiveAppDir, undefined, { buildWarning: prebuiltBuildWarning });
       }
     } catch (err) {
       pageLoad = {

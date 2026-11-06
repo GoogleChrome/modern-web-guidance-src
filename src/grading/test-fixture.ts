@@ -287,16 +287,11 @@ export async function checkTargetPageLoad(
       if (!browser) {
         browser = await chromium.launch();
       }
-      const checkResult = await checkPageLoad(browser, options.serverUrl);
-      return {
-        ...checkResult,
-        ...(options.buildWarning ? { buildWarning: options.buildWarning } : {}),
-      };
+      return await checkPageLoad(browser, options.serverUrl);
     } catch (err) {
       return {
         ok: false,
         errors: [`[browser] ${(err as Error).message || String(err)}`],
-        ...(options.buildWarning ? { buildWarning: options.buildWarning } : {}),
       };
     } finally {
       if (ownsBrowser && browser) {
@@ -306,15 +301,18 @@ export async function checkTargetPageLoad(
   }
 
   let srv: TargetServer | undefined;
-  let buildWarning: string | undefined;
-  try {
-    srv = await startTargetServer(targetDir, { quiet: true, exportTargetUrlEnv: false });
-  } catch (err: any) {
-    const msg = err.message || String(err);
-    if (msg.includes('Failed to build target app')) {
-      buildWarning = msg;
-    } else {
-      return { ok: false, errors: [`[server] ${msg}`] };
+  // A caller whose own install + build already failed passes that warning, so the build isn't repeated just to fail again.
+  let buildWarning = options?.buildWarning;
+  if (!buildWarning) {
+    try {
+      srv = await startTargetServer(targetDir, { quiet: true, exportTargetUrlEnv: false });
+    } catch (err: any) {
+      const msg = err.message || String(err);
+      if (msg.includes('Failed to build target app')) {
+        buildWarning = msg;
+      } else {
+        return { ok: false, errors: [`[server] ${msg}`] };
+      }
     }
   }
 
