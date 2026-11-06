@@ -7,7 +7,7 @@ const PASSWORD_INPUT_TAG_REGEX =
   /<(?:input|Input)\b((?:[^>"'{]|"[^"]*"|'[^']*'|\{(?:[^{}]|\{[^{}]*\})*\})*)>/g;
 
 const NON_CREDENTIAL_SECRET_REGEX =
-  /(?:smtp|ssh|ftp|database|\bdb\b|api[-_]?key|secret[-_]?key|secret|token|wifi|psk|cvv|cvc|csc|pin\b|mqtt|bridge[-_]?settings|\bsvn\b|passphrase|encrypt|decrypt|wallet|keystore)/i;
+  /(?:proxy|webhook|\bdb[-_.]?(?:config|pass|pwd|password)|smtp|ssh|ftp|database|\bdb\b|api[-_]?key|secret[-_]?key|secret|token|wifi|psk|cvv|cvc|csc|pin\b|mqtt|bridge[-_]?settings|\bsvn\b|passphrase|encrypt|decrypt|wallet|keystore)/i;
 
 const EXISTING_PASSWORD_CJK_REGEX = /原始密码|当前密码|旧密码|原密码/;
 

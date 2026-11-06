@@ -28,7 +28,7 @@
           border-radius: 0.5rem 0.5rem 0 0;
         }
         .tooltip-content::before {
-          content: "▼";
+          content: "▼" / "";
           position: absolute;
           inset-block-end: -0.3rem;
           inset-inline-start: 1rem;
@@ -38,7 +38,7 @@
 
       @container anchored(fallback: flip-block) {
         .tooltip-content::before {
-          content: "▲";
+          content: "▲" / "";
           inset-block-start: -0.3rem;
           inset-block-end: auto;
         }
