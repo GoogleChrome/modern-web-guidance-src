@@ -397,8 +397,8 @@
         return;
       }
 
-      if (typeof window.ariaNotify === 'function') {
-        window.ariaNotify(text);
+      if ('ariaNotify' in document) {
+        document.ariaNotify(text);
         return;
       }
 
