@@ -14,7 +14,7 @@ import { setupGeminiCliCredentials, getGeminiCliCommandAndArgs } from '../agents
 import { setupJetskiCliCredentials, getJetskiCliCommandAndArgs } from '../agents/jetski-cli-agent.ts';
 import { setupClaudeCodeCredentials, getClaudeCodeCommandAndArgs } from '../agents/claude-code-agent.ts';
 import { setupCodexCliCredentials, getCodexCliCommandAndArgs } from '../agents/codex-cli-agent.ts';
-import { setupPiCredentials, getPiCommandAndArgs } from '../agents/pi-agent.ts';
+import { setupPiCredentials, getPiCommandAndArgs, getPiEnvOverrides } from '../agents/pi-agent.ts';
 import { setupAntigravityCliCredentials, getAntigravityCliCommandAndArgs } from '../agents/antigravity-cli-agent.ts';
 
 export function isNodeError(err: unknown): err is NodeJS.ErrnoException {
@@ -628,11 +628,8 @@ const STRIPPED_ENV_FRAGMENTS = [
 const HARNESS_STRIPPED_ENV_PATTERN = new RegExp(`^(?:${STRIPPED_ENV_FRAGMENTS.join('|')})`);
 
 export function getAgentChildEnvOverrides(agent: Agents, homeDir?: string): NodeJS.ProcessEnv | undefined {
-  if (agent !== Agents.PI) return undefined;
-  return {
-    PI_CODING_AGENT: 'true',
-    ...(homeDir ? { PI_CODING_AGENT_DIR: path.join(homeDir, '.pi', 'agent') } : {}),
-  };
+  if (agent === Agents.PI) return getPiEnvOverrides(homeDir);
+  return undefined;
 }
 
 /**
