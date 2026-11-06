@@ -1134,9 +1134,6 @@
   "tmp-calc-dimensions": [
     "css"
   ],
-  "tmp-display-state": [
-    "css"
-  ],
   "tmp-email-verification": [
     "security"
   ],
@@ -1147,9 +1144,6 @@
     "css"
   ],
   "tmp-polygon-round": [
-    "css"
-  ],
-  "tmp-resizable": [
     "css"
   ],
   "tmp-text-decoration-inset": [
