@@ -485,6 +485,21 @@ test('ast-helpers: AST combinators and branch-aware feature guards', async (t) =
         }
         legacyEarlyReturn(el);
       }
+      function memberDictCheck(this: any) {
+        if (!('modal' in this.dialogOptions)) {
+          legacyMemberDict();
+        }
+      }
+      function shadowedParam(Temporal: any) {
+        if (!Temporal.Duration) {
+          legacyShadowedDuration();
+        }
+      }
+      function unshadowedGlobalParam() {
+        if (!Temporal.Duration) {
+          legacyGlobalDuration();
+        }
+      }
       `,
       { overwrite: true },
     );
@@ -502,6 +517,9 @@ test('ast-helpers: AST combinators and branch-aware feature guards', async (t) =
     assert.equal(isProtectedByFeatureGuard(findCall('legacyTernary'), ['showModal']), true);
     assert.equal(isProtectedByFeatureGuard(findCall('legacyTimezone'), ['Temporal']), true);
     assert.equal(isProtectedByFeatureGuard(findCall('legacyEarlyReturn'), ['showModal']), true);
+    assert.equal(isProtectedByFeatureGuard(findCall('legacyMemberDict'), ['dialog', 'HTMLDialogElement', 'showModal']), false);
+    assert.equal(isProtectedByFeatureGuard(findCall('legacyShadowedDuration'), ['Temporal']), false);
+    assert.equal(isProtectedByFeatureGuard(findCall('legacyGlobalDuration'), ['Temporal']), true);
   });
 
   await t.test('isProtectedByFeatureGuard: compound && / || and window.CSS.supports guards', () => {

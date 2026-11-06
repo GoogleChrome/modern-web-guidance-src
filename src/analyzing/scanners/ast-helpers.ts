@@ -362,7 +362,16 @@ function isValidFeatureCondition(
     if (matchesTokenNameOrSubstring(propName, featureTokens)) {
       return true;
     }
-    return isValidFeatureCondition(propCheck.target, featureTokens, seen);
+    const targetRoot = getRootExpression(propCheck.target);
+    const hasGlobalTargetRoot =
+      Node.isIdentifier(targetRoot) &&
+      (BROWSER_GLOBAL_ROOTS.has(targetRoot.getText()) ||
+        /^HTML[A-Z]/.test(targetRoot.getText()) ||
+        matchesTokenExact(targetRoot.getText(), featureTokens)) &&
+      isUnshadowedGlobal(targetRoot, targetRoot.getText());
+    return hasGlobalTargetRoot
+      ? isValidFeatureCondition(propCheck.target, featureTokens, seen)
+      : false;
   }
 
   if (Node.isIdentifier(unwrapped)) {
@@ -413,9 +422,11 @@ function isValidFeatureCondition(
     if (Node.isIdentifier(root)) {
       const rootText = root.getText();
       const isGlobalRoot =
-        (BROWSER_GLOBAL_ROOTS.has(rootText) || /^HTML[A-Z]/.test(rootText)) &&
+        (BROWSER_GLOBAL_ROOTS.has(rootText) ||
+          /^HTML[A-Z]/.test(rootText) ||
+          matchesTokenExact(rootText, featureTokens)) &&
         isUnshadowedGlobal(root, rootText);
-      if (isGlobalRoot || matchesTokenExact(rootText, featureTokens)) {
+      if (isGlobalRoot) {
         return matchesTokenNameOrSubstring(unwrapped.getText(), featureTokens);
       }
     }

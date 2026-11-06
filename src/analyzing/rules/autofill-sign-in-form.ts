@@ -12,28 +12,6 @@ const VALID_PASSWORD_AUTOCOMPLETE_TOKENS: ReadonlySet<string> = new Set([
   'one-time-code',
 ]);
 
-const CONFIG_SECRET_INPUT_REGEX =
-  /(?:proxy|database|\bdb[-_.]?(?:config|pass|pwd|password)|\bdb\b|smtp|webhook|api[-_]?key|apikey|client[-_]?secret)/i;
-
-const CONFIG_SECRET_ATTRS = [
-  'name',
-  'id',
-  'placeholder',
-  'aria-label',
-  'v-model',
-  'ng-model',
-  'data-ng-model',
-  'formControlName',
-  'data-bind',
-] as const;
-
-function isConfigSecretElement(element: DomElementView): boolean {
-  return CONFIG_SECRET_ATTRS.some((attr) => {
-    const val = element.getAttribute(attr);
-    return val !== null && CONFIG_SECRET_INPUT_REGEX.test(val);
-  });
-}
-
 const autofillSignInFormMatcher: DomRuleMatcher = {
   kind: 'dom',
   selector: 'input[type="password"]',
@@ -41,10 +19,6 @@ const autofillSignInFormMatcher: DomRuleMatcher = {
   skipIfHasSpread: true,
   skipIfDynamicAttributes: ['autocomplete', 'autoComplete'],
   matchElement: (element: DomElementView, ctx: DomMatcherContext) => {
-    if (isConfigSecretElement(element)) {
-      return null;
-    }
-
     const classification = classifyPasswordCredentialElement(element, ctx);
     if (!classification || classification.isNewCredential) {
       return null;

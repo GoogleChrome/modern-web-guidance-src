@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { scanHtml } from '../scanners/dom-scanner.ts';
+import { scanFiles } from '../scanners/index.ts';
 import type { DomRuleMatcher } from '../schema.ts';
 import { scrollspyRule } from './scrollspy.ts';
 
@@ -81,6 +82,9 @@ void test('scrollspy DOM: negative / exempt cases', async (t) => {
     `;
     const matches = scanHtml('SectionNav.astro', html, [domMatcher]);
     assert.equal(matches.length, 0);
+
+    const findings = scanFiles(new Map([['SectionNav.astro', html]]), [scrollspyRule]);
+    assert.equal(findings.length, 0);
   });
 
   await t.test('exempts element with data-spy="scroll" when document contains :target-current', () => {
