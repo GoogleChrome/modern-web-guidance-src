@@ -99,7 +99,7 @@
             display 0.15s allow-discrete,
             overlay 0.15s allow-discrete;
         }
-        [popover]:popover-open {
+        [popover]:is(:popover-open, .\:popover-open) {
           opacity: 1;
           translate: 0 0;
           transition-duration: 0.1s;
@@ -175,7 +175,8 @@
       }
 
       [focusgroup~="menu"] button:hover,
-      [focusgroup~="menu"] button:focus-visible {
+      [focusgroup~="menu"] button:focus-visible,
+      [focusgroup~="menu"] button:focus {
         background-color: #d2d5ed;
       }
 
@@ -201,9 +202,8 @@
         type="button"
         aria-haspopup="menu"
         aria-expanded="false"
-        commandfor="menu1"
-        command="toggle-popover"
-        aria-label="Open context menu"
+        popoverTarget="menu1"
+        aria-label="Actions for First Card"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
@@ -234,9 +234,8 @@
         type="button"
         aria-haspopup="menu"
         aria-expanded="false"
-        commandfor="menu2"
-        command="toggle-popover"
-        aria-label="Open context menu"
+        popoverTarget="menu2"
+        aria-label="Actions for Second Card"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path
@@ -254,8 +253,7 @@
             type="button"
             aria-haspopup="menu"
             aria-expanded="false"
-            commandfor="menu2-submenu"
-            command="toggle-popover"
+            popoverTarget="menu2-submenu"
           >
             More Options <span class="hint" aria-hidden="true">›</span>
           </button>
@@ -275,12 +273,16 @@
     </div>
 
     <script type="module">
+      if (!("popover" in HTMLElement.prototype)) {
+        import("https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js");
+      }
+      const supportsSource = Object.hasOwn(ToggleEvent.prototype, 'source');
       const enterOnOpen = new WeakSet();
       let lastFocused = null;
 
       // Helpers
       const menuFor = (trigger) => {
-        const id = trigger.getAttribute("commandfor");
+        const id = trigger.getAttribute("popoverTarget");
         return id ? document.getElementById(id) : null;
       };
 
@@ -288,14 +290,16 @@
         const triggerId = menu
           .querySelector("[aria-labelledby]")
           ?.getAttribute("aria-labelledby");
-        const trigger = triggerId ? document.getElementById(triggerId) : lastFocused;
+        const trigger = triggerId
+          ? document.getElementById(triggerId)
+          : lastFocused;
         if (trigger) {
           trigger.focus({ focusVisible: !fromPointer });
         }
         menu.hidePopover();
       };
 
-      // 1. Focusgroup Fallback
+      // Focusgroup Fallback
       if (!("focusGroup" in HTMLElement.prototype)) {
         document.querySelectorAll('[focusgroup~="menu"]').forEach((group) => {
           group.setAttribute("role", "menu");
@@ -336,19 +340,23 @@
 
       // 2. Toggle Handler (Focus & ARIA)
       document.querySelectorAll("[popover]").forEach((menu) => {
+
+        // Move focus to the hovered button
         const handlePointerMove = (event) => {
           const item = event.target.closest("button");
-          if (!item || item.closest("[popover]") !== menu || item === document.activeElement) return;
+          if (
+            !item ||
+            item.closest("[popover]") !== menu ||
+            item === document.activeElement
+          )
+            return;
           item.focus({ preventScroll: true, focusVisible: false });
         };
 
         menu.addEventListener("toggle", (event) => {
-          const triggerId = menu
-            .querySelector("[aria-labelledby]")
-            ?.getAttribute("aria-labelledby");
-          const trigger = triggerId
-            ? document.getElementById(triggerId)
-            : lastFocused;
+          const trigger = document.querySelector(
+            `button[popoverTarget="${menu.id}"]`,
+          );
 
           if (event.newState === "open") {
             if (trigger && trigger.setAttribute)
@@ -356,7 +364,7 @@
             if (enterOnOpen.has(menu)) {
               const firstItem = menu.querySelector("button:not([disabled])");
               if (firstItem) {
-                firstItem.focus({focusVisible: true});
+                firstItem.focus({ focusVisible: true });
               }
               enterOnOpen.delete(menu);
             }
@@ -367,61 +375,72 @@
             menu.removeEventListener("pointermove", handlePointerMove);
           }
         });
+        // TODO: Add non-source fallback
+        menu.addEventListener("beforetoggle", (event) => {
+          if (event.newState === "open") {
+            // Differentiate between sources, and make it styleable
+            if (supportsSource) {
+              menu.setAttribute("source", event.source?.tagName ?? '');
+            }
+            // Non-anchor-positioning fallback
+            // if (
+            //   !("positionArea" in document.documentElement.style)
+            // ) {
+            //   if(supportsSource){
+            //     const rect = event.source.getBoundingClientRect();
+            //     menu.style.left = `${rect.left}px`;
+            //     menu.style.top = `${rect.bottom}px`;
+            //   } else {
 
-          // Differentiate between sources, and make it styleable
-          menu.addEventListener("beforetoggle", (event) => {
-          if (event.newState === "open" && event.source?.tagName) {
-            menu.setAttribute("source", event.source.tagName);
+            //   }
+            // }
           }
-          });
-          });
+        });
+      });
 
-
-      // 3. Invoker Logic (Fallback & Keyboard detection)
-      const hasInvokers = "commandForElement" in HTMLButtonElement.prototype;
-
+      // Button clicks
       document.addEventListener("click", (event) => {
-        const trigger = event.target.closest("button[commandfor]");
+        const trigger = event.target.closest("button[popovertarget]");
         if (!trigger) return;
 
         const menu = menuFor(trigger);
         if (!menu) return;
 
+        // Set the menu position- TODO: needs to be relative to trigger
+        menu.style.removeProperty('top');
+        menu.style.removeProperty('left');
+
         // Set 'enter' flag for keyboard clicks (Enter/Space)
         if (event.detail === 0) {
           enterOnOpen.add(menu);
         }
-
-        if (hasInvokers) return;
-
-        // Fallback for non-invoker browsers
-        event.preventDefault();
-        if (menu.matches(":popover-open")) {
-          closeAndRestore(menu, { fromPointer: event.detail !== 0 });
-        } else {
-          menu.showPopover({ source: trigger });
-        }
       });
 
+      // Add non-native keyboard handling. Does not include focusgroup fallbacks
       // ArrowDown on trigger opens and enters the menu
       // ArrowRight on submenu trigger enters the submenu
       // ArrowLeft/Escape in submenu closes only that level
       document.addEventListener("keydown", (event) => {
-        const trigger = event.target.closest("button[commandfor]");
+        const trigger = event.target.closest("button[popovertarget]");
         const currentMenu = event.target.closest("[popover]");
 
         if (event.key === "ArrowDown" && trigger && !currentMenu) {
           const menu = menuFor(trigger);
-          if (menu && !menu.matches(":popover-open")) {
+          if (menu) {
             event.preventDefault();
-            enterOnOpen.add(menu);
-            menu.showPopover({ source: trigger });
+            if (!menu.matches(":popover-open, ./:popover-open")) {
+              enterOnOpen.add(menu);
+              menu.showPopover({ source: trigger });
+            } else {
+              const firstItem = menu.querySelector("button:not([disabled])");
+              if (firstItem) firstItem.focus({ focusVisible: true });
+            }
           }
         }
 
         if (event.key === "ArrowRight" && trigger && currentMenu) {
           const menu = menuFor(trigger);
-          if (menu && !menu.matches(":popover-open")) {
+          if (menu && !menu.matches(":popover-open, ./:popover-open")) {
             event.preventDefault();
             enterOnOpen.add(menu);
             menu.showPopover({ source: trigger });
@@ -444,7 +463,7 @@
         }
       });
 
-      // 5. Outside Focus closure & Tracking
+      // Outside Focus closure & Tracking
       document.addEventListener("focusin", (event) => {
         if (!event.target.closest("[popover]")) {
           lastFocused = event.target;
@@ -462,13 +481,23 @@
         });
       });
 
-      // 6. Right-click Context Menu Logic
+      // 6. Right-click and ContextMenu trigger Logic
       const cards = document.querySelectorAll(".card");
       cards.forEach((card) => {
         const popover = card.querySelector("[popover]");
         const anchor = card.querySelector(".menu-anchor");
+        const button = card.querySelector('button');
 
         const openContextMenu = (event) => {
+          const hasCoords = event.clientX !== 0 || event.clientY !== 0;
+          // If opened with contextmenu button, reset insets and open from button.
+          if(!hasCoords){
+            anchor.style.removeProperty('left');
+            anchor.style.removeProperty('top');
+            popover.showPopover({source: button});
+            return;
+          }
+
           const rect = card.getBoundingClientRect();
           const x = event.clientX - rect.left;
           const y = event.clientY - rect.top;
@@ -476,19 +505,23 @@
           anchor.style.left = `${x}px`;
           anchor.style.top = `${y}px`;
 
-          // Non-anchor-positioning fallback
-          if (!("positionArea" in document.documentElement.style)) {
-            popover.style.left = `${event.clientX}px`;
-            popover.style.top = `${event.clientY}px`;
-          }
-
           enterOnOpen.add(popover);
+
+          if (
+              !("positionArea" in document.documentElement.style)
+            ) {
+                popover.style.left = `${event.clientX}px`;
+                popover.style.top = `${event.clientY}px`;
+            }
+
           popover.showPopover({ source: anchor });
         };
 
         card.addEventListener("contextmenu", (event) => {
           event.preventDefault();
-          if (event.button === 0 && !event.ctrlKey) {
+          // If triggered by Shift+F10/ContextMeny, event.button === -1
+          if (event.button <= 0 && !event.ctrlKey) {
+            debugger
             openContextMenu(event);
           }
         });
@@ -499,13 +532,13 @@
         });
       });
 
-      // 7. Command Activation
+      // Command Activation
       document
         .querySelectorAll("[focusgroup~='menu'] button")
         .forEach((btn) => {
           btn.addEventListener("click", (event) => {
-            // If this button has a commandfor, it's a submenu trigger, not an action
-            if (btn.hasAttribute("commandfor")) return;
+            // If this button has a popovertarget, it's a submenu trigger, not an action
+            if (btn.hasAttribute("popovertarget")) return;
 
             const menu = btn.closest("[popover]");
             if (menu) {

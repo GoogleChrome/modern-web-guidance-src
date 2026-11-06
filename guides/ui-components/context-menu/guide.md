@@ -6,6 +6,7 @@ web-feature-ids:
   - anchor-positioning
   - focusgroup
   - invoker-commands
+  - toggleevent-source
 guides:
   - menu
 ---
@@ -23,7 +24,7 @@ A Right-click Only option is only accessible when the item can first be selected
 
 ### 1. Shared foundation
 
-Use the `popover` attribute to create a container that can be promoted to the top layer. Refer to the separate menu button variant in {{ GUIDE_REF("menu") }} for the full menu structure and keyboard navigation requirements. Use `aria-labelledby` if there is a visible button, and `aria-label` if not.
+Use the `popover` attribute to create a container for the menu that can be promoted to the top layer. Ensure items use `:focus` or `:focus-visible` styling so they are clearly highlighted when focused via keyboard. Use `aria-labelledby` pointing to the visible button trigger.
 
 A context menu should not be reused across multiple items, and each must have a unique ID.
 
@@ -53,7 +54,7 @@ Use CSS Anchor Positioning to align the popover to its anchor while also prevent
 
 ### 2. Method A: Right-Click Trigger (Cursor-Anchored)
 
-To position the menu exactly at the cursor, use an invisible anchor element placed with JavaScript when the user right-clicks. On some platforms this may also be triggered with a long press, but that is not a universal behavior. Put this element inside the element that triggers the context menu.
+To position the menu exactly at the cursor, use an invisible anchor element placed with JavaScript when the user right-clicks. On some platforms (though notably not iOS Safari) this may also be triggered with a long press, but that is not a universal behavior. Put this element inside the element that triggers the context menu.
 
 ```html
 <span class="menu-anchor"></span>
@@ -97,7 +98,7 @@ card.addEventListener('contextmenu', (e) => {
   // Prevent the browser's default context menu
   e.preventDefault();
   // Keyboard invocation (ContextMenu key or Shift+F10) dispatches contextmenu without mouseup
-  if (e.button === 0 && !e.ctrlKey) {
+  if (e.button <= 0 && !e.ctrlKey) {
     openContextMenu(e);
   }
 });
@@ -118,7 +119,7 @@ For touch users or general discovery, add a visible button that toggles the same
   command="toggle-popover" 
   commandfor="context-menu"
   aria-haspopup="menu" aria-expanded="false"
-  aria-label="Open context menu">
+  aria-label="Actions for item 1">
   <!-- Visual trigger (e.g. three dots icon) -->
 </button>
 ```
@@ -127,9 +128,32 @@ The `command` attribute sets the popover's implicit anchor position, in the same
 
 ```js
 const trigger = card.querySelector('[commandfor="context-menu"]');
+let enterOnOpen = false;
+
+// If invoked by keyboard (Enter/Space), detail is 0.
+trigger.addEventListener('click', (e) => {
+  if (e.detail === 0) enterOnOpen = true;
+});
+
+// ArrowDown on the trigger should also open and enter the menu.
+trigger.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (!popover.matches(':popover-open')) {
+      enterOnOpen = true;
+      popover.showPopover({ source: trigger });
+    } else {
+      popover.querySelector('button:not([disabled])')?.focus();
+    }
+  }
+});
 
 popover.addEventListener('toggle', (event) => {
   trigger.setAttribute('aria-expanded', String(event.newState === 'open'));
+  if (event.newState === 'open' && enterOnOpen) {
+    popover.querySelector('button:not([disabled])')?.focus();
+    enterOnOpen = false;
+  }
 });
 ```
 
@@ -156,8 +180,6 @@ popover.addEventListener('beforetoggle', (event)=>{
 
 {{ FEATURE_FALLBACKS("popover") }}
 
-{{ FEATURE_FALLBACKS("focusgroup") }}
-
 ### Fallback for Invoker Commands
 
 {{ BASELINE_STATUS("invoker-commands") }}
@@ -168,22 +190,29 @@ If your Baseline target does not support Invoker Commands, use `popovertarget`.
 <button type="button" 
   popovertarget="context-menu"
   aria-haspopup="menu" aria-expanded="false"
-  aria-label="Open context menu">
+  aria-label="Actions for item">
   <!-- Visual trigger (e.g. three dots icon) -->
 </button>
 ```
 
-### Fallback for Anchor Positioning
-
-If your Baseline target does not support CSS Anchor Positioning, you must manually calculate the `inset` coordinates of the popover in JavaScript. Note that this does not handle overflow.
-
-```js
-// Manual fallback if anchor positioning is unsupported
-if (!("positionArea" in document.documentElement.style)) {
-  // Position relative to the viewport or container
-  popover.style.left = `${e.clientX}px`;
-  popover.style.top = `${e.clientY}px`;
-}
-```
+### Fallback for Anchor Positioning and ToggleEvent source
 
 {{ BASELINE_STATUS("anchor-positioning") }}
+
+{{ BASELINE_STATUS("toggleevent-source") }}
+
+If your Baseline target does not support CSS Anchor Positioning, you must manually calculate the `inset` coordinates of the popover in JavaScript. Use the `beforetoggle` event to handle this for both cursor and button triggers. Note that this does not handle overflow.
+
+If your Baseline target does not support the ToggleEvent source property, TODO.
+
+```js
+popover.addEventListener('beforetoggle', (event)=>{
+  if (event.newState === "open" && !("positionArea" in document.documentElement.style)) {
+    const rect = event.source.getBoundingClientRect();
+    popover.style.left = `${rect.left}px`;
+    popover.style.top = `${rect.bottom}px`;
+  }
+});
+```
+
+{{ FEATURE_FALLBACKS("focusgroup") }}
