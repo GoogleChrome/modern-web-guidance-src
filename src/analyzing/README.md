@@ -61,7 +61,7 @@ Skipped 53 docs and test files (pass --include-docs-and-tests to scan).
   - src/static/js/admin/settings.js:30
     $('.settings').autosize();
 
-Retrieve a guide: npx modern-web-guidance retrieve <guide-id> (or pass --json for coding agents)
+Retrieve a guide: npx modern-web-guidance retrieve <guide-id>
 ```
 
 ### Structured JSON Output (`--json`, abridged)

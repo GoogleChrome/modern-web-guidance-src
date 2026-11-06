@@ -225,7 +225,7 @@ export function formatHumanReadable(
   }
 
   lines.push(
-    `Retrieve a guide: ${fmt('cyan', 'npx modern-web-guidance retrieve <guide-id>')} (or pass ${fmt('cyan', '--json')} for coding agents)`,
+    `Retrieve a guide: ${fmt('cyan', 'npx modern-web-guidance retrieve <guide-id>')}`,
   );
 
   return `${lines.join('\n').trimEnd()}\n`;

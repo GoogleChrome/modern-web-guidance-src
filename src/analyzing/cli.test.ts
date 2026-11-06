@@ -233,7 +233,7 @@ describe('runAnalyzeCli', () => {
 
       assert.match(
         res.output,
-        /Retrieve a guide: npx modern-web-guidance retrieve <guide-id> \(or pass --json for coding agents\)/,
+        /Retrieve a guide: npx modern-web-guidance retrieve <guide-id>/,
       );
     });
   });
