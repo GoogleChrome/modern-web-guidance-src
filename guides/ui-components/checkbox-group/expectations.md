@@ -10,6 +10,6 @@
 - An `<output>` live region (or element with `aria-live`) inside the fieldset is updated with a count summary when the checked options change.
 - The master checkbox is `disabled` when there are no enabled option checkboxes, and its checked and indeterminate state mirrors the disabled options (unchecked for an empty list).
 - Checkboxes are styled with the CSS `accent-color` property (or custom `appearance: none` styling).
-- The options container uses a grid layout with each option row using `grid-template-columns: subgrid` when rows have a secondary column, or a flex label (`display: flex`) when rows only have a label.
+- When rows only have a label, each option label is a two-column grid (checkbox, then text), so wrapped label text and hints stay to the right of the checkbox rather than flowing under it. When rows have a secondary column, the options container is a grid and each option row uses `grid-template-columns: subgrid`.
 - Disabled checkboxes have `cursor: not-allowed` and reduced opacity.
 - When an option has hint text, the hint is outside the option's `<label>` with an `id` that the input references via `aria-describedby`, and it uses smaller, de-emphasized text.

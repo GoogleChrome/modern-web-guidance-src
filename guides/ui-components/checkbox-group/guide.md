@@ -138,9 +138,9 @@ DO NOT remove focus indicators from the checkboxes.
 
 {{ FEATURE_ISSUES("accent-color") }}
 
-## 4. Aligned layout with subgrid
+## 4. Layout
 
-Style `.master` with a 44px minimum hit target and a visual separator. When rows have a secondary column, make `.options` a grid whose direct `<label>` children use `subgrid` (without `<ul>`/`<li>` wrappers) so the checkbox, name, and secondary column align across all rows. Wrap each column's content in a single `<span>`, because every direct child of the label becomes its own grid item:
+Style `.master` with a 44px minimum hit target and a visual separator:
 
 ```css
 .master {
@@ -154,10 +154,39 @@ Style `.master` with a 44px minimum hit target and a visual separator. When rows
   font-weight: 600;
   cursor: pointer;
 }
+```
 
+### Label-only rows (the common case)
+
+MANDATORY: The checkbox must stay to the left of all label text, including wrapped lines and hints. Do not use a flex label: the text becomes flex items beside the checkbox, so a long label can wrap underneath it. Instead make the label a two-column grid (checkbox, text) and wrap the label text in a single `<span>`, because every direct child of the label becomes its own grid item:
+
+```css
+.checkbox { font-size: 1rem; } /* Keeps the em-based sizes below predictable */
+
+.options label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.75rem;
+  align-items: start;
+  padding-block: 10px; /* 24px line + 20px = 44px hit target */
+  line-height: 1.5rem;
+  cursor: pointer;
+}
+
+/* Center the checkbox on the first line of text */
+.options label > .checkbox {
+  margin-block-start: calc((1.5rem - 1.25em) / 2);
+}
+```
+
+### Secondary column (the rarer case)
+
+When rows have a secondary column, make `.options` a grid whose direct `<label>` children use `subgrid` (without `<ul>`/`<li>` wrappers) so the checkbox, name, and secondary column align across all rows. Wrap each column's content in a single `<span>`:
+
+```css
 .options {
   display: grid;
-  grid-template-columns: auto 1fr auto; /* Use auto 1fr when options have no secondary column */
+  grid-template-columns: auto 1fr auto;
   column-gap: 0.75rem;
 }
 
@@ -169,18 +198,8 @@ Style `.master` with a 44px minimum hit target and a visual separator. When rows
   min-block-size: 44px;
   cursor: pointer;
 }
-```
 
-When rows only have a label and no secondary column, skip subgrid and use a flex label instead, so arbitrary inline content in the label needs no `<span>` wrappers:
-
-```css
-.options label {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-block-size: 44px;
-  cursor: pointer;
-}
+.options label > .checkbox { margin-block-start: 0; }
 ```
 
 ### Hint text
@@ -196,7 +215,7 @@ For a de-emphasized hint under the main label, place it outside `<label>` as a `
 <small class="hint" id="robot-1-hint">Delivers parcels across the workshop.</small>
 ```
 
-Place the hint in the name's column under the label (`grid-column: 2` when `.options` is a grid), and style it smaller and muted with at least 4.5:1 contrast.
+Align the hint with the label text, not the checkbox: use `margin-inline-start: 2rem` (checkbox width plus column gap) for label-only rows, or `grid-column: 2` when `.options` is a subgrid. Style it smaller and muted with at least 4.5:1 contrast.
 
 ### Radio groups
 
