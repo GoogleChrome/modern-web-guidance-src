@@ -131,6 +131,87 @@ describe('applyPatchSync', () => {
     assert.strictEqual(res1.success, false);
     assert.match(res1.error || '', /not found/i);
   });
+
+  test('applies mixed text and GIT binary patch atomically without partial state', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-binary-'));
+    try {
+      const srcRepo = path.join(tmpDir, 'src');
+      fs.mkdirSync(srcRepo, { recursive: true });
+      fs.writeFileSync(path.join(srcRepo, 'index.html'), '<p>before</p>\n');
+      initGitRepo(srcRepo);
+
+      const wasmBytes = Buffer.from([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0xff, 0xfe]);
+      fs.writeFileSync(path.join(srcRepo, 'index.html'), '<p>after</p>\n');
+      fs.writeFileSync(path.join(srcRepo, 'worker.js'), 'export const ok = true;\n');
+      fs.writeFileSync(path.join(srcRepo, 'module.wasm'), wasmBytes);
+
+      const gitOpts = { cwd: srcRepo, isolated: true, stdio: 'ignore' as const };
+      gitExec(['add', '-N', '.'], gitOpts);
+      const diff = gitExec(['diff', '--binary'], { cwd: srcRepo, isolated: true });
+      assert.match(diff, /^GIT binary patch$/m);
+
+      const patchPath = path.join(tmpDir, 'mixed.patch');
+      fs.writeFileSync(patchPath, diff);
+
+      // Plain target directory (not a git repo) matches staging workspace behavior
+      const targetDir = path.join(tmpDir, 'target');
+      fs.mkdirSync(targetDir, { recursive: true });
+      fs.writeFileSync(path.join(targetDir, 'index.html'), '<p>before</p>\n');
+
+      const result = applyPatchSync(targetDir, patchPath);
+      assert.strictEqual(result.success, true, `Expected success, got error: ${result.error}`);
+      assert.strictEqual(fs.readFileSync(path.join(targetDir, 'index.html'), 'utf8'), '<p>after</p>\n');
+      assert.strictEqual(fs.readFileSync(path.join(targetDir, 'worker.js'), 'utf8'), 'export const ok = true;\n');
+      assert.deepStrictEqual(fs.readFileSync(path.join(targetDir, 'module.wasm')), wasmBytes);
+
+      // Failing mixed binary patch must leave targetDir untouched (no partial text hunks or .rej files)
+      const conflictingDir = path.join(tmpDir, 'conflicting');
+      fs.mkdirSync(conflictingDir, { recursive: true });
+      fs.writeFileSync(path.join(conflictingDir, 'index.html'), '<p>different</p>\n');
+      const failResult = applyPatchSync(conflictingDir, patchPath);
+      assert.strictEqual(failResult.success, false);
+      assert.match(failResult.error || '', /patch failed|does not apply/i);
+      assert.deepStrictEqual(fs.readdirSync(conflictingDir), ['index.html']);
+      assert.strictEqual(fs.readFileSync(path.join(conflictingDir, 'index.html'), 'utf8'), '<p>different</p>\n');
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('falls back to patch -p1 for fuzzy/offset text patches and reports useful errors when both fail', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patch-fuzz-'));
+    try {
+      const targetDir = path.join(tmpDir, 'target');
+      fs.mkdirSync(targetDir, { recursive: true });
+      fs.writeFileSync(path.join(targetDir, 'app.txt'), 'header1\nheader2\nalpha\nbeta\ngamma\n');
+
+      const fuzzPatch = path.join(tmpDir, 'fuzz.patch');
+      fs.writeFileSync(
+        fuzzPatch,
+        '--- a/app.txt\n+++ b/app.txt\n@@ -1,3 +1,3 @@\n alpha\n-beta\n+BETA\n gamma\n'
+      );
+
+      const res = applyPatchSync(targetDir, fuzzPatch);
+      assert.strictEqual(res.success, true, `Expected fuzz fallback to succeed, got: ${res.error}`);
+      assert.strictEqual(
+        fs.readFileSync(path.join(targetDir, 'app.txt'), 'utf8'),
+        'header1\nheader2\nalpha\nBETA\ngamma\n'
+      );
+
+      // When both git apply and patch -p1 fail, error captures both diagnostics
+      const failDir = path.join(tmpDir, 'fail');
+      fs.mkdirSync(failDir, { recursive: true });
+      fs.writeFileSync(path.join(failDir, 'app.txt'), 'unrelated\n');
+
+      const failRes = applyPatchSync(failDir, fuzzPatch);
+      assert.strictEqual(failRes.success, false);
+      assert.match(failRes.error || '', /git apply:/);
+      assert.match(failRes.error || '', /patch:/);
+      assert.match(failRes.error || '', /FAILED/i);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });
 
 function initTestRepo(repoDir: string) {
