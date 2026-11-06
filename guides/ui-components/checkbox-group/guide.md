@@ -5,7 +5,6 @@ web-feature-ids:
   - subgrid
   - indeterminate
   - accent-color
-  - container-scroll-state-queries
   # - tmp-customizable-select-listbox # pending a11y SME
 guides:
   - checkbox
@@ -223,28 +222,6 @@ For long lists (provisionally about 12 or more options), keep the same markup an
   max-block-size: 16rem;
   padding-inline-start: 0.25rem;
   overflow-y: auto;
-  container-type: scroll-state;
-}
-
-/* Fade at the bottom edge while more options are below */
-.scroll-list::after {
-  content: "";
-  display: block;
-  grid-column: 1 / -1; /* span every column when the list is a grid */
-  position: sticky;
-  inset-block-end: 0;
-  block-size: 1.5rem;
-  margin-block-start: -1.5rem;
-  background: linear-gradient(to top, rgb(0 0 0 / 0.2), transparent);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s;
-}
-
-@container scroll-state(scrollable: bottom) {
-  .scroll-list::after {
-    opacity: 1;
-  }
 }
 ```
 
@@ -265,9 +242,3 @@ Scrolling regions are keyboard-reachable in current browsers because the checkbo
 ### `:indeterminate`
 
 {{ BASELINE_STATUS("indeterminate") }}
-
-### Container scroll-state queries
-
-{{ BASELINE_STATUS("container-scroll-state-queries") }}
-
-If your Baseline target does not support scroll-state queries, omit the bottom fade. This is graceful degradation: the list still scrolls and the count in the `<output>` still reports how many options exist, but nothing signals that more options are below.
