@@ -365,47 +365,22 @@ test('computeTargetSummary flags target when any baseline variant drops below 90
   assert.ok(summary?.flagDetails.startsWith('[daily-grind-limited] '));
 });
 
-test('findTestedToSkippedExpectations detects newly introduced SKIPPED entries in grader manifests', (t) => {
-  const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-manifest-flip-'));
-  const beforePath = path.join(rootTmp, 'before-grader.ts');
-  const noManifestPath = path.join(rootTmp, 'no-manifest-grader.ts');
-  const afterPath = path.join(rootTmp, 'after-grader.ts');
+test('findTestedToSkippedExpectations detects newly introduced SKIPPED entries in grader manifests', () => {
+  const beforeManifest = new Map([
+    [1, { status: 'TESTED' as const, reason: 'Checks modal opening' }],
+    [2, { status: 'TESTED' as const, reason: 'Checks Escape dismissal' }],
+    [3, { status: 'SKIPPED' as const, reason: 'No form in target app or task' }],
+    [4, { status: 'TESTED' as const, reason: 'Checks focus restoration' }],
+  ]);
+  const afterManifest = new Map([
+    [1, { status: 'TESTED' as const, reason: 'Checks modal opening' }],
+    [2, { status: 'SKIPPED' as const, reason: 'Agent did not implement Escape dismissal' }],
+    [3, { status: 'SKIPPED' as const, reason: 'Updated skip reason for form' }],
+    [4, { status: 'SKIPPED' as const, reason: 'Agent did not restore focus' }],
+  ]);
 
-  t.after(() => {
-    fs.rmSync(rootTmp, { recursive: true, force: true });
-  });
-
-  fs.writeFileSync(
-    beforePath,
-    [
-      '// Expectation 1: TESTED - Checks modal opening',
-      '// Expectation 2: TESTED - Checks Escape dismissal',
-      '// Expectation 3: SKIPPED: No form in target app or task',
-      '// Expectation 4: TESTED - Checks focus restoration',
-    ].join('\n')
-  );
-  fs.writeFileSync(
-    noManifestPath,
-    [
-      "import { test } from '@playwright/test';",
-      "test('Checks modal opening', () => {});",
-    ].join('\n')
-  );
-  fs.writeFileSync(
-    afterPath,
-    [
-      '// Expectation 1: TESTED - Checks modal opening',
-      '// Expectation 2: SKIPPED: Agent did not implement Escape dismissal',
-      '// Expectation 3: SKIPPED: Updated skip reason for form',
-      '// Expectation 4: SKIPPED: Agent did not restore focus',
-    ].join('\n')
-  );
-
-  const beforeManifest = extractManifestEntries(beforePath);
-  const noPriorManifest = extractManifestEntries(noManifestPath);
-  const afterManifest = extractManifestEntries(afterPath);
   assert.deepStrictEqual(findTestedToSkippedExpectations(beforeManifest, afterManifest), [2, 4]);
-  assert.deepStrictEqual(findTestedToSkippedExpectations(noPriorManifest, afterManifest), [2, 3, 4]);
+  assert.deepStrictEqual(findTestedToSkippedExpectations(new Map(), afterManifest), [2, 3, 4]);
   assert.deepStrictEqual(findTestedToSkippedExpectations(beforeManifest, beforeManifest), []);
 });
 

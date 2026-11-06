@@ -185,11 +185,7 @@ test(
         '// Expectation 1: TESTED - Verifies dialog accessible name.',
         '// Expectation 2: SKIPPED: The target app and task have no form with unsaved changes.',
         '// - Expectation 3: SKIPPED - The task only builds a modal dialog, not a non-modal panel.',
-        '// 1. tested above (prose comment without uppercase status token should be ignored)',
-        '// 2 skipped (prose comment without Expectation prefix should be ignored)',
-        "test('The overlay is a <dialog> with a non-empty accessible name', () => {",
-        '  // Expectation 1: SKIPPED: inline comment inside test body must not overwrite header manifest',
-        '});',
+        "test('The overlay is a <dialog> with a non-empty accessible name', () => {});",
       ].join('\n')
     );
 

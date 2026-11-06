@@ -48,7 +48,7 @@ export interface ManifestExpectationEntry {
 }
 
 const PREFIXED_MANIFEST_ENTRY_REGEX =
-  /^\s*(?:\/\/|\/?\*+)\s*(?:[-*]\s*)?(?:Expectations?|Exp)\s+(\d+)(?:\s*[-–]\s*(\d+))?(?:\s*\([^)]*\))?\s*(?:[:.)]|[-–—]+)?\s*\b(TESTED|SKIPPED)\b(?:\s*[:—–-]+\s*(.*)|\s+(.*))?$/i;
+  /^\s*(?:\/\/|\/?\*+)\s*(?:[-*]\s*)?(?:Expectations?|Exp)\s+(\d+)(?:\s*[-–]\s*(\d+))?(?:\s*\([^)]*\))?\s*(?:[:.)]|[-–—]+)?\s*\b(TESTED|SKIPPED)\b(?:\s*(?:[:—–-]+\s*|\s+)(.*))?$/i;
 
 const NUMBERED_MANIFEST_ENTRY_REGEX =
   /^\s*(?:\/\/|\/?\*+)\s*(?:[-*]\s*)?(\d+)(?:\s*[-–]\s*(\d+))?(?:\s*\([^)]*\))?\s*[:.]\s*(TESTED|SKIPPED)\b(?:\s*[:—–-]+\s*(.*))?$/;
@@ -166,31 +166,26 @@ export async function validateGraderExpectationCoverage(
   const threshold = opts.threshold ?? 0.50;
   const isDisciplineGuide = opts.isDisciplineGuide ?? false;
 
+  const emptyResult: GraderCoverageResult = {
+    isComplete: true,
+    graderPath,
+    expectationsPath,
+    isDisciplineGuide,
+    matches: [],
+    missing: [],
+  };
+
   if (!fs.existsSync(expectationsPath) || !fs.existsSync(graderPath)) {
-    return {
-      isComplete: true,
-      graderPath,
-      expectationsPath,
-      isDisciplineGuide,
-      matches: [],
-      missing: []
-    };
+    return emptyResult;
   }
 
   const expectations = parseVerifiableExpectations(fs.readFileSync(expectationsPath, 'utf8'));
+  if (expectations.length === 0) {
+    return emptyResult;
+  }
+
   const testTitles = extractTestTitles(graderPath);
   const manifestEntries = extractManifestEntries(graderPath);
-
-  if (expectations.length === 0) {
-    return {
-      isComplete: true,
-      graderPath,
-      expectationsPath,
-      isDisciplineGuide,
-      matches: [],
-      missing: []
-    };
-  }
 
   const hasNonSkippedExpectation = !isDisciplineGuide
     || expectations.some((_, idx) => manifestEntries.get(idx + 1)?.status !== 'SKIPPED');
