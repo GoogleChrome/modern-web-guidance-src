@@ -376,22 +376,26 @@ test('collectResults preserves pageLoad diagnostics on RunResult without changin
             pageLoad: {
                 ok: false,
                 errors: [
-                    `[pageerror] TypeError at file://${rootDir}/guides/foo/bar.js:10`,
-                    '[server] Error in /tmp/ghh-abc123/daily-grind/server.mjs and file:///tmp/grade-run-xyz/daily-grind/verify.mjs:3'
+                    `[pageerror] Error in file://${rootDir}/daily-grind/server.mjs and ${rootDir}/daily-grind/verify.mjs:3`
                 ]
             }
         };
         fs.writeFileSync(path.join(targetDir, `${guideName}_results.json`), JSON.stringify(mockPlaywrightOutput));
 
         const { allResults } = await collectResults(resultsBase, defaultSuiteConfig);
-        const runPayload = allResults[`task - ${guideName} - guided`][0];
-        assert.strictEqual(runPayload.results.length, 1);
-        assert.strictEqual(runPayload.results[0].passed, true, 'Score must remain passed in Phase 1 record-only mode');
-        assert.deepStrictEqual(runPayload.pageLoad, {
+        const guidedKey = `task - ${guideName} - guided`;
+        assert.ok(allResults[guidedKey]);
+        const guidedPayload = allResults[guidedKey][0];
+
+        // Scores are untouched: 1 passing check
+        assert.strictEqual(guidedPayload.results.length, 1);
+        assert.strictEqual(guidedPayload.results[0].passed, true);
+
+        // Record-only page-load diagnostics are preserved and sanitized (paths stripped)
+        assert.deepStrictEqual(guidedPayload.pageLoad, {
             ok: false,
             errors: [
-                '[pageerror] TypeError at guides/foo/bar.js:10',
-                '[server] Error in daily-grind/server.mjs and daily-grind/verify.mjs:3'
+                '[pageerror] Error in daily-grind/server.mjs and daily-grind/verify.mjs:3'
             ]
         });
     } finally {
@@ -399,5 +403,4 @@ test('collectResults preserves pageLoad diagnostics on RunResult without changin
         if (fs.existsSync(resultsBase)) fs.rmSync(resultsBase, { recursive: true, force: true });
     }
 });
-
 

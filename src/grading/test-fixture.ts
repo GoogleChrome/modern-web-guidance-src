@@ -1,21 +1,41 @@
 import { test as base, chromium, type Page, type Browser, type BrowserContext, type Request } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
-import { spawn, spawnSync } from 'child_process';
-import * as net from 'net';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'url';
-import { parseHTML } from 'linkedom';
-import { Project } from 'ts-morph';
-import { parse, CSSStyleSheet, CSSStyleDeclaration } from 'cssomnom';
-import { checkBaseline } from '../core/baseline.ts';
+import type { Project } from 'ts-morph';
+import type { CSSStyleSheet } from 'cssomnom';
 import { extractTargetFilesFromPatch } from '../core/patch-utils.ts';
-import { baseAppsDir, ensureDiskNodeCompileCache } from '../core/paths.ts';
+import {
+  startTargetServer,
+  spawnPlainTargetServer,
+  getSessionAndTreePids,
+  killServerProcessTree,
+  isProcessRunning,
+  type TargetServer,
+  type StartedTargetServer,
+} from './target-server.ts';
 
-export { expect } from '@playwright/test';
+const require = createRequire(import.meta.url);
+
+export {
+  expect,
+} from '@playwright/test';
+
+export {
+  startTargetServer,
+  spawnPlainTargetServer,
+  getSessionAndTreePids,
+  killServerProcessTree,
+  isProcessRunning,
+  type TargetServer,
+  type StartedTargetServer,
+};
 
 export function skipUnless(conditions: { unsupported: string }): void {
   const current = (process.env.BASELINE_TARGET || 'widely').trim().toLowerCase();
   if (conditions.unsupported) {
+    const { checkBaseline } = require('../core/baseline.ts') as typeof import('../core/baseline.ts');
     const tokens = conditions.unsupported.split(',').map(s => s.trim()).filter(Boolean);
     const anyUnsupported = tokens.some(t => !checkBaseline(current, t));
     base.skip(!anyUnsupported, `Requires unsupported: ${conditions.unsupported} (current target: ${current})`);
@@ -32,14 +52,6 @@ export interface PageLoadResult {
 export interface CheckPageLoadOptions {
   gotoTimeoutMs?: number;
   networkIdleTimeoutMs?: number;
-}
-
-export interface StartedTargetServer {
-  hasPage: boolean;
-  url?: string;
-  error?: string;
-  buildWarning?: string;
-  stop: () => void;
 }
 
 export interface ExpectNeverOptions<Arg = undefined> {
@@ -95,7 +107,6 @@ export async function expectNever<Arg = undefined>(
 }
 
 export type ServerWorkerFixtures = {
-  _targetServer: StartedTargetServer;
   TARGET_URL: string;
 };
 
@@ -144,11 +155,6 @@ function isIgnoredPlaceholderScriptFailure(urlStr: string, errorText: string): b
   }
 }
 
-/**
- * Loads `url` over HTTP in Chromium, waits for the `load` event plus bounded `networkidle`, and
- * records uncaught exceptions (`pageerror`) and failed script loads (`requestfailed` or HTTP
- * status >= 400 on `script` resources). `console.error` and warnings are intentionally ignored.
- */
 export async function checkPageLoad(
   browserOrContext: Browser | BrowserContext,
   url: string,
@@ -227,459 +233,100 @@ export async function checkPageLoad(
   return { ok: uniqueErrors.length === 0, errors: uniqueErrors };
 }
 
-async function getFreePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.unref();
-    srv.on('error', reject);
-    srv.listen(0, () => {
-      const addr = srv.address() as net.AddressInfo;
-      const port = addr.port;
-      srv.close(() => resolve(port));
-    });
-  });
-}
-
-const activeServerPids = new Set<number>();
-let exitHandlersRegistered = false;
-
-/**
- * Returns `rootPid` plus every process in the same session (`SID === rootPid`), process group
- * (`PGID === rootPid`), or descendant `PPID` tree. Because `pnpm run start` spawns its child
- * server (`node ./dist/server/entry.mjs`) in a new process group (`PGID !== rootPid`) while keeping
- * the detached session ID (`SID === rootPid`), `process.kill(-rootPid)` alone can miss the child.
- */
-export function getSessionAndTreePids(rootPid: number): number[] {
-  if (!Number.isInteger(rootPid) || rootPid <= 1) {
-    return [];
-  }
-  const pids = new Set<number>();
-  try {
-    process.kill(rootPid, 0);
-    pids.add(rootPid);
-  } catch {
-    // rootPid itself has already exited; still scan for any surviving session/group/child members below
-  }
-  const childrenByPpid = new Map<number, number[]>();
-
-  if (process.platform === 'linux' && fs.existsSync('/proc')) {
-    try {
-      for (const entry of fs.readdirSync('/proc')) {
-        if (!/^\d+$/.test(entry)) continue;
-        try {
-          const stat = fs.readFileSync(`/proc/${entry}/stat`, 'utf8');
-          const closeParen = stat.lastIndexOf(')');
-          if (closeParen === -1) continue;
-          const fields = stat.slice(closeParen + 2).split(' ');
-          const state = fields[0];
-          if (state === 'Z') continue; // Ignore zombie processes already being reaped
-          const pid = Number(entry);
-          const ppid = Number(fields[1]);
-          const pgid = Number(fields[2]);
-          const sid = Number(fields[3]);
-          if (pid === rootPid || sid === rootPid || pgid === rootPid) {
-            pids.add(pid);
-          }
-          const list = childrenByPpid.get(ppid);
-          if (list) list.push(pid);
-          else childrenByPpid.set(ppid, [pid]);
-        } catch {
-          // Process exited while scanning /proc
-        }
-      }
-    } catch {
-      // Fallback below if /proc cannot be read
-    }
-  } else if (process.platform !== 'win32') {
-    try {
-      const ps = spawnSync('ps', ['-eo', 'pid=,ppid=,pgid=,sid='], { encoding: 'utf8' });
-      if (ps.status === 0 && ps.stdout) {
-        for (const line of ps.stdout.split('\n')) {
-          const parts = line.trim().split(/\s+/).map(Number);
-          if (parts.length < 4 || parts.some(Number.isNaN)) continue;
-          const [pid, ppid, pgid, sid] = parts;
-          if (pid === rootPid || sid === rootPid || pgid === rootPid) {
-            pids.add(pid);
-          }
-          const list = childrenByPpid.get(ppid);
-          if (list) list.push(pid);
-          else childrenByPpid.set(ppid, [pid]);
-        }
-      }
-    } catch {
-      // Ignore ps failure
-    }
-  }
-
-  const queue = [rootPid, ...pids];
-  while (queue.length > 0) {
-    const cur = queue.pop()!;
-    for (const child of childrenByPpid.get(cur) ?? []) {
-      if (!pids.has(child)) {
-        pids.add(child);
-        queue.push(child);
-      }
-    }
-  }
-  return [...pids];
-}
-
-/**
- * Terminates a detached target server (`rootPid`) and all of its session/descendant processes.
- */
-export function killServerProcessTree(rootPid: number): void {
-  if (!Number.isInteger(rootPid) || rootPid <= 1) return;
-  const pids = getSessionAndTreePids(rootPid);
-  try {
-    process.kill(-rootPid, 'SIGTERM');
-  } catch {
-    // Process group already exited
-  }
-  for (const pid of pids) {
-    try {
-      process.kill(pid, 'SIGTERM');
-    } catch {
-      // Process already exited
-    }
-  }
-  const survivors = getSessionAndTreePids(rootPid);
-  try {
-    process.kill(-rootPid, 'SIGKILL');
-  } catch {
-    // Process group already exited
-  }
-  for (const pid of survivors) {
-    try {
-      process.kill(pid, 'SIGKILL');
-    } catch {
-      // Process already exited
-    }
-  }
-}
-
-function registerExitServerCleanup(): void {
-  if (exitHandlersRegistered) return;
-  exitHandlersRegistered = true;
-  const cleanupAll = () => {
-    for (const pid of activeServerPids) {
-      killServerProcessTree(pid);
-    }
-    activeServerPids.clear();
-  };
-  process.once('exit', cleanupAll);
-}
-
-/**
- * Reads `pnpm.onlyBuiltDependencies` from the canonical untouched base app in `src/harness/base-apps/<baseAppName>/package.json`.
- * Never trusts `targetDir/package.json` for build approvals so agent-added dependencies cannot execute install scripts on the host.
- */
-export function getBaseAppAllowedBuilds(baseAppName?: string): string[] {
-  if (!baseAppName || !/^[a-z0-9-]+$/i.test(baseAppName)) {
-    return [];
-  }
-  const canonicalPkgPath = path.join(baseAppsDir, baseAppName, 'package.json');
-  if (!fs.existsSync(canonicalPkgPath)) {
-    return [];
-  }
-  try {
-    const raw = JSON.parse(fs.readFileSync(canonicalPkgPath, 'utf8')) as {
-      pnpm?: { onlyBuiltDependencies?: unknown };
-    };
-    const list = raw.pnpm?.onlyBuiltDependencies;
-    if (!Array.isArray(list)) return [];
-    return list.filter((item): item is string => typeof item === 'string' && /^[a-z0-9@/_.-]+$/i.test(item));
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Writes a standalone `pnpm-workspace.yaml` in `targetDir` that:
- * 1. Anchors `targetDir` as its own workspace root so pnpm does not walk up to the parent repository.
- * 2. Approves build scripts only for `allowedPackages` (via both `onlyBuiltDependencies` for pnpm 10 and `allowBuilds` for pnpm 11+).
- * 3. Sets `strictDepBuilds: false` so unapproved build scripts (e.g. `@parcel/watcher` or agent-added packages) are skipped without `ERR_PNPM_IGNORED_BUILDS`.
- */
-export function writeScopedPnpmWorkspace(targetDir: string, allowedPackages: string[]): string {
-  const unique = [...new Set(allowedPackages)];
-  const lines: string[] = ['strictDepBuilds: false'];
-  if (unique.length === 0) {
-    lines.push('onlyBuiltDependencies: []');
-    lines.push('allowBuilds: {}');
-  } else {
-    lines.push('onlyBuiltDependencies:');
-    for (const pkg of unique) {
-      lines.push(`  - ${JSON.stringify(pkg)}`);
-    }
-    lines.push('allowBuilds:');
-    for (const pkg of unique) {
-      lines.push(`  ${JSON.stringify(pkg)}: true`);
-    }
-  }
-  const workspaceYamlPath = path.join(targetDir, 'pnpm-workspace.yaml');
-  fs.writeFileSync(workspaceYamlPath, lines.join('\n') + '\n', 'utf8');
-  return workspaceYamlPath;
-}
-
-async function spawnAndWaitForTargetServer(
-  targetDir: string,
-  options: { exportTargetUrlEnv?: boolean } = {},
-): Promise<{ url?: string; error?: string; stop: () => void }> {
-  const noop = () => {};
-  const port = await getFreePort();
-  const nodeCompileCache = ensureDiskNodeCompileCache(process.env, 'harness');
-  const serverProcess = spawn('pnpm', ['--ignore-workspace', 'run', 'start'], {
-    cwd: targetDir,
-    env: { ...process.env, PORT: port.toString(), NODE_COMPILE_CACHE: nodeCompileCache },
-    detached: true,
-    stdio: ['ignore', 'ignore', 'pipe'],
-    shell: process.platform === 'win32',
-  });
-
-  const serverPid = serverProcess.pid;
-  if (serverPid) {
-    registerExitServerCleanup();
-    activeServerPids.add(serverPid);
-    if (process.env.SERVER_PIDS_FILE) {
-      try {
-        fs.appendFileSync(process.env.SERVER_PIDS_FILE, `${serverPid}\n`, 'utf8');
-      } catch {
-        // Ignore if pid tracking file cannot be written
-      }
-    }
-  }
-
-  let serverStderr = '';
-  serverProcess.stderr?.on('data', (chunk: Buffer) => {
-    if (serverStderr.length < 4096) {
-      serverStderr += chunk.toString('utf8');
-    }
-  });
-  serverProcess.unref();
-
-  let stopped = false;
-  const stop = () => {
-    if (stopped) return;
-    stopped = true;
-    serverProcess.stderr?.destroy();
-    if (serverPid) {
-      activeServerPids.delete(serverPid);
-      killServerProcessTree(serverPid);
-    }
-  };
-
-  let isReady = false;
-  let baseUrlPath = '/';
-  const configPath = path.join(targetDir, 'astro.config.mjs');
-  if (fs.existsSync(configPath)) {
-    const configContent = fs.readFileSync(configPath, 'utf8');
-    const baseMatch = configContent.match(/base:\s*['"`](.*?)['"`]/);
-    if (baseMatch) {
-      baseUrlPath = '/' + baseMatch[1].replace(/^\/|\/$/g, '') + '/';
-    }
-  }
-
-  const url = `http://localhost:${port}${baseUrlPath}`;
-  for (let i = 0; i < 200; i++) {
-    if (serverProcess.exitCode !== null) {
-      break;
-    }
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(1000) });
-      if (res.ok) {
-        isReady = true;
-        break;
-      }
-    } catch {
-      // server not listening yet
-    }
-    await new Promise((r) => setTimeout(r, 150));
-  }
-
-  if (!isReady) {
-    stop();
-    const detail = serverStderr.trim();
-    return {
-      error: `Server in ${targetDir} failed to start on port ${port}${detail ? `:\n${detail}` : ''}`,
-      stop: noop,
-    };
-  }
-
-  if (options.exportTargetUrlEnv) {
-    process.env.TARGET_URL = url; // Exporting so legacy tests might use it if they read from process.env
-  }
-  return { url, stop };
-}
-
-/**
- * Builds (if `scripts.build` is defined) and starts the target app server in `targetDir`, returning
- * its entry URL and a `stop()` callback. If `scripts.build` fails, returns `error` and `buildWarning`
- * without starting the server so browser grader tests still fail on broken builds.
- */
-export async function startTargetServer(
-  targetDir: string,
-  options: { exportTargetUrlEnv?: boolean } = { exportTargetUrlEnv: true },
-): Promise<StartedTargetServer> {
-  const exportTargetUrlEnv = options.exportTargetUrlEnv ?? true;
-  const noop = () => {};
-  const pkgJsonPath = path.join(targetDir, 'package.json');
-  if (!fs.existsSync(pkgJsonPath)) {
-    if (process.env.TARGET_FILE) {
-      const fallbackUrl = `http://localhost/${path.basename(process.env.TARGET_FILE)}`;
-      if (exportTargetUrlEnv) {
-        process.env.TARGET_URL = fallbackUrl;
-      }
-      return { hasPage: false, url: fallbackUrl, stop: noop };
-    }
-    return { hasPage: false, error: `package.json not found in target directory: ${targetDir}`, stop: noop };
-  }
-
-  let pkgJson: {
-    name?: string;
-    scripts?: Record<string, string>;
-    dependencies?: Record<string, string>;
-    devDependencies?: Record<string, string>;
-  };
-  try {
-    pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8')) as {
-      name?: string;
-      scripts?: Record<string, string>;
-      dependencies?: Record<string, string>;
-      devDependencies?: Record<string, string>;
-    };
-  } catch (err) {
-    return { hasPage: true, error: `Failed to parse package.json in ${targetDir}: ${(err as Error).message}`, stop: noop };
-  }
-
-  if (!pkgJson.scripts || !pkgJson.scripts.start) {
-    return { hasPage: false, error: `package.json in ${targetDir} is missing a "start" script.`, stop: noop };
-  }
-
-  const hasDependencies =
-    Boolean(pkgJson.dependencies && Object.keys(pkgJson.dependencies).length > 0) ||
-    Boolean(pkgJson.devDependencies && Object.keys(pkgJson.devDependencies).length > 0);
-
-  const nodeCompileCache = ensureDiskNodeCompileCache(process.env, 'harness');
-  const childEnv = { ...process.env, NODE_COMPILE_CACHE: nodeCompileCache };
-
-  // Keep pnpm install when a target has dependencies: correct grading of apps that need their
-  // dependencies matters more than matching the old arm.
-  if (pkgJson.scripts.build || hasDependencies) {
-    console.log(`[TEST-FIXTURE] Running pnpm install in ${targetDir}`);
-    // Write a standalone pnpm-workspace.yaml that approves only the canonical base app's
-    // onlyBuiltDependencies (never agent-added dependency build scripts) and anchors the
-    // workspace root at targetDir without needing --ignore-workspace (which in pnpm 12 ignores allowBuilds).
-    const allowedBuilds = getBaseAppAllowedBuilds(pkgJson.name);
-    writeScopedPnpmWorkspace(targetDir, allowedBuilds);
-
-    const installResult = spawnSync('pnpm', ['install', '--no-frozen-lockfile', '--prefer-offline'], {
-      cwd: targetDir,
-      env: childEnv,
-      stdio: 'pipe',
-      encoding: 'utf8',
-      shell: process.platform === 'win32',
-    });
-    if (installResult.status !== 0) {
-      const output = [installResult.stdout, installResult.stderr].filter(Boolean).join('\n').trim();
-      console.warn(`[TEST-FIXTURE] pnpm install failed in ${targetDir}${output ? `:\n${output}` : ''}`);
-    }
-  }
-
-  if (pkgJson.scripts.build) {
-    const buildResult = spawnSync('pnpm', ['--ignore-workspace', 'run', 'build'], {
-      cwd: targetDir,
-      env: childEnv,
-      stdio: 'pipe',
-      encoding: 'utf8',
-      shell: process.platform === 'win32',
-    });
-    if (buildResult.status !== 0) {
-      const output = [buildResult.stdout, buildResult.stderr].filter(Boolean).join('\n').trim();
-      const buildError = `Failed to build target app in ${targetDir}${output ? `:\n${output}` : ''}`;
-      return {
-        hasPage: true,
-        error: buildError,
-        buildWarning: buildError,
-        stop: noop,
-      };
-    }
-  }
-
-  const started = await spawnAndWaitForTargetServer(targetDir, { exportTargetUrlEnv });
-  if (started.error || !started.url) {
-    return {
-      hasPage: true,
-      error: started.error,
-      stop: noop,
-    };
-  }
-  return {
-    hasPage: true,
-    url: started.url,
-    stop: started.stop,
-  };
-}
-
-/**
- * Diagnostic-only helper for the page-load check when `scripts.build` failed: attempts `pnpm run start`
- * and loads the page in an isolated server that is stopped immediately afterwards and never exposed to
- * the grader's `TARGET_URL` or `process.env.TARGET_URL`.
- */
 async function diagnosePageLoadAfterBuildFailure(
   targetDir: string,
   buildWarning: string,
   browser: Browser,
 ): Promise<PageLoadResult> {
-  const diagSrv = await spawnAndWaitForTargetServer(targetDir, { exportTargetUrlEnv: false });
+  let diagSrv: TargetServer | undefined;
   try {
-    if (diagSrv.error || !diagSrv.url) {
-      return {
-        ok: false,
-        errors: [`[server] ${buildWarning}\n${diagSrv.error || 'Target server failed to start'}`],
-        buildWarning,
-      };
-    }
+    diagSrv = await spawnPlainTargetServer(targetDir, { exportTargetUrlEnv: false });
+  } catch (err: any) {
+    return {
+      ok: false,
+      errors: [`[server] ${buildWarning}\n${err.message || String(err)}`],
+      buildWarning,
+    };
+  }
+
+  try {
     const checkResult = await checkPageLoad(browser, diagSrv.url);
     return {
       ...checkResult,
       buildWarning,
     };
   } finally {
-    diagSrv.stop();
+    await diagSrv.stop();
   }
 }
 
-/**
- * Standalone helper to run the page-load check against a target directory when Playwright did not
- * invoke the worker fixture (or when probing a target directly without running its grader).
- */
 export async function checkTargetPageLoad(
   targetDir: string,
   existingBrowser?: Browser,
+  options?: { serverUrl?: string; buildWarning?: string },
 ): Promise<PageLoadResult | undefined> {
-  let srv: StartedTargetServer;
-  try {
-    srv = await startTargetServer(targetDir, { exportTargetUrlEnv: false });
-  } catch (err) {
-    return { ok: false, errors: [`[server] ${(err as Error).message || String(err)}`] };
+  const pkgJsonPath = path.join(targetDir, 'package.json');
+  if (!fs.existsSync(pkgJsonPath)) {
+    return undefined;
   }
-  if (!srv.hasPage) {
-    srv.stop();
+  let pkgJson: any;
+  try {
+    pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+  } catch (err) {
+    return { ok: false, errors: [`[server] Failed to parse package.json in ${targetDir}: ${(err as Error).message}`] };
+  }
+  if (!pkgJson.scripts || !pkgJson.scripts.start) {
     return undefined;
   }
 
   const ownsBrowser = !existingBrowser;
   let browser: Browser | undefined = existingBrowser;
-  try {
-    if (srv.buildWarning) {
+
+  if (options?.serverUrl) {
+    try {
       if (!browser) {
         browser = await chromium.launch();
       }
-      return await diagnosePageLoadAfterBuildFailure(targetDir, srv.buildWarning, browser);
-    }
-    if (srv.error || !srv.url) {
+      return await checkPageLoad(browser, options.serverUrl);
+    } catch (err) {
       return {
         ok: false,
-        errors: [`[server] ${srv.error || 'Target server failed to start'}`],
+        errors: [`[browser] ${(err as Error).message || String(err)}`],
+      };
+    } finally {
+      if (ownsBrowser && browser) {
+        await browser.close().catch(() => {});
+      }
+    }
+  }
+
+  let srv: TargetServer | undefined;
+  // A caller whose own install + build already failed passes that warning, so the build isn't repeated just to fail again.
+  let buildWarning = options?.buildWarning;
+  if (!buildWarning) {
+    try {
+      srv = await startTargetServer(targetDir, { quiet: true, exportTargetUrlEnv: false });
+    } catch (err: any) {
+      const msg = err.message || String(err);
+      if (msg.includes('Failed to build target app')) {
+        buildWarning = msg;
+      } else {
+        return { ok: false, errors: [`[server] ${msg}`] };
+      }
+    }
+  }
+
+  try {
+    if (buildWarning) {
+      if (!browser) {
+        browser = await chromium.launch();
+      }
+      return await diagnosePageLoadAfterBuildFailure(targetDir, buildWarning, browser);
+    }
+    if (!srv?.url) {
+      return {
+        ok: false,
+        errors: [`[server] Target server failed to start`],
       };
     }
     if (!browser) {
@@ -690,13 +337,15 @@ export async function checkTargetPageLoad(
     return {
       ok: false,
       errors: [`[browser] ${(err as Error).message || String(err)}`],
-      ...(srv.buildWarning ? { buildWarning: srv.buildWarning } : {}),
+      ...(buildWarning ? { buildWarning } : {}),
     };
   } finally {
     if (ownsBrowser && browser) {
       await browser.close().catch(() => {});
     }
-    srv.stop();
+    if (srv) {
+      await srv.stop();
+    }
   }
 }
 
@@ -759,30 +408,26 @@ export const test = base.extend<{ page: Page; context: BrowserContext }, ServerW
   },
 
   // eslint-disable-next-line no-empty-pattern
-  _targetServer: [async ({}, use) => {
-    let srv: StartedTargetServer;
-    try {
-      srv = await startTargetServer(process.cwd());
-    } catch (err) {
-      srv = {
-        hasPage: true,
-        error: (err as Error).message || String(err),
-        stop: () => {},
-      };
+  TARGET_URL: [async ({}, use) => {
+    if (process.env.GD_PREBUILT_TARGET_ERROR) {
+      throw new Error(process.env.GD_PREBUILT_TARGET_ERROR);
     }
-    try {
-      await use(srv);
-    } finally {
-      srv.stop();
+    const prebuiltUrl = process.env.GD_PREBUILT_TARGET_URL;
+    if (prebuiltUrl) {
+      process.env.TARGET_URL = prebuiltUrl;
+      await use(prebuiltUrl);
+      return;
     }
-  }, { scope: 'worker', timeout: 60000 }],
 
-  TARGET_URL: [async ({ _targetServer }, use) => {
-    if (_targetServer.error || !_targetServer.url) {
-      throw new Error(_targetServer.error || `Server failed to start in ${process.cwd()}`);
+    const { url, stop } = await startTargetServer(process.cwd(), { targetFile: process.env.TARGET_FILE });
+    process.env.TARGET_URL = url; // Exporting so legacy tests might use it if they read from process.env
+
+    try {
+      await use(url);
+    } finally {
+      await stop();
     }
-    await use(_targetServer.url);
-  }, { scope: 'worker', timeout: 60000 }],
+  }, { scope: 'worker', timeout: 60000 }]
 });
 
 const BASE_APP_DEFAULT_FILES: Record<string, string[]> = {
@@ -837,6 +482,7 @@ function parseHtmlDocument(file: string, content: string): any {
           return `${attr}="${classes}"`;
         })
     : content;
+  const { parseHTML } = require('linkedom') as typeof import('linkedom');
   const { document } = parseHTML(processingInstructionsToComments(normalized));
   document.querySelectorAll('[class\\:list]').forEach((el: any) => {
     el.classList.add(...el.getAttribute('class:list').split(/\s+/).filter(Boolean));
@@ -872,6 +518,7 @@ function unwrapGlobalPseudo(css: string): string {
  * and inline styles into a CSSOMNom CSSStyleSheet object.
  */
 export function getCssStyleSheet(files: string[]): CSSStyleSheet {
+  const { parse, CSSStyleDeclaration } = require('cssomnom') as typeof import('cssomnom');
   const cssBlocks: string[] = [];
   for (const file of files) {
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
@@ -964,6 +611,7 @@ export function populateJsProject(project: Project, files: string[]): void {
 }
 
 export function getJsProject(files: string[]): Project {
+  const { Project } = require('ts-morph') as typeof import('ts-morph');
   const project = new Project({ useInMemoryFileSystem: true });
   populateJsProject(project, files);
   return project;

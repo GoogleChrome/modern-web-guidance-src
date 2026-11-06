@@ -62,7 +62,6 @@ export function resolveGuideResultsDir(targetDir: string, guideInfo?: Partial<Gu
   const category = parts[parts.length - 2] || 'cat';
   return getGuideResultsDir({ category, name });
 }
-
 function isTmpPath(p: string): boolean {
   const normalized = path.resolve(p);
   return (

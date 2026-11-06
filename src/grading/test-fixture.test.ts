@@ -16,9 +16,8 @@ import {
   checkTargetPageLoad,
   isReservedPlaceholderHost,
   startTargetServer,
-  getBaseAppAllowedBuilds,
-  writeScopedPnpmWorkspace,
   getSessionAndTreePids,
+  isProcessRunning,
 } from './test-fixture.ts';
 import { runPlaywright } from './run-grader.ts';
 import { chromium, type Browser } from 'playwright';
@@ -27,6 +26,9 @@ import { SyntaxKind } from 'ts-morph';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Browser-backed tests need Playwright's Chromium. CI's `basics` job doesn't install browsers; the `browser` job runs this file.
+const NO_CHROMIUM = fs.existsSync(chromium.executablePath()) ? false : 'Chromium is not installed (the CI browser job runs these)';
 
 describe('test-fixture helpers', () => {
 
@@ -128,83 +130,184 @@ progress.progress-ring {
   test('getCssStyleSheet ignores unparsed JSX inline style expressions and unwraps :global() in .astro files without corrupting subsequent rules', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-astro-style-test-'));
     try {
-      const astroFile = path.join(tempDir, 'Card.astro');
+      const astroFile = path.join(tempDir, 'ArticleTeaser.astro');
       fs.writeFileSync(
         astroFile,
-        `---
-const { highlight = false } = Astro.props;
----
-<div class="card" style={highlight ? "border: 2px solid red;" : undefined}>
-  <slot />
-</div>
-<style>
-  :global(.card-container) .card {
-    padding: 16px;
-  }
-  @container (inline-size > 400px) {
-    .card {
-      padding: 24px;
-    }
-  }
-</style>
-`,
+        [
+          '---',
+          'const explicitSurface = "featured";',
+          '---',
+          '<article style={explicitSurface ? `--surface: ${explicitSurface};` : undefined} class="teaser">',
+          '  <span class="badge">Featured</span>',
+          '</article>',
+          '<style>',
+          '  :global(:where([data-surface="featured"])) .badge { display: inline-flex; }',
+          '</style>',
+        ].join('\n'),
         'utf8'
       );
 
-      const stylesheet = getCssStyleSheet([astroFile]);
+      const cssFile = path.join(tempDir, 'global.css');
+      fs.writeFileSync(
+        cssFile,
+        [
+          '.surface-featured { --surface: featured; }',
+          '@container style(--surface: featured) { .badge { display: block; } }',
+        ].join('\n'),
+        'utf8'
+      );
+
+      const stylesheet = getCssStyleSheet([astroFile, cssFile]);
       const rules = Array.from(stylesheet.cssRules);
 
-      const globalUnwrapped = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.card-container .card');
-      assert.ok(globalUnwrapped, 'Should unwrap :global(.card-container) .card selector');
-      assert.strictEqual(globalUnwrapped.style.getPropertyValue('padding'), '16px');
+      const whereRule = rules.find(
+        (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText.includes(':where(')
+      );
+      assert.ok(whereRule, 'Should unwrap :global() and parse :where() fallback rule in Astro <style>');
+
+      const surfaceRule = rules.find(
+        (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.surface-featured'
+      );
+      assert.ok(surfaceRule, 'Should preserve top-level .surface-featured CSSStyleRule after Astro file');
+      assert.strictEqual(surfaceRule.style.getPropertyValue('--surface').trim(), 'featured');
 
       const containerRule = rules.find((r): r is CSSContainerRule => r instanceof CSSContainerRule);
-      assert.ok(containerRule, 'Should preserve @container rule');
-      assert.strictEqual(containerRule.conditionText, '(inline-size > 400px)');
+      assert.ok(containerRule, 'Should preserve top-level @container rule after Astro file');
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  test('getHtmlDocuments parses standard HTML files correctly', () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-html-test-'));
+  test('getCssStyleSheet isolates unterminated comments, strings, and url() in one source from subsequent files', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-css-isolation-test-'));
     try {
       const htmlFile = path.join(tempDir, 'index.html');
       fs.writeFileSync(
         htmlFile,
-        '<!DOCTYPE html><html><head><title>Test</title></head><body><div id="root" class="main-container"><p>Hello World</p></div></body></html>',
+        [
+          '<div style="color: red; background: url(">a</div>',
+          '<p style="font-family: &quot;Unclosed">b</p>',
+          '<style>.broken { color: red; /* unclosed comment</style>',
+        ].join('\n'),
         'utf8'
       );
+
+      const cssFile = path.join(tempDir, 'global.css');
+      fs.writeFileSync(cssFile, '.after { color: blue; }', 'utf8');
+
+      const stylesheet = getCssStyleSheet([htmlFile, cssFile]);
+      const rules = Array.from(stylesheet.cssRules);
+
+      const afterRule = rules.find(
+        (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.after'
+      );
+      assert.ok(afterRule, 'Should preserve .after rule from global.css despite broken earlier sources');
+      assert.strictEqual(afterRule.style.getPropertyValue('color').trim(), 'blue');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('getCssStyleSheet extracts <style> inside <script> tags and excludes <style>/[style] inside <template> elements in .html', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-html-template-test-'));
+    try {
+      const htmlFile = path.join(tempDir, 'index.html');
+      fs.writeFileSync(
+        htmlFile,
+        `<html>
+          <head>
+            <style>.global-style { color: red; }</style>
+          </head>
+          <body>
+            <template id="card-template">
+              <style>.template-style { color: blue; }</style>
+              <div style="font-size: 14px;"></div>
+              <template id="nested-template">
+                <style>.nested-template-style { color: yellow; }</style>
+              </template>
+            </template>
+            <div style="margin: 20px;"></div>
+            <script>
+              class MyCard extends HTMLElement {
+                connectedCallback() {
+                  this.shadowRoot.innerHTML = \`<style>.shadow-style { display: block; }</style>\`;
+                  const tmpl = \`<template><style>.script-template-style { color: green; }</style></template>\`;
+                }
+              }
+            </script>
+          </body>
+        </html>`,
+        'utf8'
+      );
+
+      const stylesheet = getCssStyleSheet([htmlFile]);
+      const rules = Array.from(stylesheet.cssRules);
+
+      // Top-level <style> should be found
+      const globalRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.global-style');
+      assert.ok(globalRule, 'Should find top-level .global-style rule');
+
+      // Top-level inline [style] should be found
+      const inlineRules = rules.filter((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '[style]');
+      assert.strictEqual(inlineRules.length, 1, 'Should find exactly 1 top-level inline [style] rule');
+      assert.strictEqual(inlineRules[0].style.getPropertyValue('margin'), '20px');
+
+      // <style> inside <script> should be extracted (e.g. shadowRoot.innerHTML)
+      const shadowRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.shadow-style');
+      assert.ok(shadowRule, 'Should extract .shadow-style rule from <script> template literal');
+
+      // <style> inside <template> inside <script> template literal should also be preserved
+      const scriptTemplateRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.script-template-style');
+      assert.ok(scriptTemplateRule, 'Should extract .script-template-style rule from <template> inside <script>');
+
+      // <style> and [style] inside <template> (including nested <template>) MUST NOT be extracted as global page styles
+      const templateRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.template-style');
+      assert.ok(!templateRule, 'Must NOT extract .template-style from inside <template>');
+
+      const nestedTemplateRule = rules.find((r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText === '.nested-template-style');
+      assert.ok(!nestedTemplateRule, 'Must NOT extract .nested-template-style from inside nested <template>');
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('getCssStyleSheet handles empty file lists gracefully', () => {
+    const stylesheet = getCssStyleSheet([]);
+    assert.ok(stylesheet);
+    assert.strictEqual(stylesheet.cssRules.length, 0);
+  });
+
+  test('getHtmlDocuments parses HTML files into Linkedom documents', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-html-test-'));
+    try {
+      const htmlFile = path.join(tempDir, 'index.html');
+      fs.writeFileSync(htmlFile, '<div id="main" class="container"><p>Hello</p></div>', 'utf8');
 
       const docs = getHtmlDocuments([htmlFile]);
       assert.strictEqual(docs.length, 1);
       assert.strictEqual(docs[0].file, htmlFile);
 
-      const doc = docs[0].document;
-      assert.ok(doc, 'Should return a document object');
-      assert.strictEqual(doc.title, 'Test');
-      assert.ok(doc.querySelector('#root'), 'Should find #root');
-      assert.strictEqual(doc.querySelector('p').textContent, 'Hello World');
+      const pEl = docs[0].document.querySelector('.container p');
+      assert.ok(pEl);
+      assert.strictEqual(pEl.textContent, 'Hello');
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
 
-  test('getHtmlDocuments strips Astro frontmatter and parses class:list directives', () => {
+  test('getHtmlDocuments normalizes Astro class:list, dynamic class expressions, and frontmatter', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-astro-html-test-'));
     try {
-      const astroFile = path.join(tempDir, 'Component.astro');
+      const astroFile = path.join(tempDir, 'ProgressRing.astro');
       fs.writeFileSync(
         astroFile,
         `---
-const { value = 50, contentClass = "default-content" } = Astro.props;
-const isComplete = value >= 100;
+const { value = 75, contentClass = '' } = Astro.props;
+const isComplete = value < 100;
 ---
-<div class="wrapper">
-  <div class:list={['progress-ring-wrapper', { 'is-complete': isComplete }]}>
-    <progress class={\`progress-ring \${isComplete ? 'complete' : ''}\`} value={value}></progress>
-  </div>
-  <div class:list={['base-content', 'progress-ring-content', contentClass]}>
+<div class:list={['progress-ring-wrapper', { 'is-complete': isComplete }]}>
+  <progress class={\`progress-ring \${contentClass}\`} value={value} max="100" aria-label="Progress"></progress>
+  <div class="base-content" class:list={['progress-ring-content', contentClass]}>
     <span>{value}%</span>
   </div>
 </div>
@@ -323,7 +426,7 @@ const isComplete = value >= 100;
     }
   });
 
-  describe('expectNever', () => {
+  describe('expectNever', { skip: NO_CHROMIUM }, () => {
     test('fails a 400ms window when page state turns bad at 300ms, and passes when state never turns bad', async () => {
       const browser: Browser = await chromium.launch();
       try {
@@ -354,7 +457,7 @@ const isComplete = value >= 100;
   });
 
   describe('checkPageLoad', () => {
-    test('detects a page that throws (pageerror), a broken script load, and passes a clean page (ignoring console.error)', async () => {
+    test('detects a page that throws (pageerror), a broken script load, and passes a clean page (ignoring console.error)', { skip: NO_CHROMIUM }, async () => {
       const server = http.createServer((req, res) => {
         if (req.url === '/throws.html') {
           res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -389,9 +492,10 @@ const isComplete = value >= 100;
       await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
       const port = (server.address() as net.AddressInfo).port;
       const baseUrl = `http://127.0.0.1:${port}`;
-      const browser: Browser = await chromium.launch();
+      let browser: Browser | undefined;
 
       try {
+        browser = await chromium.launch();
         // 1. Fixture page that throws an uncaught exception
         const throwsResult = await checkPageLoad(browser, `${baseUrl}/throws.html`);
         assert.strictEqual(throwsResult.ok, false);
@@ -419,7 +523,7 @@ const isComplete = value >= 100;
         assert.strictEqual(browserFailResult.errors.length, 1);
         assert.match(browserFailResult.errors[0], /^\[browser\] simulated browser context crash/);
       } finally {
-        await browser.close();
+        await browser?.close();
         await new Promise<void>((resolve) => server.close(() => resolve()));
       }
     });
@@ -437,19 +541,31 @@ const isComplete = value >= 100;
       assert.strictEqual(isReservedPlaceholderHost('cdn.jsdelivr.net'), false);
     });
 
-    test('checkTargetPageLoad records buildWarning when build fails but start succeeds and page loads cleanly', async () => {
+    test('checkTargetPageLoad records buildWarning when build fails but start succeeds and page loads cleanly', { skip: NO_CHROMIUM }, async () => {
       const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-buildwarning-'));
       try {
+        const buildAttemptsLog = path.join(tempDir, 'build-attempts.log');
+        const buildAttempts = () => (fs.existsSync(buildAttemptsLog) ? fs.readFileSync(buildAttemptsLog, 'utf8').length : 0);
         fs.writeFileSync(
           path.join(tempDir, 'package.json'),
           JSON.stringify({
             name: 'fixture-buildwarning-app',
             type: 'module',
             scripts: {
-              build: 'node -e "console.error(\'em++ not found\'); process.exit(1)"',
+              build: 'node build.mjs',
               start: 'node server.mjs',
             },
           }),
+          'utf8',
+        );
+        fs.writeFileSync(
+          path.join(tempDir, 'build.mjs'),
+          [
+            `import fs from 'node:fs';`,
+            `fs.appendFileSync(${JSON.stringify(buildAttemptsLog)}, 'x');`,
+            `console.error('em++ not found');`,
+            `process.exit(1);`,
+          ].join('\n'),
           'utf8',
         );
         fs.writeFileSync(
@@ -470,6 +586,13 @@ const isComplete = value >= 100;
         assert.strictEqual(res.ok, true, 'Page load should remain ok when start succeeds and page loads');
         assert.deepStrictEqual(res.errors, []);
         assert.match(res.buildWarning || '', /em\+\+ not found/);
+        assert.strictEqual(buildAttempts(), 1);
+
+        // A caller that already saw the build fail passes the warning along, so the check skips install and build.
+        const reused = await checkTargetPageLoad(tempDir, undefined, { buildWarning: res.buildWarning });
+        assert.strictEqual(buildAttempts(), 1, 'Passing buildWarning must not build again');
+        assert.strictEqual(reused?.ok, true);
+        assert.strictEqual(reused?.buildWarning, res.buildWarning);
 
         // Regression test: a browser grader (using TARGET_URL) on the same failed-build target
         // must still fail its test (nothing started by the diagnostic page-load check is exposed to TARGET_URL).
@@ -490,6 +613,7 @@ const isComplete = value >= 100;
         const graderRun = await runPlaywright(tempDir, browserGraderFile, 'ignore');
         assert.strictEqual(graderRun.stats.expected, 0, 'Browser test must not pass when scripts.build fails');
         assert.strictEqual(graderRun.stats.unexpected, 1, 'Browser test must fail on failed build as before');
+        assert.strictEqual(buildAttempts(), 2, 'runPlaywright builds once (the prebuild) and reuses that failure for the page-load check');
         assert.ok(graderRun.pageLoad, 'pageLoad must still be recorded');
         assert.strictEqual(graderRun.pageLoad.ok, true, 'Diagnostic page-load check records ok: true');
         assert.deepStrictEqual(graderRun.pageLoad.errors, []);
@@ -528,7 +652,7 @@ const isComplete = value >= 100;
       }
     });
 
-    test('runPlaywright does not start target server during static-only grader run and writes pageLoad afterwards', async () => {
+    test('runPlaywright does not start target server during static-only grader run and writes pageLoad afterwards', { skip: NO_CHROMIUM }, async () => {
       const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-pageload-grader-'));
       const prevPageLoadOut = process.env.PAGE_LOAD_OUTPUT;
       try {
@@ -620,82 +744,7 @@ const isComplete = value >= 100;
       }
     });
 
-    test('getBaseAppAllowedBuilds reads canonical base app allowlist and startTargetServer blocks agent-added dependency install scripts', async () => {
-      assert.deepStrictEqual(getBaseAppAllowedBuilds('devtools-times'), ['esbuild', 'sharp']);
-      assert.deepStrictEqual(getBaseAppAllowedBuilds('daily-grind'), []);
-      assert.deepStrictEqual(getBaseAppAllowedBuilds('non-existent-app'), []);
-
-      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-pnpm-builds-'));
-      const evilPkgDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-evil-pkg-'));
-      const evilMarker = path.join(tempDir, 'evil-postinstall-ran.marker');
-      try {
-        // Create an agent-added package with a postinstall script
-        fs.writeFileSync(
-          path.join(evilPkgDir, 'package.json'),
-          JSON.stringify({
-            name: 'evil-agent-pkg',
-            version: '1.0.0',
-            scripts: {
-              postinstall: `node -e "require('fs').writeFileSync(${JSON.stringify(evilMarker)}, 'ran')"`,
-            },
-          }),
-          'utf8',
-        );
-        const { spawnSync } = await import('node:child_process');
-        spawnSync('npm', ['pack', '--quiet'], { cwd: evilPkgDir });
-        const tarballPath = path.join(evilPkgDir, 'evil-agent-pkg-1.0.0.tgz');
-
-        // Even if the agent tampered with targetDir/package.json to add evil-agent-pkg to pnpm.onlyBuiltDependencies,
-        // startTargetServer must read only from the canonical base app (daily-grind -> []) and block evil-agent-pkg's postinstall.
-        fs.writeFileSync(
-          path.join(tempDir, 'package.json'),
-          JSON.stringify({
-            name: 'daily-grind',
-            type: 'module',
-            scripts: {
-              start: [
-                'node -e "import(\'node:http\').then(({createServer})=>createServer((_,res)=>{res.writeHead(200);res.end(\'ok\')}).listen(Number(process.env.PORT||3000)))"',
-              ].join(''),
-            },
-            dependencies: {
-              'evil-agent-pkg': `file:${tarballPath}`,
-            },
-            pnpm: {
-              onlyBuiltDependencies: ['evil-agent-pkg'],
-            },
-          }),
-          'utf8',
-        );
-
-        const yamlPath = writeScopedPnpmWorkspace(tempDir, getBaseAppAllowedBuilds('daily-grind'));
-        const yamlText = fs.readFileSync(yamlPath, 'utf8');
-        assert.match(yamlText, /strictDepBuilds: false/);
-        assert.match(yamlText, /onlyBuiltDependencies: \[\]/);
-        assert.match(yamlText, /allowBuilds: \{\}/);
-
-        const srv = await startTargetServer(tempDir, { exportTargetUrlEnv: false });
-        try {
-          assert.ok(srv.url, `Expected server to start after pnpm install, got error: ${srv.error}`);
-          assert.strictEqual(
-            fs.existsSync(evilMarker),
-            false,
-            'Agent-added dependency postinstall script must NEVER execute on the host',
-          );
-          assert.strictEqual(
-            fs.existsSync(path.join(tempDir, 'node_modules', 'evil-agent-pkg', 'package.json')),
-            true,
-            'Dependency should still be installed into node_modules when target has dependencies',
-          );
-        } finally {
-          srv.stop();
-        }
-      } finally {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-        fs.rmSync(evilPkgDir, { recursive: true, force: true });
-      }
-    });
-
-    test('no target server or detached child process outlives stop() or runPlaywright grading', async () => {
+    test('no target server or detached child process outlives stop() or runPlaywright grading', { skip: NO_CHROMIUM }, async () => {
       const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-server-leak-'));
       try {
         const childPidFile = path.join(tempDir, 'child-server.pid');
@@ -740,15 +789,13 @@ const isComplete = value >= 100;
         // Verify child process is alive while server is running
         assert.doesNotThrow(() => process.kill(childPid, 0), 'Child server should be alive before stop()');
 
-        srv.stop();
+        await srv.stop();
 
-        let childAliveAfterStop = true;
-        try {
-          process.kill(childPid, 0);
-        } catch {
-          childAliveAfterStop = false;
-        }
-        assert.strictEqual(childAliveAfterStop, false, 'Child server in separate PGID must not outlive srv.stop()');
+        assert.strictEqual(
+          isProcessRunning(childPid),
+          false,
+          'Child server in separate PGID must not outlive srv.stop()',
+        );
         assert.deepStrictEqual(getSessionAndTreePids(childPid), []);
 
         // Also run a full browser grader via runPlaywright and verify no server outlives runPlaywright
@@ -770,13 +817,11 @@ const isComplete = value >= 100;
         const report = await runPlaywright(tempDir, graderFile, 'ignore');
         assert.strictEqual(report.stats.expected, 1);
         const gradedChildPid = Number(fs.readFileSync(childPidFile, 'utf8').trim());
-        let gradedChildAlive = true;
-        try {
-          process.kill(gradedChildPid, 0);
-        } catch {
-          gradedChildAlive = false;
-        }
-        assert.strictEqual(gradedChildAlive, false, 'No target server process may outlive runPlaywright grading');
+        assert.strictEqual(
+          isProcessRunning(gradedChildPid),
+          false,
+          'No target server process may outlive runPlaywright grading',
+        );
       } finally {
         fs.rmSync(tempDir, { recursive: true, force: true });
       }

@@ -257,12 +257,15 @@ test.describe('Suite page MWG compliance', () => {
     await page.locator('.task-accordion-header').first().click();
     const appBtn = page.locator('.tfoot-action-btn[data-action="app"]').first();
     await expect(appBtn).toBeVisible();
-    const popupPromise = page.waitForEvent('popup', { timeout: 1500 }).catch(() => null);
+    let openedPopup = false;
+    page.on('popup', () => {
+      openedPopup = true;
+    });
     await appBtn.click();
     const frame = page.locator('#modal iframe.artifact-frame');
     await expect(frame).toBeVisible();
     await expect(frame).toHaveAttribute('sandbox', 'allow-scripts allow-forms');
-    expect(await popupPromise).toBeNull();
+    expect(openedPopup).toBe(false);
     const childFrame = page.frames().find(f => f !== page.mainFrame());
     expect(childFrame).toBeTruthy();
     if (childFrame) {
@@ -306,7 +309,7 @@ test.describe('Suite page MWG compliance', () => {
     const frame = page.frameLocator('#modal iframe.artifact-frame');
     await expect(frame.locator('#mode')).toHaveText('CSS1Compat');
     await page.evaluate(() => window.postMessage({ type: 'mwg-dashboard:close-modal' }, '*'));
-    await page.waitForTimeout(200);
+    await page.evaluate(() => new Promise(resolve => setTimeout(resolve, 0)));
     await expect(page.locator('#modal')).toBeVisible();
     await frame.locator('#inner').focus();
     await page.keyboard.press('Escape');
