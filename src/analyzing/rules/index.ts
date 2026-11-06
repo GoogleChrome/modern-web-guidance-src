@@ -14,6 +14,7 @@ import darkMode from './dark-mode.ts';
 import darkModeToggle from './dark-mode-toggle.ts';
 import declarativeDialogPopoverControl from './declarative-dialog-popover-control.ts';
 import deliverOptimizedDecorativeImages from './deliver-optimized-decorative-images.ts';
+import dialog from './dialog.ts';
 import dynamicSiblingAnimations from './dynamic-sibling-animations.ts';
 import equalWidthTextLines from './equal-width-text-lines.ts';
 import flickerFreeClientSideAbTesting from './flicker-free-client-side-ab-testing.ts';
@@ -22,7 +23,6 @@ import icons from './icons.ts';
 import imeSafeEnterSubmit from './ime-safe-enter-submit.ts';
 import improveTextLayoutAndLegibility from './improve-text-layout-and-legibility.ts';
 import interestTriggeredTooltips from './interest-triggered-tooltips.ts';
-import lightDismissADialog from './light-dismiss-a-dialog.ts';
 import progress from './progress.ts';
 import sanitizeUntrustedHtml from './sanitize-untrusted-html.ts';
 import scrollEntryExitEffects from './scroll-entry-exit-effects.ts';
@@ -49,6 +49,7 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   darkModeToggle,
   declarativeDialogPopoverControl,
   deliverOptimizedDecorativeImages,
+  dialog,
   dynamicSiblingAnimations,
   equalWidthTextLines,
   flickerFreeClientSideAbTesting,
@@ -57,7 +58,6 @@ export const RULE_MODULES: readonly (readonly AnalyzerRule[])[] = [
   imeSafeEnterSubmit,
   improveTextLayoutAndLegibility,
   interestTriggeredTooltips,
-  lightDismissADialog,
   progress,
   sanitizeUntrustedHtml,
   scrollEntryExitEffects,
