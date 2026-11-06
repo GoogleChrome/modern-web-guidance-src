@@ -78,7 +78,7 @@ describe('replaceMacros (Functional with real data)', () => {
       const result = replaceMacros(content, 'test.md');
       assert.strictEqual(
         result,
-        "HTML in canvas is not natively supported by any major browser yet."
+        "HTML-in-canvas is not natively supported by any major browser yet."
       );
     });
 
