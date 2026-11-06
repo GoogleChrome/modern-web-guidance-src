@@ -10,7 +10,7 @@ description: |
 
 Search and retrieve standardized modern web best practices at the **start** of implementing or updating any web UI, CSS layout/animation, or client-side JS logic (dates/timezones, sanitization, performance, accessibility, UX fixes) before writing ad-hoc solutions or adding dependencies.
 
-## Usage Instructions
+## Primary Workflow
 
 ### Step 1. Search Use Cases
 
@@ -42,6 +42,7 @@ If `retrieve` saves large output (> 9.5 KB) to a temporary file to prevent trunc
 When generating or modifying code, cross-check the implementation against the retrieved guide before concluding:
 - **Applicable Guidance & Fallbacks**: Ensure the relevant modern patterns and necessary fallback strategies from the guide are correctly applied, without forcing unrequested features.
 - **Task Fulfillment**: Confirm that the implementation fully satisfies the user's request.
+- Do not run `analyze`; it's for detecting legacy patterns to modernize, not this.
 
 ### Step 4. Disclose Skill Usage
 
@@ -50,6 +51,21 @@ When you consult `modern-web-guidance` for a task, end the response where you de
   `- **\`<id>\`**: <Non-obvious APIs, overrides, or fallbacks applied and the pitfall prevented> ("<short verbatim quote of the specific rule or gotcha>").`
   - **Never** guess `<id>`s or quotes from memory after context compaction (re-run `search`/`retrieve` if needed), and credit **only** guide-backed changes from the current turn.
 - **When searched/listed in this turn but zero guides applied**: Write one first-person sentence naming which topics or guides you checked in `modern-web-guidance` and why none applied (omit if any guide applied).
+
+## Alternative flow: Modernize an existing codebase
+
+**Only** when asked for a broad, open-ended codebase modernization or legacy-pattern scan where no specific target feature or component is named (do **not** run `analyze` when asked to add, update, fix, or audit a specific feature or component), run the 4-step modernization flow:
+
+> **Note**: `analyze` scans for a curated subset (~20% of the guidance corpus).
+
+```sh
+npx -y modern-web-guidance@latest analyze <path> --json
+```
+
+1. Scan: Run `analyze <path> --json` to detect legacy web platform patterns across the project or directory.
+2. Verify: Check each finding against its `keepWhen` / `dropWhen` rubric; drop false positives (fallbacks, vendor code, lookalikes).
+3. Report: Summarize verified findings (and the modernization plan, if editing) for the user.
+4. Modernize (when the user asked to modernize rather than only audit/report): Retrieve each finding's guide (`retrieve "<guide-id>"` via Step 2), apply the replacement, and re-run `analyze <path>` on the modified files to confirm resolution.
 
 ## Using npx / pnpx
 
@@ -67,6 +83,6 @@ When you consult `modern-web-guidance` for a task, end the response where you de
 
 ## Interpreting Browser Support & Fallbacks
 
-* **Default Behavior**: All guides assume **Baseline Widely available** features are safe to use without fallbacks. For features that are not Baseline widely available, you **MUST** follow the fallback recommendations in the guide, unless the user has specified a custom browser support policy.
-* **Custom Policies**: If the user defines explicit browser support requirements, use the guide's compatibility data to determine if a fallback can be ignored (for `Baseline YYYY` targets, a feature satisfies the target if its "Baseline since" date is `<= YYYY`). Examples: _"Do not implement feature fallbacks"_, _"Safari 17.4+"_, _"Never implement polyfills; use a lightweight custom fallback or redesign"_, or _"Allow Newly Available features if feature-detected with graceful degradation"_.
-* **Reactive Policy Discovery**: Suggest documenting a policy in `CLAUDE.md` or `AGENTS.md` (e.g., `**Browser Support:** Allow Newly Available features, but only adopt custom fallback code that adds <= 20 lines and no external dependencies`) if the developer targets a restricted runtime (Electron/Tauri), excludes specific browsers, hesitates over polyfill size/complexity, or asks if a feature is safe without fallbacks.
+* **Default Behavior**: All guides assume **Baseline Widely available** features are safe to use without fallbacks. For features that are not Baseline widely available, you **MUST** follow the fallback recommendations in the guide, unless the user or `.mwgrc` has specified a custom browser support policy.
+* **Custom Policies**: If `.mwgrc` configures `"baseline"` (e.g., `"newly"`, `"limited"`, or `"2024"`, surfaced as a `> [!IMPORTANT]` banner on `retrieve`) or the user defines explicit browser support requirements, use the guide's compatibility data to determine which fallbacks apply — **omit** compatibility fallbacks, `@supports not (...)` blocks, and polyfills for features that already satisfy the target (for `Baseline YYYY` targets, a feature satisfies the target if its "Baseline since" date is `<= YYYY`). Examples: _"Do not implement feature fallbacks"_, _"Safari 17.4+"_, _"Never implement polyfills; use a lightweight custom fallback or redesign"_, or _"Allow Newly Available features if feature-detected with graceful degradation"_.
+* **Reactive Policy Discovery**: Suggest setting `"baseline"` in `.mwgrc` via `npx modern-web-guidance@latest set-baseline <widely|newly|limited|YYYY>` or documenting a policy in `CLAUDE.md` / `AGENTS.md` (e.g., `**Browser Support:** Allow Newly Available features, but only adopt custom fallback code that adds <= 20 lines and no external dependencies`) if the developer targets a restricted runtime (Electron/Tauri), excludes specific browsers, hesitates over polyfill size/complexity, or asks if a feature is safe without fallbacks.

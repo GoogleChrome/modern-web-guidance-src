@@ -17,6 +17,7 @@ test('devtools-times base app builds successfully', () => {
       execSync('pnpm install --ignore-workspace', {
         cwd: appDir,
         stdio: 'pipe',
+        env: { ...process.env, pnpm_config_dangerously_allow_all_builds: 'true' },
       });
     } catch (err: any) {
       const stdout = err.stdout?.toString() || '';

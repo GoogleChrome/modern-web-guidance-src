@@ -260,9 +260,12 @@ const NIGHTLY_FIXTURE = {
     },
     // Present (even when empty) on summaries from the current extractor, so the hero doesn't re-hydrate from evals.json.
     showcase: {},
-    guides: {
-      'content-vis': { guidedPassed: 5, guidedTotal: 5, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 60, a11y: { guidedPassed: 2, guidedTotal: 2, guidedRate: 100, unguidedPassed: 1, unguidedTotal: 2, unguidedRate: 50, uplift: 50 } }
-    }
+    guides: Object.fromEntries(
+      ['content-vis', 'dialog', 'combobox', 'scrollspy', 'popover', 'carousel', 'tabs'].map(slug => [
+        slug,
+        { guidedPassed: 5, guidedTotal: 5, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 60, a11y: { guidedPassed: 2, guidedTotal: 2, guidedRate: 100, unguidedPassed: 1, unguidedTotal: 2, unguidedRate: 50, uplift: 50 } }
+      ])
+    )
   }))
 };
 test.describe('Hero, Spotlight, and Browse all runs', () => {
@@ -283,10 +286,12 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     const hero = page.locator('#hero');
     await expect(hero).toHaveAttribute('aria-busy', 'false');
     await expect(hero.locator('#hero-heading')).toHaveText('Measurably better web code with Modern Web Guidance');
-    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-label')).toContainText('across 153 tasks over 3 runs and 3 agents');
+    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-label')).toHaveText('Best-practice pass rate');
+    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-statement')).toHaveText('lift across 153 tasks');
+    await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-qualifier-short')).toContainText('3 agents');
     await expect(hero.locator('.takeaway-primary[data-metric="overall"] .takeaway-figure')).toContainText('pp');
     await expect(hero.locator('.takeaway-secondary[data-metric="a11y"] .takeaway-figure')).toContainText('pp');
-    await expect(hero.locator('#hero-eyebrow')).toContainText(/3 recent runs across 3 agent families/);
+    await expect(hero.locator('#hero-eyebrow')).toContainText('Latest nightly run per agent');
     const details = page.locator('#hero-method');
     await details.locator('summary').focus();
     await page.keyboard.press('Enter');
@@ -310,13 +315,13 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(dateHeader).toHaveAttribute('aria-sort', 'descending');
     await page.locator('.sort-btn[data-sort="date"]').click();
     await expect(dateHeader).toHaveAttribute('aria-sort', 'ascending');
-    const filterBtnText = page.locator('#filter-btn-text');
-    await expect(filterBtnText).toHaveText('All selected (3)');
-    await page.locator('#filter-btn').click();
-    await page.locator('#deselect-all-btn').click();
-    await expect(filterBtnText).toHaveText('None selected');
-    await page.locator('#select-all-btn').click();
-    await page.locator('#filter-btn').click();
+    const filterSearch = page.locator('#filter-search');
+    await filterSearch.fill('claude');
+    await expect(suiteRows).toHaveCount(1);
+    await expect(page.locator('#scheduled-only-check')).toBeDisabled();
+    await filterSearch.fill('');
+    await expect(suiteRows).toHaveCount(3);
+    await expect(page.locator('#scheduled-only-check')).toBeEnabled();
     await page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]').click();
     await expect(page.locator('#breakdowns')).toHaveAttribute('open', '');
     await expect(page.locator('#insights-limit-input')).toHaveValue('5');
@@ -332,7 +337,9 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     const modelSortBtn = page.locator('.insights-uplift-sort-btn[data-panel-uplift-sort="model"]');
     await modelSortBtn.click();
     await expect(modelSortBtn).toHaveClass(/is-sorted/);
-    const expandBtn = page.locator('.insights-expand-btn[data-expand-panel="model"]');
+    await expect(page.locator('.insights-expand-btn[data-expand-panel="model"]')).toHaveCount(0);
+    const expandBtn = page.locator('.insights-expand-btn[data-expand-panel="guide"]');
+    await expect(expandBtn).toContainText('Show all 7');
     await expandBtn.click();
     await expect(expandBtn).toHaveAttribute('aria-expanded', 'true');
   });
@@ -379,6 +386,7 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(barbellTooltip).toBeHidden();
     await page.locator('.takeaway[data-metric="a11y"] a[data-open-guides="a11y"]').click();
     const dimBarbell = page.locator('.insights-dimension-panel .insight-dumbbell-cell button[interestfor="barbell-tooltip"]').first();
+    await dimBarbell.scrollIntoViewIfNeeded();
     await dimBarbell.focus();
     await expect(barbellTooltip).toBeVisible();
     await page.keyboard.press('Escape');
@@ -407,5 +415,18 @@ test.describe('Hero, Spotlight, and Browse all runs', () => {
     await expect(page.locator('#autocomplete-list')).toBeHidden();
     await searchInput.press('Enter');
     await expect(page).toHaveURL(/guide=preload-prerender/);
+  });
+  test('normalizes sort=a11y-desc onto Uplift in a11y mode and uncollapses category on dumbbell click', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/dashboard.html?testId=example-result&mode=a11y&sort=a11y-desc');
+    await expect(page.locator('.eval-col-sort-btn[data-sort="uplift"]')).toHaveAttribute('aria-sort', 'descending');
+    await page.goto('/dashboard.html?testId=example-result');
+    const firstCatSection = page.locator('.eval-category-section').first();
+    await expect(firstCatSection).toBeVisible();
+    await firstCatSection.locator('.eval-category-header').click();
+    await expect(firstCatSection).toHaveClass(/collapsed/);
+    await page.locator('#dumbbell-chart .dc-hit').first().click();
+    await expect(firstCatSection).not.toHaveClass(/collapsed/);
+    await expect(firstCatSection.locator('.task-accordion').first()).toHaveClass(/open/);
   });
 });

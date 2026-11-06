@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import { Agents } from '../config.ts';
+import { parseJsonlFile } from './agent-shared.ts';
+import { guideIdsFromLog } from './guide-usage.ts';
 
 // Colocated agent parsers
 import { parseClaudeTrajectory, loadClaudeLogs } from '../agents/claude-code-agent.ts';
@@ -62,7 +65,7 @@ export {
 
 
 export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
-export const NORMALIZER_VERSION = 2;
+export const NORMALIZER_VERSION = 4;
 
 const TRAJECTORY_GLOB = '{session,subagent}-*.{json,jsonl}';
 
@@ -329,7 +332,7 @@ export function categorizeAction(
     if (cmdLower.includes('retrieve')) {
       return 'guide_retrieval';
     }
-    if (cmdLower.includes('search')) {
+    if (cmdLower.includes('search') || cmdLower.includes('analyze')) {
       return 'skill_search';
     }
   }
@@ -502,6 +505,11 @@ export function generateNormalizedTrajectorySync(
     if (summary) {
       if (initialPrompt !== undefined) {
         summary.initialPrompt = initialPrompt;
+      }
+      const logEntries = parseJsonlFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
+      if (logEntries.length > 0) {
+        summary.retrievedGuides = [...new Set([...(summary.retrievedGuides ?? []), ...guideIdsFromLog(logEntries)])];
+        summary.toolsUsed = [...new Set([...(summary.toolsUsed ?? []), 'modern-web-guidance'])];
       }
       finalizeTrajectorySummary(summary);
       writeTrajectorySummary(targetDir, summary);

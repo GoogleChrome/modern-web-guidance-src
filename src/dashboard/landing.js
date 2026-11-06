@@ -8,7 +8,6 @@ import {
     formatTokens,
     getAgentBadge,
     getScrollBehavior,
-    SERVING_DISPLAY_NAMES,
     AGENT_DISPLAY_NAMES,
     parseSuiteDateInfo,
     formatSuiteDate,
@@ -29,7 +28,6 @@ import { updateShowcaseFromSuites } from './showcase.js';
  *   source: import('./api.js').DataSource;
  *   timestamp: string;
  *   agent: string;
- *   serving: string;
  *   model: string;
  * }} LandingSuiteSummary
  */
@@ -38,20 +36,20 @@ import { updateShowcaseFromSuites } from './showcase.js';
 /** @typedef {'alphabetic' | 'uplift' | 'unguided' | 'guided' | 'variance'} GuideSortKey */
 /** @typedef {'asc' | 'desc'} SortDirection */
 /** @typedef {'all' | 'a11y'} InsightsMode */
-/** @typedef {'date' | 'tasks' | 'uplift' | 'a11y' | 'time' | 'tokens'} SuiteSortKey */
+/** @typedef {'date' | 'uplift' | 'a11y' | 'time' | 'tokens'} SuiteSortKey */
 
 /** @type {Record<string, LandingSuiteSummary>} */
 let allTestData = {};
 /** @type {Set<string>} */
-let selectedTestIds = new Set(); // Compound keys picked in the "Filter runs" menu
+let selectedTestIds = new Set();
 /** @type {SourceFilter} */
 let currentSourceFilter = 'all';
 /** @type {string} */
 let currentAgentFilter = 'all';
 /** @type {string} */
-let currentServingFilter = 'all';
-/** @type {string} */
 let currentModelFilter = 'all';
+/** @type {string} */
+let currentSearchFilter = '';
 /** @type {boolean} */
 let scheduledOnly = true;
 /** @type {SuiteSortKey} */
@@ -62,7 +60,6 @@ let currentSuiteSortDir = 'desc';
 /** @type {Record<SuiteSortKey, SortDirection>} */
 const DEFAULT_SORT_DIR = {
     date: 'desc',
-    tasks: 'desc',
     uplift: 'desc',
     a11y: 'desc',
     time: 'asc',
@@ -74,7 +71,6 @@ let currentGuideSort = 'alphabetic';
 let currentGuideSortDir = 'asc';
 /** @type {InsightsMode} */
 let currentInsightsMode = 'all';
-const servingDisplayNames = SERVING_DISPLAY_NAMES;
 const agentDisplayNames = AGENT_DISPLAY_NAMES;
 
 function isRemoteDashboard() {
@@ -106,8 +102,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         selectedTestIds = new Set(Object.keys(allTestData));
         applyTestsParam(params.get('tests'));
+        applySearchParam(params.get('q'));
 
-        renderFilterMenuItems();
         renderSuites();
         syncHero();
         applyGuidesHash(window.location.hash, true);
@@ -123,7 +119,7 @@ window.addEventListener('popstate', () => {
     const params = new URLSearchParams(window.location.search);
     selectedTestIds = new Set(Object.keys(allTestData));
     applyTestsParam(params.get('tests'));
-    renderFilterMenuItems();
+    applySearchParam(params.get('q'));
     renderSuites();
     applyGuidesHash(window.location.hash, false);
 });
@@ -140,50 +136,24 @@ function applyTestsParam(testsParam) {
     if (matchIds.size > 0) { selectedTestIds = matchIds; }
 }
 
-function setupTestFilters() {
-    const filterBtn = document.getElementById('filter-btn');
-    const filterMenu = document.getElementById('filter-menu');
-    const selectAllBtn = document.getElementById('select-all-btn');
-    const deselectAllBtn = document.getElementById('deselect-all-btn');
-    const list = document.getElementById('filter-list');
+/** @param {string | null} qParam */
+function applySearchParam(qParam) {
+    currentSearchFilter = (qParam || '').trim().toLowerCase();
     const searchInput = document.getElementById('filter-search');
-    if (!filterBtn || !filterMenu || !list) return;
-    filterMenu.addEventListener('toggle', (e) => {
-        const isOpen = /** @type {ToggleEvent} */ (e).newState === 'open';
-        filterBtn.setAttribute('aria-expanded', String(isOpen));
-        if (isOpen && searchInput instanceof HTMLInputElement) {
-            searchInput.focus();
-        }
-    });
+    if (searchInput instanceof HTMLInputElement) {
+        searchInput.value = qParam ? qParam.trim() : '';
+    }
+}
 
-    selectAllBtn?.addEventListener('click', () => {
-        selectedTestIds = new Set(Object.keys(allTestData));
+function setupTestFilters() {
+    const searchInput = document.getElementById('filter-search');
+    if (!(searchInput instanceof HTMLInputElement)) return;
+    searchInput.addEventListener('input', () => {
+        currentSearchFilter = searchInput.value.trim().toLowerCase();
+        showAllStacked = false;
         updateUrlParams();
-        renderFilterMenuItems();
         renderSuites();
     });
-
-    deselectAllBtn?.addEventListener('click', () => {
-        selectedTestIds.clear();
-        updateUrlParams();
-        renderFilterMenuItems();
-        renderSuites();
-    });
-
-    searchInput?.addEventListener('input', (e) => {
-        const target = e.target;
-        if (!(target instanceof HTMLInputElement)) return;
-        const term = target.value.toLowerCase();
-        list.querySelectorAll('.filter-item').forEach(item => {
-            if (item instanceof HTMLElement) {
-                const labelEl = item.querySelector('.filter-item-label');
-                const label = labelEl ? (labelEl.textContent || '').toLowerCase() : '';
-                item.hidden = !label.includes(term);
-            }
-        });
-    });
-
-    renderFilterMenuItems();
 }
 
 function setupTableFilters() {
@@ -195,7 +165,6 @@ function setupTableFilters() {
             const mobileAgent = document.getElementById('mobile-filter-agent');
             if (mobileAgent instanceof HTMLSelectElement) { mobileAgent.value = val; syncSelectStyles(mobileAgent); }
         },
-        'filter-serving': (val) => currentServingFilter = val,
         'filter-model': (val) => currentModelFilter = val
     };
 
@@ -332,7 +301,11 @@ function setupInsightsControls() {
             renderPivotInsights();
         });
         limitInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') limitInput.blur();
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.isComposing || e.keyCode === 229) return;
+                limitInput.blur();
+            }
         });
     }
 
@@ -376,7 +349,7 @@ function setupInsightsControls() {
         if (btn instanceof HTMLButtonElement) {
             const key = btn.dataset.filterKey;
             const value = btn.dataset.filterValue;
-            if ((key === 'agent' || key === 'serving' || key === 'model') && value !== undefined) { setInsightFilter(key, value); }
+            if ((key === 'agent' || key === 'model') && value !== undefined) { setInsightFilter(key, value); }
             return;
         }
         if (!target.closest('a, button')) {
@@ -396,71 +369,6 @@ function syncSelectStyles(el) {
     el.classList.toggle('is-filtered', el.value !== 'all');
 }
 
-function renderFilterMenuItems() {
-    const list = document.getElementById('filter-list');
-    if (!list) return;
-    list.innerHTML = '';
-
-    const sortedIds = Object.keys(allTestData).sort((a, b) => {
-        return getSuiteDate(allTestData[b]).getTime() - getSuiteDate(allTestData[a]).getTime();
-    });
-
-    sortedIds.forEach(compoundKey => {
-        const testInfo = allTestData[compoundKey];
-        const item = document.createElement('label');
-        item.className = 'filter-item';
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = selectedTestIds.has(compoundKey);
-        checkbox.value = compoundKey;
-        checkbox.addEventListener('change', () => {
-            if (checkbox.checked) { selectedTestIds.add(compoundKey); } else {
-                selectedTestIds.delete(compoundKey);
-            }
-            updateFilterButtonLabel();
-            updateUrlParams();
-            renderSuites();
-        });
-
-        const labelContent = document.createElement('div');
-        labelContent.className = 'filter-item-label';
-
-        const idSpan = document.createElement('span');
-        idSpan.textContent = testInfo.testId.replace('test_', '') + ` (${testInfo.source})`;
-
-        const dateSpan = document.createElement('span');
-        dateSpan.className = 'filter-item-date';
-        dateSpan.textContent = formatSuiteDateTime(getSuiteDateInfo(testInfo));
-
-        labelContent.append(idSpan, dateSpan);
-        item.append(checkbox, labelContent);
-        list.appendChild(item);
-    });
-    updateFilterButtonLabel();
-}
-function updateFilterButtonLabel() {
-    const btnText = document.getElementById('filter-btn-text');
-    const btn = document.getElementById('filter-btn');
-    if (!btnText || !btn) return;
-    const allIds = Object.keys(allTestData);
-    const total = allIds.length;
-    const selected = Array.from(selectedTestIds).filter(id => allTestData[id]);
-    const count = selected.length;
-    if (total === 0 || count === total) {
-        btnText.textContent = total > 0 ? `All selected (${total})` : 'All selected';
-        btn.classList.remove('is-filtered');
-    } else if (count === 0) { btnText.textContent = 'None selected'; btn.classList.add('is-filtered'); } else {
-        const selectedNames = selected.map(id => { const t = allTestData[id]; return t ? t.testId.replace('test_', '') : id; });
-        if (count === 1) { btnText.textContent = selectedNames[0]; } else if (count === 2) {
-            btnText.textContent = `${selectedNames[0]}, ${selectedNames[1]}`;
-        } else {
-            btnText.textContent = `${count} selected (${selectedNames[0]}, +${count - 1} more)`;
-        }
-        btn.classList.add('is-filtered');
-    }
-}
-
 function updateUrlParams() {
     const url = new URL(window.location.href);
     const allIds = Object.keys(allTestData);
@@ -468,6 +376,11 @@ function updateUrlParams() {
         url.searchParams.delete('tests');
     } else {
         url.searchParams.set('tests', Array.from(selectedTestIds).join(','));
+    }
+    if (currentSearchFilter) {
+        url.searchParams.set('q', currentSearchFilter);
+    } else {
+        url.searchParams.delete('q');
     }
     window.history.replaceState({}, '', url);
 }
@@ -613,7 +526,7 @@ async function loadRemoteTests() {
         } else {
             applyTestsParam(initialTests);
         }
-        renderFilterMenuItems();
+        applySearchParam(params.get('q'));
         renderSuites();
         syncHero();
 
@@ -648,7 +561,6 @@ function registerSuiteSummary(summary, source, { refreshFilters = true } = {}) {
         source,
         timestamp: summary.timestamp || '',
         agent: summary.agent || 'unknown',
-        serving: summary.serving || 'unknown',
         model: summary.model || 'unknown'
     };
     if (refreshFilters) refreshFilterOptions();
@@ -657,8 +569,34 @@ function refreshFilterOptions() {
     updateFilterOptions('filter-model-group', 'model');
     updateFilterOptions('filter-agent-group', 'agent', agentDisplayNames);
     updateFilterOptions('mobile-filter-agent-group', 'agent', agentDisplayNames);
-    updateFilterOptions('filter-serving-group', 'serving', servingDisplayNames);
     updateSourceFilterOptions();
+    updateRunsFilterDatalist();
+}
+
+function updateRunsFilterDatalist() {
+    const datalist = document.getElementById('runs-filter-datalist');
+    if (!datalist) return;
+    /** @type {Map<string, { count: number, label: string }>} */
+    const suggestions = new Map();
+    for (const t of Object.values(allTestData)) {
+        if (t.model && t.model !== 'unknown') {
+            const prev = suggestions.get(t.model);
+            suggestions.set(t.model, { count: (prev?.count || 0) + 1, label: '' });
+        }
+        if (t.agent && t.agent !== 'unknown') {
+            const prev = suggestions.get(t.agent);
+            const display = agentDisplayNames[t.agent] || t.agent;
+            suggestions.set(t.agent, { count: (prev?.count || 0) + 1, label: display !== t.agent ? display : '' });
+        }
+    }
+    datalist.innerHTML = Array.from(suggestions.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([val, { count, label }]) => {
+            const countText = `${count} ${count === 1 ? 'run' : 'runs'}`;
+            const optionLabel = label ? `${label} · ${countText}` : countText;
+            return `<option value="${escapeHtml(val)}" label="${escapeHtml(optionLabel)}"></option>`;
+        })
+        .join('');
 }
 
 function updateSourceFilterOptions() {
@@ -679,7 +617,7 @@ function updateSourceFilterOptions() {
 /**
  * Rebuilds a header <select>'s option group from the distinct values seen so far.
  * @param {string} groupId
- * @param {'agent' | 'serving' | 'model'} key
+ * @param {'agent' | 'model'} key
  * @param {Record<string, string>} [displayNames]
  */
 function updateFilterOptions(groupId, key, displayNames = {}) {
@@ -702,10 +640,6 @@ function getSuiteDateInfo(testInfo) { return parseSuiteDateInfo(testInfo.timesta
 /** @param {LandingSuiteSummary} testInfo
  * @returns {Date} */
 function getSuiteDate(testInfo) { return getSuiteDateInfo(testInfo).date; }
-/** @param {import('./utils.js').SuiteDateInfo} dateInfo */
-function formatSuiteDateTime(dateInfo) {
-    return formatSuiteDate(dateInfo, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }).replace(' at ', ', ');
-}
 
 /** @param {{ passed: number, total: number } | undefined} stats */
 function toRateExact(stats) { return stats && stats.total > 0 ? (stats.passed / stats.total) * 100 : 0; }
@@ -734,15 +668,23 @@ function a11yPair(a11y) {
     };
 }
 
-/** @returns {string[]} */
-function getFilteredKeys() {
+/**
+ * @param {{ ignoreModelFilter?: boolean }} [options]
+ * @returns {string[]}
+ */
+function getFilteredKeys({ ignoreModelFilter = false } = {}) {
     return Array.from(selectedTestIds).filter(compoundKey => {
         const t = allTestData[compoundKey];
         if (!t) return false;
         if (currentSourceFilter !== 'all' && t.source !== currentSourceFilter) return false;
         if (currentAgentFilter !== 'all' && t.agent !== currentAgentFilter) return false;
-        if (currentServingFilter !== 'all' && t.serving !== currentServingFilter) return false;
-        if (currentModelFilter !== 'all' && t.model !== currentModelFilter) return false;
+        if (!ignoreModelFilter && currentModelFilter !== 'all' && t.model !== currentModelFilter) return false;
+        if (currentSearchFilter) {
+            const { label, ldap } = formatSuiteLabel(t);
+            const agentDisplay = agentDisplayNames[t.agent] || t.agent || '';
+            const haystack = `${t.testId || ''} ${t.model || ''} ${t.agent || ''} ${agentDisplay} ${label} ${ldap}`.toLowerCase();
+            if (!haystack.includes(currentSearchFilter)) return false;
+        }
         return true;
     });
 }
@@ -751,7 +693,7 @@ function getFilteredKeys() {
 function getVisibleKeys() {
     const filtered = getFilteredKeys();
     const anyScheduled = filtered.some(k => isScheduledSuite(allTestData[k].testId));
-    const keys = (scheduledOnly && anyScheduled)
+    const keys = (scheduledOnly && !currentSearchFilter && anyScheduled)
         ? filtered.filter(k => isScheduledSuite(allTestData[k].testId))
         : filtered;
     return sortSuiteKeys(keys);
@@ -764,8 +706,6 @@ function getSortValue(t, key) {
     switch (key) {
         case 'date':
             return getSuiteDate(t).getTime();
-        case 'tasks':
-            return t.taskCount || 0;
         case 'uplift':
             return hasBothSides(t.unguidedStats, t.guidedStats) ? toRateExact(t.guidedStats) - toRateExact(t.unguidedStats) : null;
         case 'a11y': { const pair = a11yPair(t.a11yStats); return pair && hasBothSides(pair.u, pair.g) ? toRateExact(pair.g) - toRateExact(pair.u) : null; }
@@ -823,12 +763,12 @@ function renderRateComparison(uRate, gRate, delta, label, uErr = 0, gErr = 0) {
  * @param {{ less: string, more: string, noun: string }} words */
 function renderDeltaPill(deltaPct, words) {
     if (deltaPct < 0) {
-        return `<span class="eff-pill metric-delta positive"><span aria-hidden="true">▼ </span>${Math.abs(deltaPct)}% ${escapeHtml(words.less)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
+        return `<span class="eff-pill metric-delta positive" title="${Math.abs(deltaPct)}% ${escapeHtml(words.less)}"><span aria-hidden="true">▼ </span>${Math.abs(deltaPct)}%<span class="visually-hidden"> ${escapeHtml(words.less)} (${escapeHtml(words.noun)})</span></span>`;
     }
     if (deltaPct === 0) {
-        return `<span class="eff-pill metric-delta neutral">±0%<span class="visually-hidden"> ${escapeHtml(words.noun)}, no change</span></span>`;
+        return `<span class="eff-pill metric-delta neutral" title="No change (${escapeHtml(words.noun)})">±0%<span class="visually-hidden"> ${escapeHtml(words.noun)}, no change</span></span>`;
     }
-    return `<span class="eff-pill metric-delta muted"><span aria-hidden="true">▲ </span>${deltaPct}% ${escapeHtml(words.more)}<span class="visually-hidden"> (${escapeHtml(words.noun)})</span></span>`;
+    return `<span class="eff-pill metric-delta muted" title="${deltaPct}% ${escapeHtml(words.more)}"><span aria-hidden="true">▲ </span>${deltaPct}%<span class="visually-hidden"> ${escapeHtml(words.more)} (${escapeHtml(words.noun)})</span></span>`;
 }
 /** @param {string} what */
 function renderNotAvailable(what) {
@@ -840,8 +780,14 @@ function renderSuites() {
     syncSortHeaders();
     const filteredKeys = getFilteredKeys();
     const visibleKeys = getVisibleKeys();
+    const anyScheduled = filteredKeys.some(k => isScheduledSuite(allTestData[k].testId));
+    const scheduledCheck = document.getElementById('scheduled-only-check');
+    if (scheduledCheck instanceof HTMLInputElement) {
+        scheduledCheck.checked = scheduledOnly && !currentSearchFilter && anyScheduled;
+        scheduledCheck.disabled = Boolean(currentSearchFilter) || !anyScheduled;
+    }
     const hiddenAdHoc = filteredKeys.length - visibleKeys.length;
-    const colCount = 9;
+    const colCount = 8;
     const table = document.querySelector('.suites-table');
     const pageSize = isStacked ? STACKED_PAGE_SIZE : DESKTOP_PAGE_SIZE;
     const paged = !showAllStacked && visibleKeys.length > pageSize;
@@ -920,31 +866,31 @@ function renderSuites() {
         } else { a11yCellHtml = renderNotAvailable('Accessibility subscore'); }
 
         const timeCellHtml = hasRuntime && rt
-            ? `<div class="eff-cell-main"> <span class="metric-primary"><span class="visually-hidden">Median time: unguided </span>${formatDuration(rt.unguidedMedianMs)} <span aria-hidden="true">→</span><span class="visually-hidden">, guided</span> <strong>${formatDuration(rt.guidedMedianMs)}</strong></span> ${renderDeltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median time' })} </div>`
-            : renderNotAvailable('Median time');
+            ? `<div class="eff-cell-main"><div class="task-metric-stack"><span class="metric-before"><span class="visually-hidden">Median duration: unguided </span>${formatDuration(rt.unguidedMedianMs)}</span><span class="metric-after"><span class="visually-hidden">, guided </span>${formatDuration(rt.guidedMedianMs)}</span></div>${renderDeltaPill(rt.medianDeltaPct, { less: 'faster', more: 'slower', noun: 'median duration' })}</div>`
+            : renderNotAvailable('Median duration');
         const tokenCellHtml = hasTokens && tok
-            ? `<div class="eff-cell-main"> <span class="metric-primary"><span class="visually-hidden">Median uncached tokens: unguided </span>${formatTokens(tok.unguidedUncachedMedian)} <span aria-hidden="true">→</span><span class="visually-hidden">, guided</span> <strong>${formatTokens(tok.guidedUncachedMedian)}</strong></span> ${renderDeltaPill(tok.uncachedMedianDeltaPct, { less: 'fewer', more: 'more', noun: 'uncached tokens' })} </div>`
+            ? `<div class="eff-cell-main"><div class="task-metric-stack"><span class="metric-before"><span class="visually-hidden">Median uncached tokens: unguided </span>${formatTokens(tok.unguidedUncachedMedian)}</span><span class="metric-after"><span class="visually-hidden">, guided </span>${formatTokens(tok.guidedUncachedMedian)}</span></div>${renderDeltaPill(tok.uncachedMedianDeltaPct, { less: 'fewer', more: 'more', noun: 'uncached tokens' })}</div>`
             : renderNotAvailable('Median uncached tokens');
 
         const badges = [!scheduled ? '<span class="run-kind-badge">ad hoc</span>' : '', isFaulty ? '<span class="run-kind-badge faulty">all runs failed</span>' : ''].join('');
+        const adhocLabelHtml = !scheduled && label ? `<span class="suite-adhoc-name">${escapeHtml(label)}</span>` : '';
 
         const metaParts = [
-            !scheduled && label ? escapeHtml(label) : '',
-            taskCount > 0 ? `${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}${unguidedLeakRate > 0 ? ` (${unguidedLeakRate}% leak)` : ''}` : '',
-            escapeHtml(timeAgo(date)),
-            ldap ? escapeHtml(ldap) : ''
+            taskCount > 0 ? `<span class="nowrap">${taskCount} tasks${maxRuns > 1 ? ` ×${maxRuns}` : ''}${earlyFailureRate > 0 ? ` (${earlyFailureRate}% err)` : ''}${unguidedLeakRate > 0 ? ` (${unguidedLeakRate}% leak)` : ''}</span>` : '',
+            `<span class="nowrap">${escapeHtml(timeAgo(date))}</span>`,
+            ldap ? `<span class="nowrap">${escapeHtml(ldap)}</span>` : ''
         ].filter(Boolean).join(' · ');
 
         html += `
             <tr class="suite-table-row${isFaulty ? ' faulty' : ''}${scheduled ? '' : ' adhoc'}" data-test-id="${escapeHtml(testId)}">
                 <th scope="row" class="suite-cell">
                     <a href="${localLink}" class="suite-link">
-                        <time class="suite-label" datetime="${date.toISOString()}">${escapeHtml(dateDisplay)}</time>${badges}
+                        <span class="suite-title-row"><time class="suite-label" datetime="${date.toISOString()}">${escapeHtml(dateDisplay)}</time>${badges}</span>
+                        ${adhocLabelHtml}
                         <span class="suite-meta">${metaParts}</span>
                     </a>
                 </th>
                 <td class="agent-cell" data-agent="${escapeHtml(testInfo.agent)}"><span>${getAgentBadge(testInfo.agent)}${escapeHtml(agentDisplay)}</span></td>
-                <td>${escapeHtml(servingDisplayNames[testInfo.serving] || testInfo.serving)}</td>
                 <td class="model-cell">${escapeHtml(testInfo.model || '')}</td>
                 <td class="uplift-cell metric-cell" data-compound-key="${escapeHtml(compoundKey)}" data-barbell-title="${escapeHtml(suiteBarbellTitle)}" data-barbell-sub="${escapeHtml(overallSub)}" data-barbell-kind="suite-overall" data-barbell-u="${uRate ?? ''}" data-barbell-g="${gRate ?? ''}" data-barbell-uplift="${overallPp ?? ''}" data-barbell-u-detail="${escapeHtml(uDetail)}" data-barbell-g-detail="${escapeHtml(gDetail)}" data-barbell-err="${overallErrAttr}">
                     <a href="${localLink}" class="uplift-link" interestfor="barbell-tooltip">
@@ -968,16 +914,14 @@ function renderSuites() {
 
 /**
  * Columns whose value is identical for every loaded run carry no information, so
- * hide them (Serving, Source) to keep the table within the page width. Cells stay
+ * hide them (Source) to keep the table within the page width. Cells stay
  * in the DOM so the stacked-layout labels (nth-child) keep lining up.
  */
 function syncOptionalColumns() {
     const table = document.querySelector('.suites-table');
     if (!table) return;
     const all = Object.values(allTestData);
-    const servings = new Set(all.map(t => t.serving));
     const sources = new Set(all.map(t => t.source));
-    table.classList.toggle('hide-serving', servings.size <= 1 && currentServingFilter === 'all');
     table.classList.toggle('hide-source', isRemoteDashboard() || (sources.size <= 1 && currentSourceFilter === 'all'));
 }
 
@@ -1024,12 +968,12 @@ function renderSuitesCount(shown, matching, hiddenAdHoc, paged, pageSize = DESKT
 
 /**
  * Splits "nightly-2026-10-09_07-00-02-antigravity_cli" into a short label plus
- * any trailing owner tag, dropping the agent/serving tokens that other columns show.
+ * any trailing owner tag, dropping the agent tokens that other columns show.
  * @param {LandingSuiteSummary} testInfo
  * @returns {{ label: string, ldap: string }}
  */
 function formatSuiteLabel(testInfo) {
-    const { testId, agent, serving } = testInfo;
+    const { testId, agent } = testInfo;
     if (!testId) return { label: 'evaluation-run', ldap: '' };
 
     const timeRegex = /[-_]?\b\d{4}-\d{2}-\d{2}(?:[T_]\d{2}-\d{2}-\d{2})?\b[-_]?/;
@@ -1040,12 +984,11 @@ function formatSuiteLabel(testInfo) {
     if (!suffix) return { label, ldap: '' };
     const normalize = (/** @type {string} */ s) => (s || '').toLowerCase().replace(/[-_]+/g, '');
     const normAgent = normalize(agent);
-    const normServing = normalize(serving);
     /** @type {string[]} */
     const otherTags = [];
     suffix.split('-').forEach(part => {
         const normPart = normalize(part);
-        if (normPart === normAgent || normPart === normServing) return;
+        if (normPart === normAgent) return;
         if (normPart === 'cli' || normPart === 'run' || normPart === 'skills') return;
         otherTags.push(part);
     });
@@ -1088,14 +1031,6 @@ function setupBarbellTooltip() {
 }
 function setupAnchorPositioningFallback() {
     if (SUPPORTS_ANCHOR_POSITIONING) return;
-    const filterMenu = document.getElementById('filter-menu');
-    const filterBtn = document.getElementById('filter-btn');
-    const placeFilterMenu = () => { if (filterMenu && filterBtn && isPopoverOpen(filterMenu)) placePopoverFallback(filterMenu, filterBtn, { align: 'end', gap: 8, fallbackHeight: 175 }); };
-    filterMenu?.addEventListener('beforetoggle', (e) => {
-        if (/** @type {ToggleEvent} */ (e).newState === 'open') requestAnimationFrame(placeFilterMenu);
-    });
-    filterMenu?.addEventListener('toggle', placeFilterMenu);
-    window.addEventListener('resize', placeFilterMenu, { passive: true });
     document.addEventListener('toggle', (e) => {
         const hint = e.target;
         if (!(hint instanceof HTMLElement) || !hint.classList.contains('hint-popover')) return;
@@ -1103,8 +1038,7 @@ function setupAnchorPositioningFallback() {
         const trigger = document.querySelector(`[interestfor="${CSS.escape(hint.id)}"]`);
         if (trigger) placePopoverFallback(hint, trigger, { align: hint.id.startsWith('hint-sort-uplift-') ? 'end' : 'start', fallbackHeight: 175 });
     }, true);
-    document.addEventListener('scroll', (e) => {
-        if (!(e.target instanceof Node && filterMenu?.contains(e.target))) placeFilterMenu();
+    document.addEventListener('scroll', () => {
         document.querySelectorAll('#barbell-tooltip, .hint-popover').forEach(el => { if (el instanceof HTMLElement) setPopoverOpen(el, false); });
     }, { capture: true, passive: true });
 }
@@ -1183,20 +1117,57 @@ function hideBarbellTooltip() {
     if (tooltip) setPopoverOpen(tooltip, false);
 }
 
-/** @returns {string[]} */
-function getInsightKeys() {
-    let keys = getVisibleKeys();
+/** @returns {{ showAll: boolean, limit: number }} */
+function getInsightWindowOptions() {
     const limitInput = document.getElementById('insights-limit-input');
     const showAllCheck = document.getElementById('insights-show-all-check');
     const showAll = showAllCheck instanceof HTMLInputElement ? showAllCheck.checked : false;
     const limit = limitInput instanceof HTMLInputElement ? (parseInt(limitInput.value) || 5) : 5;
-    if (!showAll && keys.length > 0) {
-        const dayOf = (/** @type {string} */ k) => getSuiteDayKey(getSuiteDateInfo(allTestData[k]));
-        const sortedDates = [...new Set(keys.map(dayOf))].sort((a, b) => a.localeCompare(b));
-        const activeDates = new Set(sortedDates.slice(-limit));
-        keys = keys.filter(k => activeDates.has(dayOf(k)));
+    return { showAll, limit };
+}
+
+/** @param {string[]} keys
+ * @param {number} limit
+ * @returns {string[]} */
+function filterRecentDays(keys, limit) {
+    const dayOf = (/** @type {string} */ k) => getSuiteDayKey(getSuiteDateInfo(allTestData[k]));
+    const sortedDates = [...new Set(keys.map(dayOf))].sort((a, b) => a.localeCompare(b));
+    const activeDates = new Set(sortedDates.slice(-limit));
+    return keys.filter(k => activeDates.has(dayOf(k)));
+}
+
+/** @returns {string[]} */
+function getInsightKeys() {
+    const keys = getVisibleKeys();
+    const { showAll, limit } = getInsightWindowOptions();
+    return (!showAll && keys.length > 0) ? filterRecentDays(keys, limit) : keys;
+}
+
+/**
+ * Returns compound keys for the "By Model" breakdown. Unlike `getInsightKeys()`,
+ * this includes models that only have non-scheduled runs (such as `pi` evaluations
+ * on Mistral or Qwen) and applies the `limit` day window per model so models
+ * evaluated on earlier dates remain visible.
+ * @returns {string[]}
+ */
+function getModelInsightKeys() {
+    const candidates = getFilteredKeys({ ignoreModelFilter: true })
+        .filter(k => Boolean(allTestData[k]?.model && allTestData[k].model !== 'unknown'));
+    const { showAll, limit } = getInsightWindowOptions();
+    const byModel = Map.groupBy(candidates, k => allTestData[k].model);
+    /** @type {string[]} */
+    const result = [];
+    for (const modelKeys of byModel.values()) {
+        const anyScheduled = modelKeys.some(k => isScheduledSuite(allTestData[k].testId));
+        let scoped = (scheduledOnly && !currentSearchFilter && anyScheduled)
+            ? modelKeys.filter(k => isScheduledSuite(allTestData[k].testId))
+            : modelKeys;
+        if (!showAll && scoped.length > 0) {
+            scoped = filterRecentDays(scoped, limit);
+        }
+        result.push(...scoped);
     }
-    return keys;
+    return result;
 }
 /** @typedef {{ uplift: number, uRate: number, gRate: number, uErr?: number, gErr?: number, rtDeltaPct?: number | null, tokDeltaPct?: number | null, description?: string }} PivotItem */
 /** @typedef {'alpha' | 'uplift-desc' | 'uplift-asc'} PanelSortMode */
@@ -1204,6 +1175,41 @@ function getInsightKeys() {
 const currentPanelSorts = { model: 'alpha', dimension: 'uplift-desc' };
 /** @type {Record<'model' | 'dimension' | 'guide', boolean>} */
 const expandedPanels = { model: false, dimension: false, guide: false };
+
+/**
+ * @param {LandingSuiteSummary} testInfo
+ * @param {boolean} onlyA11y
+ * @returns {PivotItem | null}
+ */
+function buildModelPivotItem(testInfo, onlyA11y) {
+    const rt = testInfo.efficiencyStats?.runtime;
+    const rtDeltaPct = (rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0)) ? rt.medianDeltaPct : null;
+    const tok = testInfo.efficiencyStats?.tokens;
+    const tokDeltaPct = (tok && (tok.guidedTotalMedian > 0 || tok.unguidedTotalMedian > 0)) ? tok.uncachedMedianDeltaPct : null;
+    const earlyFailureRate = testInfo.earlyFailureRate || 0;
+    const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
+    const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
+    if (onlyA11y) {
+        const pair = a11yPair(testInfo.a11yStats);
+        const pairUplift = pair ? upliftPp(pair.u, pair.g) : null;
+        if (pair && pairUplift !== null) {
+            return { uplift: pairUplift, uRate: toRate(pair.u), gRate: toRate(pair.g), uErr, gErr, rtDeltaPct, tokDeltaPct };
+        }
+        return null;
+    }
+    if (hasBothSides(testInfo.unguidedStats, testInfo.guidedStats)) {
+        return {
+            uplift: Math.round(toRateExact(testInfo.guidedStats) - toRateExact(testInfo.unguidedStats)),
+            uRate: toRate(testInfo.unguidedStats),
+            gRate: toRate(testInfo.guidedStats),
+            uErr,
+            gErr,
+            rtDeltaPct,
+            tokDeltaPct
+        };
+    }
+    return null;
+}
 
 function renderPivotInsights() {
     const container = document.getElementById('insights-container');
@@ -1215,28 +1221,22 @@ function renderPivotInsights() {
         if (el instanceof HTMLElement && el.dataset.scrollSection) { savedScrollPositions[el.dataset.scrollSection] = el.scrollTop; }
     });
     const keys = getInsightKeys();
+    const modelKeys = getModelInsightKeys();
     const onlyA11y = currentInsightsMode === 'a11y';
     /** @type {{ model: Record<string, PivotItem[]>, guide: Record<string, PivotItem[]>, dimension: Record<string, PivotItem[]> }} */
     const grouped = { model: {}, guide: {}, dimension: {} };
+    modelKeys.forEach(compoundKey => {
+        const testInfo = allTestData[compoundKey];
+        if (!testInfo || !testInfo.model) return;
+        const item = buildModelPivotItem(testInfo, onlyA11y);
+        if (item) {
+            (grouped.model[testInfo.model] ||= []).push(item);
+        }
+    });
     keys.forEach(compoundKey => {
         const testInfo = allTestData[compoundKey];
         if (!testInfo) return;
-        const rt = testInfo.efficiencyStats?.runtime;
-        const rtDeltaPct = (rt && (rt.guidedMedianMs > 0 || rt.unguidedMedianMs > 0)) ? rt.medianDeltaPct : null;
-        const tok = testInfo.efficiencyStats?.tokens;
-        const tokDeltaPct = (tok && (tok.guidedTotalMedian > 0 || tok.unguidedTotalMedian > 0)) ? tok.uncachedMedianDeltaPct : null;
-        const earlyFailureRate = testInfo.earlyFailureRate || 0;
-        const uErr = testInfo.unguidedErrorRate ?? earlyFailureRate;
-        const gErr = testInfo.guidedErrorRate ?? earlyFailureRate;
-
-        /** @type {PivotItem | null} */
-        let item = null;
         if (onlyA11y) {
-            const pair = a11yPair(testInfo.a11yStats);
-            const pairUplift = pair ? upliftPp(pair.u, pair.g) : null;
-            if (pair && pairUplift !== null) {
-                item = { uplift: pairUplift, uRate: toRate(pair.u), gRate: toRate(pair.g), uErr, gErr, rtDeltaPct, tokDeltaPct };
-            }
             const bySub = testInfo.a11yStats?.bySubCategory;
             if (bySub) {
                 A11Y_SUBCATEGORIES.forEach(sub => {
@@ -1254,19 +1254,6 @@ function renderPivotInsights() {
                     });
                 });
             }
-        } else if (hasBothSides(testInfo.unguidedStats, testInfo.guidedStats)) {
-            item = {
-                uplift: Math.round(toRateExact(testInfo.guidedStats) - toRateExact(testInfo.unguidedStats)),
-                uRate: toRate(testInfo.unguidedStats),
-                gRate: toRate(testInfo.guidedStats),
-                uErr,
-                gErr,
-                rtDeltaPct,
-                tokDeltaPct
-            };
-        }
-        if (item && testInfo.model) {
-            (grouped.model[testInfo.model] ||= []).push(item);
         }
 
         const suiteGuides = testInfo.guides || {};
@@ -1420,7 +1407,7 @@ function renderPivotInsights() {
                 const fmtSignedPct = (/** @type {number} */ v) => v > 0 ? `+${v}%` : (v < 0 ? `−${Math.abs(v)}%` : '0%');
                 const parts = [
                     `${items.length} ${items.length === 1 ? 'run' : 'runs'}`,
-                    rtMed !== null ? `time ${fmtSignedPct(rtMed)}` : '',
+                    rtMed !== null ? `duration ${fmtSignedPct(rtMed)}` : '',
                     tokMed !== null ? `tokens ${fmtSignedPct(tokMed)}` : ''
                 ].filter(Boolean);
                 effSummary = `<span class="pivot-trials">${escapeHtml(parts.join(' · '))}</span>`;
@@ -1433,7 +1420,7 @@ function renderPivotInsights() {
             const errAttr = filterKey === 'model' && (avgUErr > 0 || avgGErr > 0) ? '1' : '';
             const staticRowCls = filterKey === 'dimension' ? ' is-static' : '';
             const barbellTrackHtml = `<span class="insight-dumbbell-track" aria-hidden="true"> ${uBandHtml} ${gBandHtml} <span class="connector${regressedCls}" style="left: ${Math.min(uRate, gRate)}%; width: ${Math.abs(gRate - uRate)}%;"></span> <span class="dot unguided" style="left: ${uRate}%;"></span> <span class="dot guided" style="left: ${gRate}%;"></span> </span>`;
-            const rateTextHtml = `<span class="rate-text"> <span class="visually-hidden">Median unguided </span>${uRate}% <span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span>${gRate}% <span class="delta ${medUplift > 0 ? 'up' : (medUplift < 0 ? 'down' : 'flat')}">(${sign}${medUplift} pp)</span> </span>`;
+            const rateTextHtml = `<span class="rate-text"> <span class="visually-hidden">Median unguided </span>${uRate}% <span class="rate-arrow" aria-hidden="true">→</span><span class="visually-hidden">, guided </span><span class="rate-g">${gRate}%</span> <span class="delta ${medUplift > 0 ? 'up' : (medUplift < 0 ? 'down' : 'flat')}">(${sign}${medUplift} pp)</span> </span>`;
             const barbellCellHtml = filterKey === 'dimension'
                 ? `<button type="button" class="pivot-barbell-btn" interestfor="barbell-tooltip" aria-label="${escapeHtml(`${displayTitle}: median unguided ${uRate}%, guided ${gRate}% (${sign}${medUplift} pp)`)}">${barbellTrackHtml}${rateTextHtml} </button>`
                 : `${barbellTrackHtml}${rateTextHtml}`;
@@ -1472,7 +1459,7 @@ function renderPivotInsights() {
             if (pSort === 'alpha') firstColAriaSort = ' aria-sort="ascending"';
             else secondColAriaSort = ` aria-sort="${pSort === 'uplift-asc' ? 'ascending' : 'descending'}"`;
         }
-        const table = `<table class="insights-table"> <caption class="visually-hidden">Median ${metricName.toLowerCase()} by ${captionNoun}, unguided vs. guided${showVariance ? ' (bands show one standard deviation across runs)' : ''}</caption> <thead class="${filterKey === 'guide' ? 'pivot-head' : 'visually-hidden'}"><tr><th scope="col"${firstColAriaSort}>${escapeHtml(colHeader)}</th><th scope="col"${secondColAriaSort}>${escapeHtml(metricName)} <span class="pivot-head-note">unguided → guided (median)</span></th></tr></thead> <tbody>${rowsHtml}</tbody> </table>`;
+        const table = `<table class="insights-table"> <caption class="visually-hidden">Median ${metricName.toLowerCase()} by ${captionNoun}, unguided vs. guided${showVariance ? ' (bands show one standard deviation across runs)' : ''}</caption> <thead class="visually-hidden"><tr><th scope="col"${firstColAriaSort}>${escapeHtml(colHeader)}</th><th scope="col"${secondColAriaSort}>${escapeHtml(metricName)} <span class="pivot-head-note">unguided → guided (median)</span></th></tr></thead> <tbody>${rowsHtml}</tbody> </table>`;
         const isExpanded = Boolean(expandedPanels[filterKey]);
         const scrollCls = `insights-table-scroll${filterKey === 'guide' ? ' pivot-scroll' : ''}${isExpanded ? ' is-expanded' : ''}`;
         const label = filterKey === 'guide' ? 'By guide table (scrolls vertically)' : `By ${captionNoun} table (scrolls vertically)`;
@@ -1499,10 +1486,13 @@ function renderPivotInsights() {
         return `<div class="insights-panel-header"> <h3 class="insights-panel-title"> <button type="button" class="insights-panel-title-btn anchor-${alphaHintId}" data-panel-title-sort="${panelKey}" aria-pressed="${sortMode === 'alpha'}" interestfor="${alphaHintId}">${titleHtml}</button> </h3> <button type="button" class="insights-uplift-sort-btn anchor-${upliftHintId}${isSorted ? ' is-sorted' : ''}" data-panel-uplift-sort="${panelKey}" aria-pressed="${isSorted}" interestfor="${upliftHintId}"> <span>Uplift<span class="visually-hidden">${sortStateLabel}</span></span> <span class="insights-uplift-sort-arrow" aria-hidden="true">${arrow}</span> </button> <div id="${alphaHintId}" popover="hint" class="hint-popover">Sort ${panelNoun} alphabetically</div> <div id="${upliftHintId}" popover="hint" class="hint-popover">${upliftHintText}</div> </div>`;
     };
 
-    /** @param {'model' | 'dimension' | 'guide'} panelKey */
-    const renderExpandRow = (panelKey) => {
+    const COLLAPSED_ROW_THRESHOLD = 6;
+    /** @param {'model' | 'dimension' | 'guide'} panelKey
+     * @param {number} rowCount */
+    const renderExpandRow = (panelKey, rowCount) => {
         const isExpanded = Boolean(expandedPanels[panelKey]);
-        return ` <div class="insights-expand-row"> <button type="button" class="insights-expand-btn${isExpanded ? ' is-expanded' : ''}" data-expand-panel="${panelKey}" aria-expanded="${isExpanded}"> <span>${isExpanded ? 'Collapse' : 'Expand'}</span> <svg class="insights-expand-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"> <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/> </svg> </button>
+        if (rowCount <= COLLAPSED_ROW_THRESHOLD && !isExpanded) return '';
+        return ` <div class="insights-expand-row"> <button type="button" class="insights-expand-btn${isExpanded ? ' is-expanded' : ''}" data-expand-panel="${panelKey}" aria-expanded="${isExpanded}"> <span>${isExpanded ? 'Collapse' : `Show all ${rowCount}`}</span> <svg class="insights-expand-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"> <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/> </svg> </button>
             </div>
         `;
     };
@@ -1516,43 +1506,46 @@ function renderPivotInsights() {
     const sortOptionsHtml = sortOptions.map(opt => `<option value="${opt.value}" ${currentGuideSort === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('');
     const dirLabel = currentGuideSortDir === 'asc' ? 'ascending' : 'descending';
     const dirArrow = currentGuideSortDir === 'asc' ? '↑' : '↓';
-    const modeSuffix = onlyA11y ? ' <span class="mode-badge-inline">Accessibility checks</span>' : '';
+    const dimensionCount = Object.keys(grouped.dimension).length;
+    const modelCount = Object.keys(grouped.model).length;
     const guideCount = Object.keys(grouped.guide).length;
     const runCount = keys.length;
-    const dimensionPanelHtml = onlyA11y && Object.keys(grouped.dimension).length > 0 ? `
+    const dimensionPanelHtml = onlyA11y && dimensionCount > 0 ? `
         <div class="insights-panel insights-dimension-panel" data-panel="dimension">
-            ${renderPanelHeader('dimension', `By Accessibility Dimension (${Object.keys(grouped.dimension).length})${modeSuffix}`)}
+            ${renderPanelHeader('dimension', `By accessibility dimension (${dimensionCount})`)}
             ${renderPivotTable(grouped.dimension, 'dimension')}
-            ${renderExpandRow('dimension')}
+            ${renderExpandRow('dimension', dimensionCount)}
         </div>`
         : '';
     container.innerHTML = `
-        <p class="insights-scope">Based on ${runCount} run${runCount === 1 ? '' : 's'} matching current filters (medians across runs).</p>
+        <div class="insights-scope-bar">
+            <p class="insights-scope">${runCount} ${runCount === 1 ? 'run' : 'runs'} · medians across runs</p>
+            <div class="guide-legend">
+                <span class="guide-legend-item">
+                    <span class="guide-legend-swatch unguided"><span class="guide-legend-tick"></span></span>
+                    <span class="guide-legend-label-u">Unguided</span>
+                </span>
+                <span class="guide-legend-vs" aria-hidden="true">→</span>
+                <span class="guide-legend-item">
+                    <span class="guide-legend-swatch guided"><span class="guide-legend-tick"></span></span>
+                    <strong>Guided</strong>
+                </span>
+                <button type="button" class="info-hint-btn anchor-hint-guide-legend" interestfor="hint-guide-legend" aria-label="About the bands and ticks">?</button>
+                <div id="hint-guide-legend" popover="hint" class="hint-popover">Shaded band shows ±1 standard deviation across runs; the vertical tick mark shows the median rate.</div>
+            </div>
+        </div>
         ${dimensionPanelHtml}
         <div class="insights-panel" data-panel="model">
-            ${renderPanelHeader('model', `By Model${modeSuffix}`)}
+            ${renderPanelHeader('model', `By model (${modelCount})`)}
             ${renderPivotTable(grouped.model, 'model')}
-            ${renderExpandRow('model')}
+            ${renderExpandRow('model', modelCount)}
         </div>
         <div class="insights-panel insights-panel-full insights-guide-drawer" data-panel="guide">
             <div class="insights-guide-body">
-                <div class="insights-panel-header-row">
-                    <h3 class="insights-panel-title" tabindex="-1">By Guide (${guideCount})${modeSuffix}</h3>
-                    <div class="guide-legend">
-                        <span class="guide-legend-item">
-                            <span class="guide-legend-swatch unguided"><span class="guide-legend-tick"></span></span>
-                            <span>Unguided</span>
-                        </span>
-                        <span class="guide-legend-vs">vs.</span>
-                        <span class="guide-legend-item">
-                            <span class="guide-legend-swatch guided"><span class="guide-legend-tick"></span></span>
-                            <span>Guided</span>
-                        </span>
-                        <button type="button" class="info-hint-btn anchor-hint-guide-legend" interestfor="hint-guide-legend" aria-label="About the bands and ticks">?</button>
-                        <div id="hint-guide-legend" popover="hint" class="hint-popover">Shaded band shows ±1 standard deviation across runs; the vertical tick mark shows the median rate.</div>
-                    </div>
+                <div class="insights-panel-header">
+                    <h3 class="insights-panel-title" tabindex="-1">By guide (${guideCount})</h3>
                     <div class="guide-sort-controls">
-                        <label for="guide-sort-select" class="sort-label">Sort by:</label>
+                        <label for="guide-sort-select" class="sort-label">Sort</label>
                         <div class="sort-combined-control">
                             <div class="sort-select-pill">
                                 <select id="guide-sort-select" class="sort-select">${sortOptionsHtml}</select>
@@ -1568,7 +1561,7 @@ function renderPivotInsights() {
                     </div>
                 </div>
                 ${renderPivotTable(grouped.guide, 'guide')}
-                ${renderExpandRow('guide')}
+                ${renderExpandRow('guide', guideCount)}
             </div>
         </div>
     `;
@@ -1633,7 +1626,7 @@ function renderPivotInsights() {
 
 /**
  * Toggles one of the header filters from a pivot row (click again to clear).
- * @param {'agent' | 'serving' | 'model'} filterKey
+ * @param {'agent' | 'model'} filterKey
  * @param {string} value
  */
 function setInsightFilter(filterKey, value) {

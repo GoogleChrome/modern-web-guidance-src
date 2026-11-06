@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { resolveMwgrcPath, readMwgrc, writeMwgrc } from './mwgrc.ts';
+import { resolveMwgrcPath, readMwgrc, writeMwgrc, normalizeBaselineTarget } from './mwgrc.ts';
 
 describe('mwgrc configuration utility', () => {
   let tempDir: string;
@@ -42,6 +42,13 @@ describe('mwgrc configuration utility', () => {
       existingProp: 'hello',
       allowOriginTrials: true,
     });
+
+    writeMwgrc({ allowVolatileFeatures: true }, subDir);
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(writtenPath, 'utf8')), {
+      existingProp: 'hello',
+      allowOriginTrials: true,
+      allowVolatileFeatures: true,
+    });
     assert.deepStrictEqual(JSON.parse(fs.readFileSync(ancestorMwgrc, 'utf8')), {
       allowOriginTrials: false,
       ancestor: true,
@@ -70,5 +77,37 @@ describe('mwgrc configuration utility', () => {
         /Invalid \.mwgrc at .*: expected a JSON object/
       );
     }
+  });
+
+  test('resolveMwgrcPath falls back to HOME/.mwgrc when invoked outside any project or git repo', () => {
+    const fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'mwgrc-home-'));
+    const prevHome = process.env.HOME;
+    try {
+      const homeConfig = path.join(fakeHome, '.mwgrc');
+      fs.writeFileSync(homeConfig, JSON.stringify({ baseline: 'limited' }));
+      process.env.HOME = fakeHome;
+
+      assert.strictEqual(resolveMwgrcPath(tempDir), homeConfig);
+      assert.deepStrictEqual(readMwgrc(tempDir), { baseline: 'limited' });
+    } finally {
+      if (prevHome === undefined) delete process.env.HOME;
+      else process.env.HOME = prevHome;
+      fs.rmSync(fakeHome, { recursive: true, force: true });
+    }
+  });
+
+  test('normalizeBaselineTarget normalizes supported targets and rejects invalid inputs', () => {
+    assert.strictEqual(normalizeBaselineTarget('widely'), 'widely');
+    assert.strictEqual(normalizeBaselineTarget('Baseline Widely available'), 'widely');
+    assert.strictEqual(normalizeBaselineTarget('newly'), 'newly');
+    assert.strictEqual(normalizeBaselineTarget('Baseline'), 'newly');
+    assert.strictEqual(normalizeBaselineTarget('Baseline Newly available'), 'newly');
+    assert.strictEqual(normalizeBaselineTarget('limited'), 'limited');
+    assert.strictEqual(normalizeBaselineTarget('Limited availability'), 'limited');
+    assert.strictEqual(normalizeBaselineTarget('2024'), '2024');
+    assert.strictEqual(normalizeBaselineTarget('Baseline 2024'), '2024');
+    assert.strictEqual(normalizeBaselineTarget(''), undefined);
+    assert.strictEqual(normalizeBaselineTarget('invalid'), undefined);
+    assert.strictEqual(normalizeBaselineTarget(undefined), undefined);
   });
 });

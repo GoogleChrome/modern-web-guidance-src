@@ -257,7 +257,7 @@ const server = http.createServer(async (req, res) => {
     try {
       if (fs.existsSync(localSuitesDir)) {
         const dirs = fs.readdirSync(localSuitesDir, { withFileTypes: true })
-          .filter(dirent => dirent.isDirectory() && dirent.name !== 'single_task')
+          .filter(dirent => (dirent.isDirectory() || dirent.isSymbolicLink()) && dirent.name !== 'single_task')
           .map(dirent => dirent.name);
         
         dirs.forEach(d => {
@@ -299,7 +299,7 @@ const server = http.createServer(async (req, res) => {
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
       const grouped = {}; // categoryName -> guideName -> [tasks]
-      
+
       for (const [key, info] of taskMap.entries()) {
         const [guide, task] = key.split('/');
         const category = (info && info.guideDir)
@@ -309,7 +309,7 @@ const server = http.createServer(async (req, res) => {
         if (!grouped[category][guide]) grouped[category][guide] = [];
         grouped[category][guide].push(task);
       }
-      
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ guides: grouped }));
     } catch (e) {

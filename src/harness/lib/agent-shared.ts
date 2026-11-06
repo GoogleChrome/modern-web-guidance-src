@@ -2,17 +2,21 @@ import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents, type SuiteConfig } from '../config.ts';
+import { DETECTED_AGENT_ENV_VARS, PI_AGENT_PATH_PATTERN } from '../../cli/telemetry/detect-agent.ts';
 import { ZERO_PASSRATE_PATCH_FILE } from '../../core/guide-validation.ts';
+import { DEFAULT_GUIDED_MWGRC } from '../../core/feature-gates.ts';
 import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
+import { normalizeBaselineTarget, type MwgConfig } from '../../core/mwgrc.ts';
 import { rootDir, guidesDir } from '../../core/paths.ts';
 import { capturePatchFromGit, initGitRepo } from '../../core/patch-utils.ts';
+import { gitExec } from '../../core/git-utils.ts';
 import { buildSandboxPolicy, wrapCommandInSandbox } from './sandbox.ts';
 
 import { setupGeminiCliCredentials, getGeminiCliCommandAndArgs } from '../agents/gemini-cli-agent.ts';
 import { setupJetskiCliCredentials, getJetskiCliCommandAndArgs } from '../agents/jetski-cli-agent.ts';
 import { setupClaudeCodeCredentials, getClaudeCodeCommandAndArgs } from '../agents/claude-code-agent.ts';
 import { setupCodexCliCredentials, getCodexCliCommandAndArgs } from '../agents/codex-cli-agent.ts';
-import { setupPiCredentials, getPiCommandAndArgs } from '../agents/pi-agent.ts';
+import { setupPiCredentials, getPiCommandAndArgs, getPiEnvOverrides } from '../agents/pi-agent.ts';
 import { setupAntigravityCliCredentials, getAntigravityCliCommandAndArgs } from '../agents/antigravity-cli-agent.ts';
 
 export function isNodeError(err: unknown): err is NodeJS.ErrnoException {
@@ -39,7 +43,11 @@ export function setupAgentCredentials(agent: Agents, tempHome: string): void {
   }
 }
 
-export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command: string; commandArgs: string[] } {
+export function getAgentCommandAndArgs(
+  agent: Agents,
+  prompt: string,
+  homeDir?: string,
+): { command: string; commandArgs: string[]; envOverrides?: NodeJS.ProcessEnv } {
   switch (agent) {
     case Agents.JETSKI_CLI:
       return getJetskiCliCommandAndArgs(prompt);
@@ -50,7 +58,7 @@ export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command
     case Agents.CODEX_CLI:
       return getCodexCliCommandAndArgs(prompt);
     case Agents.PI:
-      return getPiCommandAndArgs(prompt);
+      return { ...getPiCommandAndArgs(prompt), envOverrides: getPiEnvOverrides(homeDir) };
     case Agents.ANTIGRAVITY_CLI:
       return getAntigravityCliCommandAndArgs(prompt);
     default:
@@ -463,15 +471,25 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
     execSync(`cp -R "${templateDir}" "${homeDir}/"`);
   }
 
-  // Guided sandboxes are pre-opted-in so OT guides can be retrieved; .mwgrc must land in the
+  // Guided sandboxes are pre-opted-in so gated guides can be retrieved; .mwgrc must land in the
   // root commit so it stays out of agent.patch (suite templates arrive with .git already).
+  // Also write to homeDir so agents that `cd /tmp` before running `npx modern-web-guidance`
+  // still resolve the sandbox's .mwgrc via the HOME fallback.
   if (runType === 'guided') {
-    fs.writeFileSync(path.join(workDir, '.mwgrc'), JSON.stringify({ allowOriginTrials: true }, null, 2) + '\n', 'utf8');
+    const mwgConfig: MwgConfig = { ...DEFAULT_GUIDED_MWGRC };
+    const normalizedBaseline = normalizeBaselineTarget(process.env.BASELINE_TARGET);
+    if (normalizedBaseline && normalizedBaseline !== 'widely') {
+      mwgConfig.baseline = normalizedBaseline;
+    }
+    const serialized = JSON.stringify(mwgConfig, null, 2) + '\n';
+    fs.writeFileSync(path.join(workDir, '.mwgrc'), serialized, 'utf8');
+    fs.writeFileSync(path.join(homeDir, '.mwgrc'), serialized, 'utf8');
   }
   if (!fs.existsSync(path.join(workDir, '.git'))) {
     initGitRepo(workDir);
   } else if (runType === 'guided') {
-    execSync('git add .mwgrc && git commit -q --amend --no-edit', { cwd: workDir, stdio: 'ignore' });
+    gitExec(['add', '.mwgrc'], { cwd: workDir, isolated: true, stdio: 'ignore' });
+    gitExec(['commit', '-q', '--amend', '--no-edit'], { cwd: workDir, isolated: true, stdio: 'ignore' });
   }
   return workDir;
 }
@@ -589,6 +607,74 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
   }
 }
 
+const STRIPPED_ENV_FRAGMENTS = [
+  // Package manager & guidance eval harness internals
+  'npm_',
+  'PNPM_',
+  'pnpm_',
+  'GD_SUITE_CONFIG$',
+  'MODERN_WEB_LOG_DIR$',
+  'BASELINE_TARGET$',
+  'INIT_CWD$',
+  'NODE_PATH$',
+  'OLDPWD$',
+  // Non-detection session & prefix markers (exact detection vars come from DETECTED_AGENT_ENV_VARS;
+  // preserve config vars like CLAUDE_CODE_USE_VERTEX, GEMINI_CLI_TRUST_WORKSPACE, ANTIGRAVITY_GCP_PROJECT)
+  'INVOKER_INFO_',
+  'ANTIGRAVITY_(?:AGENTAPI_EXE|APP_DATA_DIR|CONVERSATION_ID|CSRF_TOKEN|LS_ADDRESS|LS_VERSION|PROJECT_ID|SOURCE_METADATA|TRAJECTORY_ID)$',
+  'CLAUDE_CODE_(?:ACTION$|AGENT_NAME$|CHILD_SESSION|ENTRYPOINT$|PARENT_SESSION_ID$|SESSION_|TEAM_NAME$)',
+  'CLAUDE_AGENT_SDK_',
+  'CODEX_HOME$',
+  'CURSOR_TRACE_ID$',
+  'GEMINI_CLI_NO_RELAUNCH$',
+  'GROK_PLUGIN_',
+  'KIMI_PLUGIN_',
+  'PI_CODING_AGENT_',
+];
+
+const HARNESS_STRIPPED_ENV_PATTERN = new RegExp(`^(?:${STRIPPED_ENV_FRAGMENTS.join('|')})`);
+
+/**
+ * Strips package-manager, harness-internal, and host AI-agent session markers before
+ * spawning child agent processes while preserving provider and harness config variables.
+ */
+export function sanitizeAgentChildEnv(
+  sourceEnv: NodeJS.ProcessEnv = process.env,
+  overrides?: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv {
+  const sanitized: NodeJS.ProcessEnv = {};
+
+  for (const [key, value] of Object.entries(sourceEnv)) {
+    if (value === undefined) continue;
+    if (DETECTED_AGENT_ENV_VARS.has(key) || HARNESS_STRIPPED_ENV_PATTERN.test(key)) continue;
+    if (key === 'TERM_PROGRAM' && /kiro/i.test(value)) continue;
+    if (key.toUpperCase() === 'PATH') {
+      const cleaned = value
+        .split(path.delimiter)
+        .filter(entry => entry && !PI_AGENT_PATH_PATTERN.test(entry))
+        .join(path.delimiter);
+      sanitized.PATH = sanitized.PATH && cleaned
+        ? `${sanitized.PATH}${path.delimiter}${cleaned}`
+        : (sanitized.PATH || cleaned);
+      continue;
+    }
+    sanitized[key] = value;
+  }
+
+  if (overrides) {
+    for (const [key, value] of Object.entries(overrides)) {
+      const targetKey = key.toUpperCase() === 'PATH' ? 'PATH' : key;
+      if (value === undefined) {
+        delete sanitized[targetKey];
+      } else {
+        sanitized[targetKey] = value;
+      }
+    }
+  }
+
+  return sanitized;
+}
+
 /**
  * Runs a CLI agent command, capturing output to the terminal and to log files.
  * @param command The binary to run
@@ -597,6 +683,7 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
  * @param targetDir The target directory for logs and results
  * @param agentName Name of the agent (for error messages)
  * @param runType The run type ('guided' or 'unguided'); controls what the sandbox exposes
+ * @param envOverrides Optional environment variables to set after sanitizing process.env
  */
 export async function runCliAgentCommand(
   command: string,
@@ -604,24 +691,21 @@ export async function runCliAgentCommand(
   workDir: string,
   targetDir: string,
   agentName: string,
-  runType: string
+  runType: string,
+  envOverrides?: NodeJS.ProcessEnv,
 ): Promise<void> {
   const tempHome = path.dirname(workDir);
   const shimDir = path.join(tempHome, '.gd-bin');
   const resultsRoot = path.join(rootDir, 'results');
-  const sanitizedEnv = Object.fromEntries(
-    Object.entries(process.env).filter(
-      ([k]) => !/^(npm_|PNPM_|pnpm_|GD_SUITE_CONFIG$|MODERN_WEB_LOG_DIR$|INIT_CWD$|NODE_PATH$|OLDPWD$)/.test(k)
-    )
-  ) as NodeJS.ProcessEnv;
+  const sanitizedEnv = sanitizeAgentChildEnv(process.env, envOverrides);
   sanitizedEnv.PWD = workDir;
   sanitizedEnv.PATH = [
     shimDir,
-    ...(process.env.PATH || '')
+    ...(sanitizedEnv.PATH || '')
       .split(path.delimiter)
       .filter(p => p && p !== targetDir && !p.startsWith(targetDir + path.sep) && !p.startsWith(resultsRoot + path.sep)),
   ].join(path.delimiter);
-  sanitizedEnv.PWTEST_CACHE_DIR = path.join(process.env.HOME || workDir, '.cache', 'playwright-transform');
+  sanitizedEnv.PWTEST_CACHE_DIR = path.join(sanitizedEnv.HOME || process.env.HOME || workDir, '.cache', 'playwright-transform');
 
   const isolatedLogPath = path.join(tempHome, MODERN_WEB_LOG_FILE);
   let stopWatchingMcpLog = () => {};
@@ -845,13 +929,15 @@ export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, pro
 export function getGraderScriptContent(
   targetDir: string,
   graderPath: string,
-  guideName: string
+  guideName: string,
+  baselineTarget?: string
 ): string {
   const runGraderModulePath = path.join(rootDir, 'src/grading/run-grader.ts');
   const targetFile = path.join(targetDir, 'index.html');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
   const agentPatch = path.join(targetDir, 'agent.patch');
   const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
+  const resolvedBaselineTarget = baselineTarget || 'widely';
 
   return `import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
@@ -863,9 +949,12 @@ async function run() {
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
-      'inherit',
-      patchFile,
-      zeroPassrateFile
+      {
+        stdio: 'inherit',
+        patchFile,
+        zeroPassrateFile,
+        baselineTarget: ${JSON.stringify(resolvedBaselineTarget)},
+      }
     );
     fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
   } catch (err) {
