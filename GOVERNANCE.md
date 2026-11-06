@@ -52,7 +52,7 @@ Content ATLs are appointed by the Owners based on domain expertise and active st
 
 ### Owners
 
-Owners govern the project in consultation with Content ATLs and Peers. Owners are responsible for overall project health, technical direction, repository infrastructure, CLI tooling (`gd`), serving distributions, and governance. The Owners group includes browser vendor representatives and independent web platform experts.
+Owners govern the project in consultation with Content ATLs and Peers. Owners oversee overall project health, technical direction, repository infrastructure, CLI tooling (`gd`), serving distributions, and governance. The Owners group includes browser vendor representatives and independent web platform experts.
 
 Owners:
 * Author guidance and contribute across the repository alongside Peers.
