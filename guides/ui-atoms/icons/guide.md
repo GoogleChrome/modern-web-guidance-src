@@ -25,28 +25,13 @@ Icon storage and rendering are separate choices. For example, an SVG sprite can 
 
 To decide, ask two questions. Does CSS need to pick or swap the icon (component defaults, state changes, theming)? If yes, use the CSS icon system. Do you need to reach inside the icon beyond color? If yes and you control the icon source, design the symbol with custom properties and use `<use>`; if you do not control the source, inline the SVG. Third-party icon sets rarely expose custom properties, so `<use>` against them gives you color and little else.
 
+Whichever method you choose, make sure that all icons have a contrast of at least 3:1 against their backgrounds in light and dark color schemes.
+
 ### Embedded or remote icons
 
 Both the CSS icon system and `<use>` can take icons from a data URI, an individual file, or a sprite. Embedding (data URIs or inline SVG) avoids a request and renders with the first paint, but bloats CSS or HTML and cannot be cached separately, so it suits a small set of icons that appear on every page. Individual files are cached independently and loaded on demand, at the cost of one request each. A sprite is one cacheable request for the whole set, but downloads every icon whether used or not, and `<use>` can only reference a sprite from the same origin. Prefer embedding for a handful of core icons and a sprite or individual files for larger sets.
 
 If a page renders thousands of icons at once, benchmark the actual page and assets. In a stress test, inline SVG had a small performance advantage at that scale, but results depend on the browser and implementation. [Cloud Four's SVG icon stress test](https://cloudfour.com/thinks/svg-icon-stress-test/)
-
-### Accessibility considerations
-
-Whichever icon technique you choose, make sure that:
-
-* All icons have a contrast of at least 3:1 against their backgrounds in light and dark color schemes.
-* Decorative icons, including those inside controls that already have an accessible name, are hidden from assistive technologies:
-  * Apply `aria-hidden="true"` to decorative SVGs.
-  * Icons inserted via pseudo-elements in CSS are already hidden from assistive technology by default.
-* Standalone non-interactive informative icons have a valid text alternative:
-  * For SVGs, apply `role="img"` and `aria-label` to the `<svg>` element, and use the `aria-label` attribute to provide a valid text alternative.
-  * For icons inserted via pseudo-elements in CSS, apply `role="img"` and `aria-label` to the HTML element that displays the icon.
-* Standalone interactive icons have a valid accessible name:
-  * For SVGs, give the container interactive element an accessible name with `aria-label`.
-  * For icons inserted via pseudo-elements in CSS, either:
-    * Give the container interactive element an accessible name with `aria-label` **or**
-    * Let the icon itself provide one (see Icon-Only Controls below).
 
 ## Primary Approach: CSS-Driven Icon Engine
 
