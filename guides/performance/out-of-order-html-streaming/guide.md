@@ -57,12 +57,12 @@ The browser looks for specific processing instructions to identify where content
 
 ```html
 <!-- A simple insertion point -->
-<div id="sidebar" aria-busy="true">
+<div id="sidebar">
   <?marker name="dynamic-comments">
 </div>
 
 <!-- A replacement range with loading state -->
-<main aria-busy="true">
+<main>
   <?start name="main-content">
     <div class="skeleton" role="status">Loading main content...</div>
   <?end>
