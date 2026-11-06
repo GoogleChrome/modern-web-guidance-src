@@ -146,14 +146,16 @@ progress.loading-spinner:indeterminate {
 
 #### Respecting Motion Preferences
 
-Users with motion sensitivities may find fast-spinning elements disorienting. Always respect the `prefers-reduced-motion` media query. Turn off both animations using `@media (prefers-reduced-motion: reduce)`, with the same selector as the spinner rule so that it overrides the spinner's `animation`, and keep a static arc in the spinner color so the spinner is still visible. The `<progress>` element's role and accessible name still tell assistive technologies that the process is active.
+Users with motion sensitivities may find fast-spinning elements disorienting. Always respect the `prefers-reduced-motion` media query. Set the internal `--_used-spinner-duration` property to override the user's `--spinner-duration` value, using the same selector as the spinner rule so that the override applies, and drop the dash animation so that only a slow rotation remains.
 
 ```css
 @media (prefers-reduced-motion: reduce) {
   progress.loading-spinner:indeterminate {
-    animation: none;
-    /* Shows a static arc while the animations are off, so the stopped
-       spinner is still visible */
+    /* Slow down the animation significantly rather than stopping it entirely,
+       so the user still knows that the process is active. */
+    --_used-spinner-duration: 6s;
+    /* Drops the dash animation, so the arc keeps a fixed length */
+    --progress-dash-animation: ;
     --arc-end: 158deg;
   }
 }

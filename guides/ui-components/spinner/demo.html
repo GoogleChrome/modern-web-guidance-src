@@ -173,9 +173,11 @@
 
         @media (prefers-reduced-motion: reduce) {
           progress.loading-spinner:indeterminate {
-            animation: none;
-            /* Shows a static arc while the animations are off, so the stopped
-               spinner is still visible */
+            /* Slow down the animation significantly rather than stopping it entirely,
+               so the user still knows that the process is active. */
+            --_used-spinner-duration: 6s;
+            /* Drops the dash animation, so the arc keeps a fixed length */
+            --progress-dash-animation: ;
             --arc-end: 158deg;
           }
         }
