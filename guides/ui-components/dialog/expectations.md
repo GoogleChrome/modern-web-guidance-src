@@ -2,7 +2,6 @@
 - A modal dialog is opened with `showModal()` or `command="show-modal"`, and `:modal` matches while it is open.
 - Focus returns to the invoking element when a modal dialog closes.
 - Pressing `Esc` closes an open modal dialog unless `closedby="none"` is set.
-- When the dialog has no unsaved changes, clicking the backdrop closes it.
 - A pointer press that starts inside the dialog and ends on the backdrop does not close it.
 - While the dialog has unsaved changes, it has `closedby="none"`.
 - While the dialog has unsaved changes, a cancel request leaves it open until the user confirms discarding them.
