@@ -7,33 +7,33 @@ web-feature-ids:
 
 # Improve next page load performance
 
-One of the most effective ways to improve multi-page application (MPA) navigation performance is to initiate loading the next page *before* the user finishes navigating to it, using the Speculation Rules API (`<script type="speculationrules">`).
+One of the most effective ways to improve page load performance for users navigating a site is to initiate loading the next page they're about to visit *before* they visit it. This can be done through a technique called speculative loading using the Speculation Rules API.
 
 > [!IMPORTANT]
 > **Default starting configuration:** Unless a developer explicitly requests `prerender` or a more aggressive `eagerness` setting, **start with `prefetch` using `"eagerness": "moderate"`** and a `where` document rule that excludes state-changing routes. This delivers most of the navigation speed benefit while avoiding excessive bandwidth use, server load, and analytics or client-state side effects.
 
 ## How it works
 
-Speculative loading uses JSON rules inside a `<script type="speculationrules">` element to tell the browser which same-origin navigations can be prepared ahead of time:
+Speculative loading works by using JSON-based speculation rules to tell the browser about links that can be prefetched or prerendered improving page load performance when user clicks on them.
 
 - **`prefetch` (Recommended default):** Fetches only the target HTML document response ahead of time without requesting subresources or executing JavaScript. Because no scripts run until the user actually navigates, `prefetch` will not trigger premature analytics pageviews, third-party beacons, or client-side state mutations.
 - **`prerender` (Opt-in progression):** Fetches the HTML document, loads subresources, executes JavaScript, and renders the page in a hidden background tab for near-instant activation. Because the page executes before the user visits it, `prerender` consumes significantly more client and server resources and will fire analytics or stateful scripts early unless they are explicitly deferred until activation.
 
-Rules match links in one of two ways (the browser infers the rule type automatically, so **do not** include the legacy `"source"` property):
+The rules can either be a hardcoded list of URLs a `urls` key (known as a list rule), or with a `where` key containing a set of href and CSS selectors used to find links on the page (known as a `document` rule).
 
-- **Document rules (`"where"`):** Match `<a href>` and `<area href>` elements in the current document using URL pattern conditions (`"href_matches"`) and CSS selector conditions (`"selector_matches"`), combined with `"and"`, `"or"`, and `"not"`.
-- **List rules (`"urls"`):** Specify an explicit array of URL strings to speculate.
+Rules can also include an optional `eagerness` property that specifies when the page should be prefetched or prerendered. The `eagerness` property can be set to `immediate`, `eager`, `moderate`, or `conservative`. `immediate` speculates as soon as possible, while the others wait for user signals such as hovering for a short period, for a longer period, or starting to click on the page respectively.
 
-Each rule takes an optional `"eagerness"` property that controls when speculation triggers. Note that **the default `"eagerness"` differs by rule type**:
-
-| Eagerness | When it triggers | Default for | Recommended usage |
-|---|---|---|---|
-| `"moderate"` | On clear user intent (such as hovering over a link for ~200ms on desktop or pointer/viewport signals on mobile) | — | **Recommended default** for site-wide `prefetch` document rules and general `urls` list rules |
-| `"conservative"` | On pointer or touch down (`pointerdown` / `mousedown`) | `where` document rules | Good for higher-cost `prerender` document rules or resource-constrained sites |
-| `"eager"` | As soon as the browser observes minimal intent (before hover) | — | Only for a small, targeted set of high-probability links; **never** on site-wide `"href_matches": "/*"` rules |
-| `"immediate"` | Immediately as soon as the rule is parsed | `urls` list rules | Only for a very small list (typically 1–3 URLs, and never more than 10) of near-certain next pages |
+Rules can be combined with different eagerness settings to prefetch eagerly and then prerender when the user interacts more.
 
 ## When to use it
+
+Speculative loading is especially useful for static pages, where the content is not likely to change often, and where pages are cheaper to produce—especially if cached at the edge. It can also be used for dynamic pages, but it is important to be careful about the potential for stale content.
+
+Speculative loading is typically used for same-origin links, though more advanced options allow for some cross-origin speculation. This guide concentrates on the more-common same-origin use case.
+
+More eager speculative loading is a good choice for pages that are likely to be visited next, such as a headline article or the next page in a stepped process like a learning a course.
+
+Less eager speculative loading is a good choice when it is less obvious what the user will do next, when there are many links on the page, each equally likely to be visited. By waiting for more signals, such as hovering, or starting to click on the page, you can get a head-start on the next page and improve the user experience, even if it is not fully prefetched or prerendered.
 
 - **Start with `prefetch` at `"eagerness": "moderate"`:** For most MPA sites (including static sites, content sites, and server-rendered frameworks like Astro), a single document rule that prefetches same-origin links with `"eagerness": "moderate"` is the safest and most effective baseline. Because `where` document rules default to `"conservative"` when `"eagerness"` is omitted, always set `"eagerness": "moderate"` explicitly.
 - **Consider `prerender` only as a second stage:** Upgrade to `prerender` only when the developer explicitly requests it or after verifying that:
@@ -43,128 +43,94 @@ Each rule takes an optional `"eagerness"` property that controls when speculatio
 
 ## How to use it
 
-Include a `<script type="speculationrules">` block in the `<head>` or `<body>` (for example, in your site's shared layout component). Use the `"tag"` property (at the top level or per rule) so the browser sends `Sec-Speculation-Tags` in speculative request headers for server-side monitoring.
+Speculation rules have a JSON-based format and can be included in a `<script type="speculationrules">` tag. The rules can be included in the `<head>` or `<body>` of the document, or can be dynamically added using JavaScript.
 
-### Recommended default: Document rule for prefetching same-origin links with `moderate` eagerness
+A `tag` can also be used, either at a global level or on a per-rule basis. When set, this tag will be included in the `Sec-Speculation-Tags` header, and allows you to identify server-side which speculations were made.
 
-Use this pattern as the default implementation when asked to improve cross-page load performance:
+### Example of a simple URL list rule for prefetching predefined URLs
 
 ```html
-<!-- Recommended default: prefetch same-origin links on hover ("moderate" eagerness).
-     Adapt the excluded paths and selectors below to match your site's stateful routes. -->
 <script type="speculationrules">
   {
-    "tag": "default-page-prefetch",
+    "tag": "product-page-speculations",
     "prefetch": [
       {
-        "where": {
-          "and": [
-            { "href_matches": "/*" },
-            { "not": { "href_matches": "/logout" } },
-            { "not": { "href_matches": "/cart/*" } },
-            { "not": { "href_matches": "/*\\?*(^|&)add-to-cart=*" } },
-            { "not": { "selector_matches": ".no-prefetch" } },
-            { "not": { "selector_matches": "[rel~=nofollow]" } }
-          ]
-        },
-        "eagerness": "moderate"
+        "urls": ["/product/1", "/product/2", "/product/3"]
       }
     ]
   }
 </script>
 ```
 
-### URL list rule for prefetching specific known next pages
-
-When a page has a small, predictable set of likely next destinations (such as the next step in a multi-step flow or a featured article), use a `"urls"` list rule. Always specify `"eagerness"` explicitly on list rules—omitting it defaults to `"immediate"`:
+### Example of a simple document rule for prerendering all same-origin links on a page
 
 ```html
-<!-- Explicitly set "eagerness": "moderate" (or "immediate" for 1-3 near-certain next steps),
-     because "urls" list rules otherwise default to "immediate". Example URLs shown. -->
 <script type="speculationrules">
   {
-    "tag": "next-step-prefetch",
-    "prefetch": [
-      {
-        "urls": ["/onboarding/step-2", "/onboarding/faq"],
-        "eagerness": "moderate"
-      }
-    ]
+    "tag": "all-links-speculations",
+    "prerender": [{
+      "where": { "href_matches": "/*" }
+    }]
   }
 </script>
 ```
 
-### Opt-in progression: Adding `prerender` (`moderate` or `conservative` eagerness)
-
-If the developer explicitly requests prerendering and the site's analytics and scripts are prerender-aware, opt into `"prerender"` using `"eagerness": "moderate"` for targeted high-value links (for example, matching a selector like `.prerender-link`) while keeping `"prefetch"` with `"eagerness": "moderate"` as the default for general links—or use `"eagerness": "conservative"` (on pointerdown) when layering `"prerender"` across the same broad link set. Do not combine `"eager"` prefetching with `"moderate"` prerendering across all links (`"href_matches": "/*"`):
+### Example of a complex document rule for prerendering links with exclusions for interactive sites
 
 ```html
-<!-- Advanced opt-in: prefetch general same-origin links on hover ("moderate"),
-     and prerender opted-in links (.prerender-link) on hover ("moderate").
-     Only use prerender after ensuring analytics and stateful scripts handle document.prerendering. -->
 <script type="speculationrules">
   {
-    "prefetch": [
-      {
-        "tag": "default-page-prefetch",
-        "where": {
-          "and": [
-            { "href_matches": "/*" },
-            { "not": { "href_matches": "/logout" } },
-            { "not": { "href_matches": "/cart/*" } },
-            { "not": { "selector_matches": ".no-prefetch" } },
-            { "not": { "selector_matches": ".prerender-link" } },
-            { "not": { "selector_matches": "[rel~=nofollow]" } }
-          ]
-        },
-        "eagerness": "moderate"
+    "tag": "speculations-with-exclusions",
+    "prerender": [{
+      "where": {
+        "and": [
+          { "href_matches": "/*" },
+          { "not": {"href_matches": "/wp-admin"}},
+          { "not": {"href_matches": "/*\\?*(^|&)add-to-cart=*"}},
+          { "not": {"selector_matches": ".do-not-prerender"}},
+          { "not": {"selector_matches": "[rel~=nofollow]"}}
+        ]
       }
-    ],
-    "prerender": [
-      {
-        "tag": "opt-in-prerender",
-        "where": {
-          "selector_matches": ".prerender-link"
-        },
-        "eagerness": "moderate"
-      }
-    ]
+    }]
   }
 </script>
 ```
 
-### Deferring analytics and side effects when using `prerender`
+### Example of a mixed rule set
 
-When `prerender` is enabled, JavaScript executes while the page is still in a hidden background state (`document.prerendering === true`). Gate analytics pageviews and side-effectful logic on the `prerenderingchange` event so metrics only record pages the user actually views:
+This example shows a rule set that prefetches all links eagerly, and then goes further than this to prerender those same links when it gets more signals with `moderate` eagerness.
 
-```javascript
-// Defer analytics and side effects until a prerendered page is activated by the user
-function recordPageView() {
-  // Replace with your site's analytics call
-  navigator.sendBeacon('/analytics', JSON.stringify({ url: location.href }));
-}
-
-if (document.prerendering) {
-  document.addEventListener('prerenderingchange', () => recordPageView(), { once: true });
-} else {
-  recordPageView();
-}
+```html
+<script type="speculationrules">
+  {
+    "prefetch": [{
+      "tag": "prefetch-speculations",
+      "where": { "href_matches": "/*" },
+      "eagerness": "eager"
+    }],
+    "prerender": [{
+      "tag": "prerender-speculations",
+      "where": { "href_matches": "/*" },
+      "eagerness": "moderate"
+    }]
+  }
+</script>
 ```
 
 ## Best Practices
 
-- **DO** default to `prefetch` with `"eagerness": "moderate"` when adding speculative loading to a site. Treat `prerender` as a later-stage opt-in after accounting for analytics and resource implications.
-- **DO** prefer `where` document rules over `urls` list rules for general site navigation so a single shared rule covers same-origin links dynamically.
-- **DO** set `"eagerness"` explicitly on every rule rather than relying on browser defaults (`"where"` rules default to `"conservative"`, while `"urls"` rules default to `"immediate"`).
-- **DO** exclude URLs that trigger server or session state changes (such as `/logout`, `/add-to-cart`, or account actions) and opt-out selectors (`[rel~=nofollow]`, `.no-prefetch`) from document rules using `"not"` conditions.
-- **DO** include a `"tag"` property so speculative requests include the `Sec-Speculation-Tags` HTTP header for server-side observability.
-- **DO** gate analytics pageviews and client-side side effects on `document.prerendering` and the `prerenderingchange` event whenever `prerender` is used.
-- **DO NOT** use `"eagerness": "eager"` or `"eagerness": "immediate"` on broad document rules (`"href_matches": "/*"`). Browsers cap non-eager speculations (such as `moderate` and `conservative`) at 2 concurrent speculations on a FIFO basis, whereas `immediate` and `eager` have higher limits (up to 10) and should only be used for a small number of high-certainty URLs.
-- **DO NOT** include the deprecated `"source"` property (`"source": "list"` or `"source": "document"`); it is optional in the specification and automatically inferred from `"urls"` or `"where"`.
-- **DO NOT** use speculation rules for client-side routed Single Page Applications (SPAs). Speculation rules only accelerate full-document multi-page navigations (MPAs).
+- **DO** use speculation rules to prefetch and prerender pages that the user is likely to visit next.
+- **DO** use speculation rules for static sites, where the content is not likely to change often, and where pages are cheaper to produce—especially if cached at the edge.
+- **DO** take more care when using speculation rules for dynamic pages, where the content is more likely to change often, may become out of date, and where pages are more expensive to produce.
+- **DO** prefer document rules over list rules, as they are more flexible, allow the same rule to be shared across multiple pages, and can be used to prefetch and prerender pages that are not known in advance.
+- **DO** consider the trade-offs between prefetch and prerender, and choose the appropriate one for your use case. Prerender is more expensive than prefetch and can cause more unintended side effects in complex applications that display dynamic state, but provides a better user experience. Ask the developer for their preference if unsure.
+- **DO** consider the trade-offs between the different `eagerness` levels, and choose the appropriate one for your use case. More eager speculation provides a better user experience but uses more resources and can cause more unintended side effects in complex applications that display dynamic state. Ask the developer for their preference if unsure.
+- **DO NOT** overuse speculation rules, for example, to speculate every link on the page. Browsers have limits (2 speculations for non-eager speculations). `immediate` should only be used for a very small number of links.
+- **DO NOT** speculate URLs that likely trigger state changes, like `/logout` or `/add-to-cart`, and explicitly exclude them from your speculation rules if they are likely to be included in document rules.
+- **DO NOT** use speculation rules on Single Page Applications (SPAs). Speculation rules are designed for multi-page applications (MPAs) where the browser navigates to a new document on each navigation. In SPAs, the browser does not navigate to a new document on each navigation, so speculation rules will not work as expected.
 
 ## Browser support and fallback strategies
 
 {{ BASELINE_STATUS("speculation-rules") }}
 
-Speculative loading is a progressive enhancement. If your Baseline target includes browsers that do not support the Speculation Rules API, no polyfill or JavaScript fallback is needed: unsupported browsers safely ignore `<script type="speculationrules">` tags and perform standard document navigations when links are clicked.
+However, speculative loading is a progressive enhancement. It is perfectly safe to use as an enhancement, and is highly recommended given the potential performance benefits. If a browser does not support speculation rules, it will simply ignore them.
