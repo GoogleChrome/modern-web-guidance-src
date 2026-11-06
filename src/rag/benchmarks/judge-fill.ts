@@ -9,7 +9,7 @@ import { outDir, rootDir } from "../../core/paths.ts";
 import { isEnoent } from "../../harness/lib/agent-shared.ts";
 import { buildBm25Index, rankBm25 } from "../bm25.ts";
 import { dotProduct, type EmbedderLike, type UseCaseVector } from "../search.ts";
-import { TfjsEmbedder } from "../tfjs-embedder.ts";
+import { StaticEmbedder } from "../static-embedder.ts";
 import { computeEmbedderHash } from "./bench-rag.ts";
 import {
   isRecord,
@@ -187,7 +187,7 @@ export async function embedQueriesWithCache(
   embedder?: EmbedderLike
 ): Promise<Map<string, number[]>> {
   const cache = readEmbeddingCache(cachePath);
-  const actualEmbedder = embedder ?? TfjsEmbedder.getInstance();
+  const actualEmbedder = embedder ?? StaticEmbedder.getInstance();
   const result = new Map<string, number[]>();
   let dirty = false;
 

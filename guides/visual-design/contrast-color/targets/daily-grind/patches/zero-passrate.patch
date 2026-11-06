@@ -1,0 +1,12 @@
+diff --git a/index.html b/index.html
+index 66c9173..1bacf96 100644
+--- a/index.html
++++ b/index.html
+@@ -123,7 +123,6 @@
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+-      color: white;
+       padding: 10px 20px;
+       text-decoration: none;
+       border-radius: 5px;

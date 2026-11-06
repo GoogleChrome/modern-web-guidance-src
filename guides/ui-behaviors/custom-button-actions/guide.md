@@ -83,6 +83,13 @@ const commandRegistry = {
 *   **Shadow roots**: If the target may be in a shadow root, use `event.composedPath()[0]` instead of `event.target`.
 *   **Accessibility**: Custom commands have no inherent semantics, and you must explicitly apply any states.
 
+## Accessibility considerations
+
+* If the button displays additional content, use the `aria-expanded` attribute, set to `aria-expanded="false"` by default and `aria-expanded="true"` when the accompanying content is displayed
+* If the button facilitates an interaction itself (examples include toggle buttons which can play and pause, volume buttons which can mute and unmute), use the `aria-pressed` attribute, set to `aria-pressed="false"` when inactive, and `aria-pressed="true"` when active
+* If the button opens an element with a role of either `menu`, `listbox`, `tree`, `grid`, or `dialog`, then the control must have an `aria-haspopup` attribute, with a value set to the role of the element that it opens
+* If the button becomes disabled on activation, instead of using `disabled`, use `aria-disabled="true"` so that there is no loss of focus
+
 ## Fallback strategies
 
 {{ BASELINE_STATUS("invoker-commands") }}
@@ -96,6 +103,8 @@ This polyfill fully supports custom actions (starting with `--`) and dispatches 
 For the best performance, you should only load the polyfill if the browser doesn't support the API natively. This saves bandwidth and reduces script execution time for users on modern browsers.
 
 **NOTE:** This polyfill does not manage ARIA states (like `aria-pressed` or `aria-expanded`) for custom commands. You must manually synchronize these states in your event listener to ensure your site is accessible.
+
+#### Conditionally load the Invoker Commands polyfill
 
 ```javascript
 // 1. Conditionally load the polyfill
@@ -111,7 +120,11 @@ if (!hasNativeSupport) {
     }
   })();
 }
+```
 
+#### Manually manage ARIA states in your listener
+
+```javascript
 // 2. Manually manage ARIA states in your listener
 document.getElementById('action-target').addEventListener('command', (event) => {
   const command = event.command;
@@ -148,7 +161,6 @@ if (!globalThis.CommandEvent) {
       this.command = command;
     }
   }
-}
 
 // 3. The fallback: Dispatch events manually if native support is missing
   document.addEventListener('click', (event) => {
@@ -165,6 +177,7 @@ if (!globalThis.CommandEvent) {
       }));
     }
   });
+}
 
 // 4. **Mandatory:** Register the unified listener directly on the target element
 document.getElementById('action-target').addEventListener('command', (event) => {

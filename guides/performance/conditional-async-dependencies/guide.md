@@ -47,32 +47,34 @@ if (myPopover) {
 }
 ```
 
-### Avoiding the Safari top-level `await` bug
+### Sequencing module imports and avoiding the pre-Safari 27 bug
 
-**MANDATORY:** You must structure your imports carefully to avoid a bug where top-level await doesn't behave as expected in Webkit, which occurs when multiple modules *simultaneously* import a module that contains a top-level `await`:
+**MANDATORY:** You must structure your module graph so the top-level `await` module is imported from a single entry point and completes before downstream modules evaluate:
+
+* **DO NOT place sibling static imports in an entry file** (for example, `import './conditionally-load-polyfill.js'; import './app.js';`). Per the ECMAScript module evaluation specification, top-level `await` only suspends the parent module that imports it—not sibling static imports—so `./app.js` will evaluate concurrently in all browsers before the polyfill finishes loading.
+* **DO NOT import the top-level `await` module from multiple sibling modules simultaneously** (for example, having both `a.js` and `b.js` statically import `./conditionally-load-polyfill.js`). While [Safari 27 fixed WebKit's module loader](https://webkit.org/blog/18227/fixing-top-level-await-in-safari/) to support concurrent imports of top-level `await` modules per spec, Safari 15–26.6 fails when multiple modules simultaneously import a module containing a top-level `await` (see [MDN browser compatibility](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/await#browser_compatibility)).
+
+Instead, choose one of two patterns depending on your module structure:
+
+1. **Single entry module (shown in `main.js` above):** If your entry module runs the dependent initialization logic directly, statically import `./conditionally-load-polyfill.js` at the top of that module and run your code in its body.
+2. **Bootstrapping separate application modules:** If your entry module delegates to downstream application modules (such as `./app.js`), chain dynamic `import()` calls with top-level `await` so `./app.js` is only fetched and evaluated after the polyfill module resolves:
 
 ```javascript
-// DO NOT do this: importing the top-level await module from multiple sibling modules
-// simultaneously will crash in Safari.
-// 
-// a.js: import './conditionally-load-polyfill.js';
-// b.js: import './conditionally-load-polyfill.js';
-// main.js: import './a.js'; import './b.js'; // CRASH!
+// main.js
 
-// INSTEAD, guarantee a single entry point:
-// Import the top-level await module ONCE at the very top of your application tree.
-import './conditionally-load-polyfill.js';
-
-// Then import the rest of your application code, ensuring the await resolves first.
-import './app.js';
+// MANDATORY: Chain dynamic imports with top-level await when bootstrapping separate
+// application modules so './app.js' waits for the polyfill to finish loading.
+// DO NOT use sibling static imports (`import './conditionally-load-polyfill.js'; import './app.js';`),
+// which evaluate concurrently and execute './app.js' before the polyfill is ready.
+await import('./conditionally-load-polyfill.js');
+await import('./app.js');
 ```
 
 ### Fallback strategies
 
 {{ BASELINE_STATUS("top-level-await") }}
 
-Top-level `await` has been supported in all major browsers since 2021 (Chrome 89, Firefox 89, Safari 15). Because of this broad support, **you do not need to implement a fallback strategy for modern web applications.**
+While basic top-level `await` has been supported across major browsers since 2021 (Chrome 89, Edge 89, Firefox 89, and Safari 15), it only reached full spec compliance in [Safari 27](https://webkit.org/blog/18227/fixing-top-level-await-in-safari/) (see [MDN browser compatibility](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/await#browser_compatibility)).
 
-As long as you follow the guidance in the previous section to **avoid the Safari execution order bug**, you can safely rely on top-level `await` directly to manage your async dependencies.
-
-You only need to avoid top-level `await` and fall back to standard asynchronous functions or dynamic `import()` orchestration if your application is explicitly required to support legacy browsers released before 2021.
+* **Safari 15–26.6:** As long as you follow the single-entry-point pattern in the previous section so multiple sibling modules do not concurrently import the top-level `await` module, you can safely rely on top-level `await` without an additional fallback.
+* **Legacy browsers (pre-2021):** If your application must support browsers without any top-level `await` support, avoid top-level `await` and wrap your conditional `import()` orchestration in a standard `async` function or `.then()` promise chain.

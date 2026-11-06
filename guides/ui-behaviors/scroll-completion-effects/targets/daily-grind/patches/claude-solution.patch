@@ -1,0 +1,104 @@
+diff --git a/index.html b/index.html
+index 66c9173..342f089 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,20 @@
+       background: #3e2723;
+     }
+ 
++    section {
++      scroll-margin-top: 80px;
++      padding: 20px;
++      border-radius: 8px;
++      margin-bottom: 40px;
++      min-height: 60vh;
++      transition: background 0.4s, box-shadow 0.4s;
++    }
++
++    section.highlight {
++      background: #fff3e0;
++      box-shadow: 0 0 0 3px var(--accent);
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -160,9 +174,9 @@
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
+-      <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
++      <li><a href="/menu" data-scroll-target="menu">Menu</a></li>
++      <li><a href="/locations" data-scroll-target="locations">Locations</a></li>
++      <li><a href="/rewards" data-scroll-target="rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+       <li><a href="/logout" class="logout-link">Logout</a></li>
+     </ul>
+@@ -175,8 +189,8 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++    <section id="menu" aria-labelledby="menu-heading">
++      <h2 id="menu-heading" tabindex="-1" style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+@@ -195,6 +209,22 @@
+         </div>
+       </div>
+     </section>
++
++    <section id="locations" aria-labelledby="locations-heading">
++      <h2 id="locations-heading" tabindex="-1" style="text-align: center;">Our Locations</h2>
++      <div class="grid">
++        <div class="card"><h3>Downtown</h3><p>12 Main Street, open 6am&ndash;8pm.</p></div>
++        <div class="card"><h3>Riverside</h3><p>48 River Road, open 7am&ndash;6pm.</p></div>
++      </div>
++    </section>
++
++    <section id="rewards" aria-labelledby="rewards-heading">
++      <h2 id="rewards-heading" tabindex="-1" style="text-align: center;">Rewards</h2>
++      <div class="grid">
++        <div class="card"><h3>Earn Stars</h3><p>Collect a star with every purchase.</p></div>
++        <div class="card"><h3>Free Drinks</h3><p>Redeem stars for free drinks and treats.</p></div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +237,31 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++<script>
++    let currentScrollId = 0;
++    const sections = document.querySelectorAll('section');
++
++    async function scrollToAndHighlight(target) {
++      const scrollId = ++currentScrollId;
++      sections.forEach((sec) => sec.classList.remove('highlight'));
++
++      await target.scrollIntoView({ behavior: 'smooth', block: 'center' });
++
++      // Skip the effect if a newer scroll superseded this one
++      if (scrollId !== currentScrollId) return;
++
++      target.classList.add('highlight');
++      target.querySelector('h2')?.focus({ preventScroll: true });
++    }
++
++    document.querySelectorAll('[data-scroll-target]').forEach((link) => {
++      link.addEventListener('click', async (event) => {
++        event.preventDefault();
++        const target = document.getElementById(link.dataset.scrollTarget);
++        if (target) await scrollToAndHighlight(target);
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

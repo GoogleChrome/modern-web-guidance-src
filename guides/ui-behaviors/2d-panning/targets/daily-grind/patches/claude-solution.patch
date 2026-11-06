@@ -1,0 +1,139 @@
+diff --git a/index.html b/index.html
+index 66c9173..c57d0a4 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,65 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Locations map */
++    .locations {
++      margin-top: 3rem;
++    }
++
++    .map-viewport {
++      inline-size: 100%;
++      block-size: 500px;
++      overflow: auto;
++      scroll-axis-lock: none;
++      overscroll-behavior: none;
++      border: 2px solid var(--primary);
++      border-radius: 8px;
++      background: var(--secondary);
++    }
++
++    .map-viewport:focus-visible {
++      outline: 3px solid #005fcc;
++      outline-offset: 2px;
++    }
++
++    @supports not (scroll-axis-lock: none) {
++      .map-viewport {
++        touch-action: none;
++      }
++    }
++
++    .map-surface {
++      position: relative;
++      inline-size: 3000px;
++      block-size: 3000px;
++      background-color: #efebe9;
++      background-image:
++        linear-gradient(var(--secondary) 2px, transparent 2px),
++        linear-gradient(90deg, var(--secondary) 2px, transparent 2px);
++      background-size: 100px 100px;
++    }
++
++    .map-pin {
++      position: absolute;
++      transform: translate(-50%, -100%);
++      background: var(--primary);
++      color: var(--light);
++      padding: 0.4rem 0.8rem;
++      border-radius: 6px;
++      font-size: 0.9rem;
++      white-space: nowrap;
++    }
++
++    .map-pin::after {
++      content: "";
++      position: absolute;
++      left: 50%;
++      top: 100%;
++      margin-left: -6px;
++      border: 6px solid transparent;
++      border-top-color: var(--primary);
++    }
+   </style>
+ </head>
+ 
+@@ -195,6 +254,20 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="locations">
++      <h2 style="text-align: center;">Find Our Cafes</h2>
++      <p style="text-align: center; margin-bottom: 1rem;">Drag or scroll the map in any direction to explore our locations.</p>
++      <div class="map-viewport" tabindex="0" role="region" aria-label="Coffee shop locations map">
++        <div class="map-surface">
++          <span class="map-pin" style="left: 600px; top: 700px;">Downtown Roastery</span>
++          <span class="map-pin" style="left: 1500px; top: 1400px;">Harbor Street Cafe</span>
++          <span class="map-pin" style="left: 2300px; top: 600px;">Hillside Espresso Bar</span>
++          <span class="map-pin" style="left: 800px; top: 2300px;">Riverside Corner</span>
++          <span class="map-pin" style="left: 2400px; top: 2400px;">Uptown Cold Brew Stand</span>
++        </div>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +280,47 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without scroll-axis-lock support
++    if (!CSS.supports('scroll-axis-lock', 'none')) {
++      const viewport = document.querySelector('.map-viewport');
++      let lastPointer = null;
++
++      viewport.addEventListener('wheel', (e) => {
++        e.preventDefault();
++        viewport.scrollLeft += e.deltaX;
++        viewport.scrollTop += e.deltaY;
++      }, { passive: false });
++
++      viewport.addEventListener('pointerdown', (e) => {
++        const rect = viewport.getBoundingClientRect();
++        if (
++          !e.isPrimary ||
++          e.button !== 0 ||
++          e.clientX - rect.left - viewport.clientLeft >= viewport.clientWidth ||
++          e.clientY - rect.top - viewport.clientTop >= viewport.clientHeight
++        ) {
++          return;
++        }
++        lastPointer = { x: e.clientX, y: e.clientY };
++        viewport.setPointerCapture(e.pointerId);
++      });
++
++      viewport.addEventListener('pointermove', (e) => {
++        if (!lastPointer) return;
++        viewport.scrollLeft -= e.clientX - lastPointer.x;
++        viewport.scrollTop -= e.clientY - lastPointer.y;
++        lastPointer = { x: e.clientX, y: e.clientY };
++      });
++
++      const endPointerPan = () => {
++        lastPointer = null;
++      };
++      viewport.addEventListener('pointerup', endPointerPan);
++      viewport.addEventListener('pointercancel', endPointerPan);
++    }
++  </script>
++
+ </body>
+ 
+ </html>

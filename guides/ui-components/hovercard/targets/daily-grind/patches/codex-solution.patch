@@ -1,0 +1,191 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..9b62c40
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,5 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++const outputDirectory = new URL('./dist/', import.meta.url);
++await mkdir(outputDirectory, { recursive: true });
++await copyFile(new URL('./index.html', import.meta.url), new URL('index.html', outputDirectory));
+diff --git a/index.html b/index.html
+index 66c9173..6d57c08 100644
+--- a/index.html
++++ b/index.html
+@@ -135,6 +135,91 @@
+       background: #3e2723;
+     }
+ 
++    .btn:focus-visible,
++    .hovercard summary:focus-visible {
++      outline: 3px solid var(--accent);
++      outline-offset: 4px;
++    }
++
++    /* interestfor makes each link the implicit anchor for its preview. */
++    [popover].hovercard {
++      position: fixed;
++      position-area: block-end span-inline-end;
++      position-try-fallbacks: flip-block, flip-inline;
++      margin: 0.5rem 0;
++      width: min(22rem, calc(100vw - 2rem));
++      max-height: min(30rem, calc(100dvh - 2rem));
++      overflow: auto;
++      padding: 1.25rem;
++      border: 1px solid var(--secondary);
++      border-radius: 10px;
++      background: white;
++      color: var(--text);
++      box-shadow: 0 8px 28px rgb(62 39 35 / 20%);
++      line-height: 1.6;
++      text-align: start;
++      opacity: 0;
++      transform-origin: top;
++    }
++
++    [popover].hovercard:popover-open {
++      opacity: 1;
++      transform: translateY(0) scale(1);
++    }
++
++    .hovercard .eyebrow {
++      color: var(--primary);
++      font-size: 0.75rem;
++      font-weight: bold;
++      letter-spacing: 0.08em;
++      text-transform: uppercase;
++    }
++
++    .hovercard h3 {
++      margin: 0.25rem 0 0.5rem;
++      font-size: 1.3rem;
++    }
++
++    .hovercard dl {
++      display: grid;
++      grid-template-columns: auto 1fr;
++      gap: 0.25rem 1rem;
++      margin: 1rem 0;
++    }
++
++    .hovercard dt {
++      font-weight: bold;
++    }
++
++    .hovercard details {
++      border-top: 1px solid var(--secondary);
++      padding-top: 0.75rem;
++    }
++
++    .hovercard summary {
++      cursor: pointer;
++      font-weight: bold;
++    }
++
++    .hovercard details p {
++      margin-top: 0.5rem;
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      [popover].hovercard {
++        transition-property: opacity, transform, display, overlay;
++        transition-duration: 0.2s;
++        transition-behavior: allow-discrete;
++      }
++
++      @starting-style {
++        [popover].hovercard:popover-open {
++          opacity: 0;
++          transform: translateY(-10px) scale(0.95);
++        }
++      }
++    }
++
+     footer {
+       background: var(--secondary);
+       text-align: center;
+@@ -181,19 +266,61 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" interestfor="maple-oat-preview" aria-label="View details for Maple Oat Latte">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" interestfor="espresso-preview" aria-label="View details for Dark Roast Espresso">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" interestfor="cold-brew-preview" aria-label="View details for Cold Brew">View Details</a>
+         </div>
+       </div>
++
++      <article id="maple-oat-preview" class="hovercard" popover="hint" aria-labelledby="maple-oat-title">
++        <p class="eyebrow">Seasonal Favorites</p>
++        <h3 id="maple-oat-title">Maple Oat Latte</h3>
++        <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
++        <dl>
++          <dt>Texture</dt><dd>Creamy</dd>
++          <dt>Flavor</dt><dd>Maple sweetness</dd>
++        </dl>
++        <details>
++          <summary>Explore the ingredients</summary>
++          <p>Oat milk brings the creaminess, while Vermont maple syrup adds a sweet seasonal touch.</p>
++        </details>
++      </article>
++
++      <article id="espresso-preview" class="hovercard" popover="hint" aria-labelledby="espresso-title">
++        <p class="eyebrow">Seasonal Favorites</p>
++        <h3 id="espresso-title">Dark Roast Espresso</h3>
++        <p>A bold espresso with a smoky character for a morning boost.</p>
++        <dl>
++          <dt>Roast</dt><dd>Dark</dd>
++          <dt>Flavor</dt><dd>Bold and smoky</dd>
++        </dl>
++        <details>
++          <summary>Explore the flavor</summary>
++          <p>A dark roast gives this espresso its bold personality and smoky finish.</p>
++        </details>
++      </article>
++
++      <article id="cold-brew-preview" class="hovercard" popover="hint" aria-labelledby="cold-brew-title">
++        <p class="eyebrow">Seasonal Favorites</p>
++        <h3 id="cold-brew-title">Cold Brew</h3>
++        <p>Slow-steeped coffee made for maximum smoothness.</p>
++        <dl>
++          <dt>Brew time</dt><dd>18 hours</dd>
++          <dt>Texture</dt><dd>Smooth</dd>
++        </dl>
++        <details>
++          <summary>Explore the brewing process</summary>
++          <p>An 18-hour steep gives this cold brew its smooth character.</p>
++        </details>
++      </article>
+     </section>
+   </main>
+ 
+diff --git a/package.json b/package.json
+index 2bd4d77..5c14ac8 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

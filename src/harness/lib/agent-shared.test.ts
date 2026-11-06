@@ -4,8 +4,17 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { spawn, spawnSync } from 'child_process';
-import { createWorkDir, getGraderScriptContent, runCliAgentCommand } from './agent-shared.ts';
+import {
+  createWorkDir,
+  getAgentCommandAndArgs,
+  getGraderScriptContent,
+  runCliAgentCommand,
+  sanitizeAgentChildEnv,
+} from './agent-shared.ts';
+import { Agents } from '../config.ts';
+import { DETECTED_AGENT_ENV_VARS, determineAgent } from '../../cli/telemetry/detect-agent.ts';
 import { initGitRepo } from '../../core/patch-utils.ts';
+import { DEFAULT_GUIDED_MWGRC } from '../../core/feature-gates.ts';
 import { UNSAFE_NO_SANDBOX_ENV } from './sandbox.ts';
 
 describe('getGraderScriptContent', () => {
@@ -37,6 +46,14 @@ describe('getGraderScriptContent', () => {
       }
     }
   });
+
+  test('passes baselineTarget to runPlaywright in generated script', () => {
+    const scriptLimited = getGraderScriptContent('/path/to/cwd', '/path/to/grader.ts', 'dummy-guide', 'limited');
+    assert.ok(scriptLimited.includes('"limited"'));
+
+    const scriptDefault = getGraderScriptContent('/path/to/cwd', '/path/to/grader.ts', 'dummy-guide');
+    assert.ok(scriptDefault.includes('"widely"'));
+  });
 });
 
 describe('createWorkDir', () => {
@@ -56,6 +73,78 @@ describe('createWorkDir', () => {
       assert.strictEqual(commits.length, 1, `Expected exactly 1 initial commit, got: ${logResult.stdout}`);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  test('provisions .mwgrc with opt-in flags before git init in single-task workDir for guided run', () => {
+    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-test-'));
+    try {
+      const workDir = createWorkDir('', tempHome, 'guided');
+      const mwgrcPath = path.join(workDir, '.mwgrc');
+      assert.ok(fs.existsSync(mwgrcPath), '.mwgrc should exist in workDir');
+      const config = JSON.parse(fs.readFileSync(mwgrcPath, 'utf8'));
+      assert.deepStrictEqual(config, DEFAULT_GUIDED_MWGRC);
+
+      // Verify .mwgrc is tracked in git and clean in git status
+      const status = spawnSync('git', ['status', '--porcelain'], { cwd: workDir, encoding: 'utf8' }).stdout.trim();
+      assert.strictEqual(status, '', 'workDir git status should be clean after initGitRepo');
+
+      // Verify .mwgrc is in the root commit
+      const rootFiles = spawnSync('git', ['ls-tree', '--name-only', 'HEAD'], { cwd: workDir, encoding: 'utf8' }).stdout.trim().split('\n');
+      assert.ok(rootFiles.includes('.mwgrc'), '.mwgrc must be part of the initial git commit');
+    } finally {
+      fs.rmSync(tempHome, { recursive: true, force: true });
+    }
+  });
+
+  test('does not provision .mwgrc for unguided runs', () => {
+    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-unguided-'));
+    try {
+      const workDir = createWorkDir('', tempHome, 'unguided');
+      const mwgrcPath = path.join(workDir, '.mwgrc');
+      assert.strictEqual(fs.existsSync(mwgrcPath), false, '.mwgrc should not exist for unguided runs');
+    } finally {
+      fs.rmSync(tempHome, { recursive: true, force: true });
+    }
+  });
+
+  test('provisions .mwgrc with opt-in flags before git init in templated suite workDir', () => {
+    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-suite-'));
+    const templateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'template-test-'));
+    fs.writeFileSync(path.join(templateDir, 'package.json'), '{"name":"test-app"}\n');
+    initGitRepo(templateDir); // suite templates already have .git (see setupWorkspaceBaseApp)
+    try {
+      const workDir = createWorkDir(templateDir, tempHome, 'guided');
+      const mwgrcPath = path.join(workDir, '.mwgrc');
+      assert.ok(fs.existsSync(mwgrcPath), '.mwgrc should exist in workDir');
+      const config = JSON.parse(fs.readFileSync(mwgrcPath, 'utf8'));
+      assert.deepStrictEqual(config, DEFAULT_GUIDED_MWGRC);
+
+      const status = spawnSync('git', ['status', '--porcelain'], { cwd: workDir, encoding: 'utf8' }).stdout.trim();
+      assert.strictEqual(status, '', 'workDir git status should be clean after initGitRepo');
+
+      const rootFiles = spawnSync('git', ['ls-tree', '--name-only', 'HEAD'], { cwd: workDir, encoding: 'utf8' }).stdout.trim().split('\n');
+      assert.ok(rootFiles.includes('.mwgrc'), '.mwgrc must be part of the initial git commit');
+    } finally {
+      fs.rmSync(tempHome, { recursive: true, force: true });
+      fs.rmSync(templateDir, { recursive: true, force: true });
+    }
+  });
+
+  test('provisions baseline target in .mwgrc when BASELINE_TARGET is set for guided run', () => {
+    const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-baseline-'));
+    const prevBaseline = process.env.BASELINE_TARGET;
+    process.env.BASELINE_TARGET = 'newly';
+    try {
+      const workDir = createWorkDir('', tempHome, 'guided');
+      const config = JSON.parse(fs.readFileSync(path.join(workDir, '.mwgrc'), 'utf8'));
+      assert.deepStrictEqual(config, { ...DEFAULT_GUIDED_MWGRC, baseline: 'newly' });
+      const homeConfig = JSON.parse(fs.readFileSync(path.join(tempHome, '.mwgrc'), 'utf8'));
+      assert.deepStrictEqual(homeConfig, { ...DEFAULT_GUIDED_MWGRC, baseline: 'newly' });
+    } finally {
+      if (prevBaseline === undefined) delete process.env.BASELINE_TARGET;
+      else process.env.BASELINE_TARGET = prevBaseline;
+      fs.rmSync(tempHome, { recursive: true, force: true });
     }
   });
 });
@@ -152,44 +241,167 @@ describe('runCliAgentCommand', () => {
     }
   });
 
-  test('strips harness and pnpm environment leaks and results/ PATH entries from child environment', async () => {
+  test('strips harness, pnpm, and host AI-agent environment leaks while preserving provider config and applying overrides', async () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-shared-env-'));
     const workDir = path.join(tempDir, 'work');
     const targetDir = path.join(tempDir, 'target');
     const shimDir = path.join(tempDir, '.gd-bin');
+    const piAgentDir = path.join(tempDir, '.pi', 'agent');
     for (const d of [workDir, targetDir, shimDir]) fs.mkdirSync(d, { recursive: true });
     const envDumpFile = path.join(workDir, 'env.json');
 
-    const prevNoSandbox = process.env[UNSAFE_NO_SANDBOX_ENV];
-    const prevPkgName = process.env.PNPM_PACKAGE_NAME;
-    const prevSuiteCfg = process.env.GD_SUITE_CONFIG;
-    const prevPath = process.env.PATH;
-    const pnpmInjectedBin = path.join(process.cwd(), 'results', 'suites', 's', '1', 'secret-guide', 'demo', 'unguided', 'node_modules', '.bin');
-    process.env[UNSAFE_NO_SANDBOX_ENV] = '1';
-    process.env.PNPM_PACKAGE_NAME = 'modern-web-guidance-src';
-    process.env.GD_SUITE_CONFIG = '/repo/results/suites/s/suite_config.json';
-    process.env.PATH = `${pnpmInjectedBin}:${path.join(targetDir, 'node_modules', '.bin')}:${prevPath || ''}`;
+    const prevEnv: Record<string, string | undefined> = {};
+    const testEnv: Record<string, string> = {
+      [UNSAFE_NO_SANDBOX_ENV]: '1',
+      PNPM_PACKAGE_NAME: 'modern-web-guidance-src',
+      GD_SUITE_CONFIG: '/repo/results/suites/s/suite_config.json',
+      AI_AGENT: 'custom-agent',
+      AGENT: 'amp',
+      ANTIGRAVITY_AGENT: 'true',
+      ANTIGRAVITY_LS_ADDRESS: '127.0.0.1:42000',
+      INVOKER_INFO_CHAIN: 'host',
+      CLAUDECODE: '1',
+      CLAUDE_CODE_SESSION_ID: 'sess-123',
+      CODEX_THREAD_ID: 'thread-456',
+      CODEX_HOME: '/tmp/host-codex',
+      GEMINI_CLI: '1',
+      CURSOR_AGENT: '1',
+      CURSOR_TRACE_ID: 'trace-123',
+      PI_CODING_AGENT: 'true',
+      PI_CODING_AGENT_DIR: '/tmp/host/.pi/agent',
+      CLAUDE_CODE_USE_VERTEX: '1',
+      GEMINI_CLI_TRUST_WORKSPACE: 'true',
+      ANTIGRAVITY_GCP_PROJECT: 'eval-gcp-project',
+      GPG_AGENT_INFO: '/tmp/gpg-agent',
+      PATH: [
+        path.join(process.cwd(), 'results', 'suites', 's', '1', 'secret-guide', 'demo', 'unguided', 'node_modules', '.bin'),
+        path.join(targetDir, 'node_modules', '.bin'),
+        '/Users/dev/.pi/agent/bin',
+        process.env.PATH || '',
+      ].filter(Boolean).join(path.delimiter),
+    };
+    for (const [k, v] of Object.entries(testEnv)) {
+      prevEnv[k] = process.env[k];
+      process.env[k] = v;
+    }
 
     try {
       const script = `require('fs').writeFileSync(${JSON.stringify(envDumpFile)}, JSON.stringify(process.env));`;
       await runCliAgentCommand(process.execPath, ['-e', script], workDir, targetDir, 'TestAgent', 'unguided');
       const childEnv = JSON.parse(fs.readFileSync(envDumpFile, 'utf8'));
-      assert.strictEqual(childEnv.PNPM_PACKAGE_NAME, undefined);
-      assert.strictEqual(childEnv.GD_SUITE_CONFIG, undefined);
+      for (const stripped of [
+        'PNPM_PACKAGE_NAME',
+        'GD_SUITE_CONFIG',
+        'AI_AGENT',
+        'AGENT',
+        'ANTIGRAVITY_AGENT',
+        'ANTIGRAVITY_LS_ADDRESS',
+        'INVOKER_INFO_CHAIN',
+        'CLAUDECODE',
+        'CLAUDE_CODE_SESSION_ID',
+        'CODEX_THREAD_ID',
+        'CODEX_HOME',
+        'GEMINI_CLI',
+        'CURSOR_AGENT',
+        'CURSOR_TRACE_ID',
+        'PI_CODING_AGENT',
+        'PI_CODING_AGENT_DIR',
+      ]) {
+        assert.strictEqual(childEnv[stripped], undefined, `Expected ${stripped} to be stripped`);
+      }
+      assert.strictEqual(childEnv.CLAUDE_CODE_USE_VERTEX, '1');
+      assert.strictEqual(childEnv.GEMINI_CLI_TRUST_WORKSPACE, 'true');
+      assert.strictEqual(childEnv.ANTIGRAVITY_GCP_PROJECT, 'eval-gcp-project');
+      assert.strictEqual(childEnv.GPG_AGENT_INFO, '/tmp/gpg-agent');
+
       const pathEntries = (childEnv.PATH || '').split(path.delimiter);
       assert.strictEqual(pathEntries[0], shimDir);
-      assert.ok(!pathEntries.some((p: string) => p.includes('secret-guide') || p.startsWith(targetDir)));
+      assert.ok(!pathEntries.some((p: string) => p.includes('secret-guide') || p.startsWith(targetDir) || p.includes('/.pi/agent')));
+
+      assert.strictEqual(getAgentCommandAndArgs(Agents.CLAUDE_CODE, 'test', tempDir).envOverrides, undefined);
+      assert.deepStrictEqual(getAgentCommandAndArgs(Agents.PI, 'test').envOverrides, { PI_CODING_AGENT: 'true' });
+      const piOverrides = getAgentCommandAndArgs(Agents.PI, 'test', tempDir).envOverrides;
+      assert.deepStrictEqual(piOverrides, { PI_CODING_AGENT: 'true', PI_CODING_AGENT_DIR: piAgentDir });
+
+      await runCliAgentCommand(
+        process.execPath,
+        ['-e', script],
+        workDir,
+        targetDir,
+        'Pi',
+        'unguided',
+        piOverrides,
+      );
+      const piEnv = JSON.parse(fs.readFileSync(envDumpFile, 'utf8'));
+      assert.strictEqual(piEnv.PI_CODING_AGENT, 'true');
+      assert.strictEqual(piEnv.PI_CODING_AGENT_DIR, piAgentDir);
     } finally {
-      if (prevNoSandbox === undefined) delete process.env[UNSAFE_NO_SANDBOX_ENV];
-      else process.env[UNSAFE_NO_SANDBOX_ENV] = prevNoSandbox;
-      if (prevPkgName === undefined) delete process.env.PNPM_PACKAGE_NAME;
-      else process.env.PNPM_PACKAGE_NAME = prevPkgName;
-      if (prevSuiteCfg === undefined) delete process.env.GD_SUITE_CONFIG;
-      else process.env.GD_SUITE_CONFIG = prevSuiteCfg;
-      if (prevPath === undefined) delete process.env.PATH;
-      else process.env.PATH = prevPath;
+      for (const [k, v] of Object.entries(prevEnv)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
 });
+
+describe('sanitizeAgentChildEnv', () => {
+  test('strips all detect-agent markers including shared TTY-gated markers while keeping safe terminal vars', () => {
+    const sanitized = sanitizeAgentChildEnv({
+      HOME: '/tmp/home',
+      TERM_PROGRAM: 'kiro',
+      REPL_ID: 'repl-1',
+      CURSOR_EXTENSION_HOST_ROLE: 'agent-exec',
+      KIMI_PLUGIN_ROOT: '/tmp/kimi',
+      GROK_PLUGIN_ROOT: '/tmp/grok',
+      AMP_CURRENT_THREAD_ID: 't-1',
+      GEMINI_CLI: '1',
+      GEMINI_CLI_TRUST_WORKSPACE: 'true',
+      CLINE_ACTIVE: 'true',
+      CODEX_SANDBOX_NETWORK_DISABLED: '1',
+      ANTIGRAVITY_CLI_ALIAS: 'agy',
+      ANTIGRAVITY_MODEL: 'gemini-3.8-flash-medium',
+      AUGMENT_AGENT: '1',
+      OPENCODE: '1',
+      GOOSE_TERMINAL: '1',
+      GOOSE_PROVIDER: 'anthropic',
+      JUNIE_DATA: '/tmp/junie',
+      AGENT_CONTEXT_OUT: '/tmp/ctx',
+      COPILOT_CLI: '1',
+      CLAUDE_CODE: '1',
+      CLAUDE_CODE_IS_COWORK: '1',
+      CLAUDE_CODE_USE_VERTEX: '1',
+      DISABLE_TELEMETRY: '1',
+      NODE_TEST_CONTEXT: 'child',
+      PATH: ['/Users/dev/.pi/agent/bin', '/Users/dev/not.pi/agentic', '/usr/bin'].join(path.delimiter),
+    });
+
+    assert.deepStrictEqual(determineAgent(sanitized, () => false, false), {
+      isAgent: false,
+      agent: undefined,
+    });
+    assert.strictEqual(sanitized.TERM_PROGRAM, undefined);
+    assert.strictEqual(sanitized.GEMINI_CLI_TRUST_WORKSPACE, 'true');
+    assert.strictEqual(sanitized.ANTIGRAVITY_MODEL, 'gemini-3.8-flash-medium');
+    assert.strictEqual(sanitized.CLAUDE_CODE_USE_VERTEX, '1');
+    assert.strictEqual(sanitized.DISABLE_TELEMETRY, '1');
+    assert.strictEqual(sanitized.NODE_TEST_CONTEXT, 'child');
+    assert.strictEqual(sanitized.PATH, ['/Users/dev/not.pi/agentic', '/usr/bin'].join(path.delimiter));
+
+    const withWindowsPath = sanitizeAgentChildEnv({
+      Path: ['/Users/dev/.pi/agent/bin', '/usr/bin'].join(path.delimiter),
+    });
+    assert.strictEqual(withWindowsPath.PATH, '/usr/bin');
+    assert.strictEqual(withWindowsPath.Path, undefined);
+
+    const withVscodeTerm = sanitizeAgentChildEnv({ TERM_PROGRAM: 'vscode' });
+    assert.strictEqual(withVscodeTerm.TERM_PROGRAM, 'vscode');
+
+    const allDetected = Object.fromEntries([...DETECTED_AGENT_ENV_VARS].map(key => [key, '1']));
+    assert.deepStrictEqual(sanitizeAgentChildEnv(allDetected), {});
+  });
+});
+
+
+
 

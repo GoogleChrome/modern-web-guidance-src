@@ -3,8 +3,8 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { execSync } from 'node:child_process';
-import { extractTargetFilesFromPatch, applyPatchSync, capturePatchFromGit } from './patch-utils.ts';
+import { gitExec } from './git-utils.ts';
+import { extractTargetFilesFromPatch, applyPatchSync, capturePatchFromGit, initGitRepo } from './patch-utils.ts';
 
 describe('extractTargetFilesFromPatch', () => {
   test('extracts modified file paths from unified diff headers and ignores deleted files', () => {
@@ -133,6 +133,11 @@ describe('applyPatchSync', () => {
   });
 });
 
+function initTestRepo(repoDir: string) {
+  fs.writeFileSync(path.join(repoDir, 'existing.txt'), 'hello\n');
+  initGitRepo(repoDir);
+}
+
 describe('capturePatchFromGit', () => {
   test('captures untracked modifications from git repo into patch file and excludes lockfiles', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'capture-patch-'));
@@ -141,10 +146,7 @@ describe('capturePatchFromGit', () => {
     fs.mkdirSync(repoDir, { recursive: true });
 
     try {
-      // Initialize git repo with one tracked file
-      execSync('git init && git config user.name "Test" && git config user.email "test@example.com"', { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'existing.txt'), 'hello\n');
-      execSync('git add . && git commit -m "init"', { cwd: repoDir, stdio: 'ignore' });
+      initTestRepo(repoDir);
 
       // Create untracked change plus lockfiles that should be excluded
       fs.writeFileSync(path.join(repoDir, 'newfile.txt'), 'world\n');
@@ -171,9 +173,7 @@ describe('capturePatchFromGit', () => {
     fs.mkdirSync(repoDir, { recursive: true });
 
     try {
-      execSync('git init && git config user.name "Test" && git config user.email "test@example.com"', { cwd: repoDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(repoDir, 'existing.txt'), 'hello\n');
-      execSync('git add . && git commit -m "init"', { cwd: repoDir, stdio: 'ignore' });
+      initTestRepo(repoDir);
 
       // Create valid modifications and excluded files
       fs.writeFileSync(path.join(repoDir, 'valid.txt'), 'valid content\n');
@@ -208,17 +208,15 @@ describe('capturePatchFromGit', () => {
     fs.mkdirSync(repoDir, { recursive: true });
 
     try {
-      // 1. Initial harness repo setup with initial commit
-      execSync('git init && git config user.name "AI" && git config user.email "ai@example.com"', { cwd: repoDir, stdio: 'ignore' });
+      const opts = { cwd: repoDir, isolated: true, stdio: 'ignore' as const };
       fs.writeFileSync(path.join(repoDir, 'index.html'), '<html>original</html>\n');
-      execSync('git add . && git commit -m "init"', { cwd: repoDir, stdio: 'ignore' });
+      initGitRepo(repoDir);
 
-      // 2. Agent modifies files AND runs git commit
       fs.writeFileSync(path.join(repoDir, 'index.html'), '<html>updated</html>\n');
       fs.writeFileSync(path.join(repoDir, 'translator.js'), 'console.log("translator");\n');
-      execSync('git add . && git commit -m "Agent commit"', { cwd: repoDir, stdio: 'ignore' });
+      gitExec(['add', '.'], opts);
+      gitExec(['commit', '-q', '-m', 'Agent commit'], opts);
 
-      // 3. capturePatchFromGit should capture diff against the initial commit
       const result = capturePatchFromGit(repoDir, patchDest);
       assert.strictEqual(result.success, true);
       assert.strictEqual(fs.existsSync(patchDest), true);
@@ -236,9 +234,7 @@ describe('capturePatchFromGit', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'capture-empty-'));
     const patchDest = path.join(tmpDir, 'empty.patch');
     try {
-      execSync('git init && git config user.name "Test" && git config user.email "test@example.com"', { cwd: tmpDir, stdio: 'ignore' });
-      fs.writeFileSync(path.join(tmpDir, 'file.txt'), 'hello\n');
-      execSync('git add . && git commit -m "init"', { cwd: tmpDir, stdio: 'ignore' });
+      initTestRepo(tmpDir);
 
       const result = capturePatchFromGit(tmpDir, patchDest);
       assert.strictEqual(result.success, false);

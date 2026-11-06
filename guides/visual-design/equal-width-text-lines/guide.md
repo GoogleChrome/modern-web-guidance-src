@@ -12,7 +12,7 @@ web-feature-ids:
 Poster-style lockups where each line is scaled so it spans the container's full width can create visually striking headings.
 Using `text-fit`, the browser scales each line during layout, so it stays correct on resize, copy changes, and font load.
 
-For a single line filling its container (e.g. a heading or pull quote), see {{ GUIDE_REF('fit-text-to-container') }} instead.
+For a single line filling its container (e.g. a heading or pull quote), apply `text-fit` to that element directly; this guide covers multi-line lockups.
 
 ## Basic implementation
 
