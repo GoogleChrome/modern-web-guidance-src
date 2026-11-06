@@ -25,24 +25,26 @@ Build a carousel for a finite set of related items. Use native scrolling and CSS
 
 ## Structure and accessibility
 
-- Use a named `region` with `aria-roledescription="carousel"` when the carousel is a meaningful page section. Give each slide `role="group"`, `aria-roledescription="slide"`, and a position in its accessible name (for example, "2 of 4"). Keep slide content available to assistive technology.
-- Give every control a clear accessible name. Native scroll buttons need alternative text in `content`; fallback controls should be native buttons, not chevrons without labels.
-- Announce the current slide in a visually hidden polite status region after scrolling settles. Update it for native controls, fallback controls, and direct scrolling so assistive technology receives feedback when the visible slide changes.
+- Use a named `region` with `aria-roledescription="carousel"` when the carousel is a meaningful page section. Give each slide `role="group"`, `aria-roledescription="slide"`, and an `aria-label` that includes its position (for example, `aria-label="2 of 4"`). Write the labels in the markup, localized with the rest of the page; if slides change at runtime, regenerate them from the same localized strings. The position is the slide's place in the original sequence, not its current visual position. Keep slide content available to assistive technology.
+- Give every control a clear accessible name. Native scroll buttons need alternative text in `content`; any HTML button must be a native `<button>` with a text or `aria-label` name, not an unlabeled chevron.
+- Announce the current slide in a visually hidden polite status region after scrolling settles. Update it whenever the visible slide changes, whether through scroll buttons, markers, or direct scrolling, so assistive technology receives feedback.
 
 ## Scrolling and controls
 
 - Make the track natively scrollable and snap slides on its scrolling axis. For horizontal carousels, arrange slides in a row and use the inline axis; for vertical carousels, use a column and the block axis.
 - Where supported, use `::scroll-button()` for previous/next controls and `::scroll-marker` for direct navigation. Set `scroll-marker-group: after` to place markers after the slides in focus order, and use `:target-current` to distinguish the current marker.
-- Keep controls visible, operable, and clearly focused with `:focus-visible`. Disable previous/next controls at the ends unless the carousel loops (see Looping). Preserve native keyboard behavior; do not intercept keys from links, form fields, scroll buttons, or markers. Add custom key handling only for a defined interaction need, and avoid overriding nested controls.
+- Keep controls visible, operable, and clearly focused with `:focus-visible`. Loop previous/next controls continuously from the last slide to the first and back by default when there are at least three slides (see Looping); disable them at the ends only when finite navigation is requested or `sibling-index()` is unsupported. Preserve native keyboard behavior; do not intercept keys from links, form fields, scroll buttons, or markers. Add custom key handling only for a defined interaction need, and avoid overriding nested controls.
 
 ## Related patterns
 
-- For styling the active slide itself, see {{ GUIDE_REF("carousel-snap-highlights") }}. For a continuous progress indicator instead of discrete markers, see {{ GUIDE_REF("scroll-progress-indicator") }}.
-- For scroll-driven slide effects, see {{ GUIDE_REF("carousel-slide-effects") }}. For synchronizing other UI with snap events, see {{ GUIDE_REF("scroll-snap-state-sync") }}.
+- For styling the active slide itself, see {{ GUIDE_REF("carousel-snap-highlights") }}.
+- For a continuous progress indicator instead of discrete markers, see {{ GUIDE_REF("scroll-progress-indicator") }}.
+- For scroll-driven slide effects, see {{ GUIDE_REF("carousel-slide-effects") }}.
+- For synchronizing other UI with snap events, see {{ GUIDE_REF("scroll-snap-state-sync") }}.
 
 ## Example: horizontal carousel
 
-This example uses full-width horizontal slides. Adapt the slide sizing for a peek layout or use the block axis for a vertical carousel. Give each marker a name that identifies its destination. The dimensions, spacing, colors, and debounce interval are examples; adapt them to the design and interaction.
+This example uses full-width horizontal slides. Adapt the slide sizing for a peek layout or use the block axis for a vertical carousel. Give each marker a name that identifies its destination. The `fallback-*` elements stay hidden unless the browser lacks the native feature; see Fallback strategies. The CSS below is split by concern, and only the parts that are easy to get wrong are shown; everything else is described in prose. Adapt dimensions, spacing, and colors to the design.
 
 ```html
 <section class="carousel" aria-roledescription="carousel" aria-label="Featured products">
@@ -52,15 +54,15 @@ This example uses full-width horizontal slides. Adapt the slide sizing for a pee
   </div>
 
   <div class="carousel-track" tabindex="0" role="group" aria-label="Slides">
-    <div class="carousel-slide" role="group" aria-roledescription="slide" aria-label="1 of 3"
+    <div role="group" aria-roledescription="slide" aria-label="1 of 3"
         data-marker-name="Go to slide 1">
       <h3>Product one</h3>
     </div>
-    <div class="carousel-slide" role="group" aria-roledescription="slide" aria-label="2 of 3"
+    <div role="group" aria-roledescription="slide" aria-label="2 of 3"
         data-marker-name="Go to slide 2">
       <h3>Product two</h3>
     </div>
-    <div class="carousel-slide" role="group" aria-roledescription="slide" aria-label="3 of 3"
+    <div role="group" aria-roledescription="slide" aria-label="3 of 3"
         data-marker-name="Go to slide 3">
       <h3>Product three</h3>
     </div>
@@ -72,28 +74,37 @@ This example uses full-width horizontal slides. Adapt the slide sizing for a pee
 </section>
 ```
 
-```css
-.carousel {
-  position: relative;
-}
+### Track and snapping
 
+The track is a flex row that scrolls on the inline axis and snaps to slides. Each slide fills the track and snaps to center.
+
+```css
 .carousel-track {
+  /* Lets the native scroll buttons anchor to the track */
   anchor-name: --carousel-track;
   display: flex;
-  gap: 1rem;
+  gap: 1rem; /* example value */
   overflow-x: auto;
+  /* mandatory so the track always rests on a slide, which the settled-scroll status relies on */
   scroll-snap-type: x mandatory;
-  scrollbar-width: none;
 }
 
-.carousel-slide {
-  flex: 0 0 100%;
+.carousel-track > * {
+  flex: 0 0 100%; /* one slide per view; use a smaller basis for a peek layout */
   scroll-snap-align: center;
 }
+```
+
+### Native scroll buttons
+
+Gate the buttons on support for both `::scroll-button()` and anchor positioning. Set each button's `content` to a glyph with alternative text, anchor the buttons to the track, and pin them to its start and end edges. Style them as you like (size, shape, colors) and dim them with `:disabled`.
+
+```css
 @supports selector(::scroll-button(*)) and (anchor-name: --carousel-track) {
   .carousel-track::scroll-button(inline-start) {
+    /* The text after the slash is the accessible name; the glyph is decorative */
     content: "‹" / "Previous slide";
-    inset-inline-start: calc(anchor(start) + 0.5rem);
+    inset-inline-start: calc(anchor(start) + 0.5rem); /* example offset */
   }
 
   .carousel-track::scroll-button(inline-end) {
@@ -102,96 +113,72 @@ This example uses full-width horizontal slides. Adapt the slide sizing for a pee
   }
 
   .carousel-track::scroll-button(*) {
+    /* Take the buttons out of the flex flow and center them on the track */
     position: absolute;
     position-anchor: --carousel-track;
     inset-block-start: anchor(center);
     translate: 0 -50%;
-    inline-size: 2.5rem;
-    block-size: 2.5rem;
-    border-radius: 50%;
-    border: 1px solid #888;
-    background: Canvas;
-    color: CanvasText;
-    cursor: pointer;
-  }
-
-  .carousel-track::scroll-button(*):disabled {
-    opacity: 0.3;
-    cursor: default;
-  }
-}
-@supports selector(::scroll-marker) {
-  .carousel-track {
-    scroll-marker-group: after;
-  }
-
-  .carousel-track::scroll-marker-group {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-block-start: 0.75rem;
-  }
-
-  .carousel-slide::scroll-marker {
-    content: "" / attr(data-marker-name);
-    inline-size: 1rem;
-    block-size: 1rem;
-    border-radius: 50%;
-    background: #888;
-    cursor: pointer;
-  }
-  .carousel-slide::scroll-marker:target-current {
-    background: #0a5;
-  }
-}
-.carousel-track::scroll-button(*):focus-visible,
-.carousel-slide::scroll-marker:focus-visible,
-button:focus-visible {
-  outline: 0.2rem solid #f90;
-  outline-offset: 0.15rem;
-}
-.fallback-controls[hidden],
-.fallback-markers[hidden] {
-  display: none;
-}
-.visually-hidden {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .carousel-track {
-    scroll-behavior: smooth;
   }
 }
 ```
 
+### Native scroll markers
+
+Place the marker group after the track, give each marker an accessible name from the slide's `data-marker-name`, and highlight the current marker with `:target-current`.
+
+```css
+@supports selector(::scroll-marker) {
+  .carousel-track {
+    /* after: markers follow the slides in focus order */
+    scroll-marker-group: after;
+  }
+
+  .carousel-track > *::scroll-marker {
+    /* Empty glyph, accessible name taken from the slide's data attribute */
+    content: "" / attr(data-marker-name);
+  }
+
+  .carousel-track > *::scroll-marker:target-current {
+    background: #0a5; /* example color; any clear contrast with the other markers works */
+  }
+}
+```
+
+### Supporting styles
+
+Write these to fit the design:
+
+- Style the markers as dots in a centered flex row with a gap, using the pointer cursor.
+- Show a clear `:focus-visible` outline on scroll buttons, markers, and fallback buttons. Bare `:focus-visible` only matches elements, so style `::scroll-button(*):focus-visible` and `::scroll-marker:focus-visible` in separate rules rather than combining them in one selector list with `:focus-visible` (an unsupported pseudo-element invalidates the whole selector list).
+{# Known Chromium bug (confirmed in Chrome Canary 158): activating ::scroll-marker via keyboard scrolls to the slide but drops focus. Bug: https://issues.chromium.org/issues/578562502 . Consider a BCD key request. #}
+- Do not add custom key handling on native `::scroll-marker` controls to work around browser focus bugs; keep the previous and next controls available as the reliable keyboard route.
+- Set `touch-action: manipulation` on the track and the fallback buttons, so quick taps on them do not trigger double-tap zoom on touch devices.
+- Hide `.fallback-controls` and `.fallback-markers` while their `hidden` attribute is set, and keep the status region visually hidden without removing it from the accessibility tree.
+- Enable `scroll-behavior: smooth` on the track only inside `@media (prefers-reduced-motion: no-preference)`.
+
 ## Fallback strategies
 
-The fallback is robust: scrolling and snap behavior remain native, while small amounts of script add only controls or status updates that the browser does not provide. Detect each control feature separately, and expose HTML controls only for missing features so partial support never creates duplicates.
+If your Baseline target does not support the native controls below, use fallback controls. Fallback controls are HTML buttons and marker navigation that replace `::scroll-button()` and `::scroll-marker` when a browser lacks them. They must meet the same accessibility requirements: native `<button>` elements with accessible names, and the same status announcements.
+
+The fallback is robust and faithful to the use case: scrolling and snap behavior remain native, while small amounts of script add only controls or status updates that the browser does not provide. Detect each control feature separately, and expose HTML controls only for missing features so partial support never creates duplicates.
 
 ### Scroll buttons
 
 {{ BASELINE_STATUS("scroll-buttons") }}
 
-When `::scroll-button()` is unavailable, reveal the HTML Previous and Next buttons and wire them to scroll to the adjacent slide in visual order (which differs from DOM order when looping), and disable each when no adjacent slide exists. Keep them before the track in DOM order so they precede any native marker group in mixed-support browsers.
+When `::scroll-button()` is unavailable, reveal the HTML Previous and Next buttons. On click, find the current slide from the track's scroll position along its scrolling axis, then scroll the track to the adjacent slide's snap position in visual order (which differs from DOM order when looping), for example with `track.scrollTo()` using that slide's offset. Do not scroll by a fixed viewport width, keep a separate index that can drift from the real scroll position, or use `scrollIntoView()` without limiting it to the track, which can scroll the page. Disable each button when no adjacent slide exists. Give them text or `aria-label` names, not unlabeled chevrons. Keep them before the track in DOM order so they precede any native marker group in mixed-support browsers. If they replace native buttons after the first `Tab`, position them where the native buttons sit (over the track, with a `z-index` so slides don't cover them) so the layout doesn't shift.
 
 ### Scroll markers
 
 {{ BASELINE_STATUS("scroll-markers") }}
 
-When `::scroll-marker` is unavailable, reveal the fallback marker navigation and create one named button per slide that scrolls to that slide. Update `aria-current="true"` on the active button.
+When `::scroll-marker` is unavailable, reveal the fallback marker navigation and create one named native `<button>` per slide that scrolls the track to that slide. Do not set `aria-current` here; the current-slide handler described in Status updates and fallback controls does that.
 
 ### Marker state
 
 {{ BASELINE_STATUS("scroll-marker-targets") }}
 
-If `:target-current` is unavailable, omit native marker highlighting or style the active fallback marker using the script's current-slide calculation.
+If `:target-current` is unavailable, highlight the active marker from script state: the live current-slide update marks the current slide (for example with `data-current`) as the track scrolls, not only once it settles, and CSS targets that slide's `::scroll-marker` and the fallback marker's `aria-current` state. Never leave the active marker unstyled.
 
 ### Anchor positioning
 
@@ -207,7 +194,7 @@ Smooth scrolling is optional. The example enables it only when reduced motion is
 
 {{ BASELINE_STATUS("scrollend") }}
 
-If `scrollend` is unavailable, use the debounced `scroll` listener to update status after scrolling settles, and run the update once on load so the initial state is correct.
+If `scrollend` is unavailable, use a debounced `scroll` listener to run the settled-scroll handler. Run the initial marker, button, and parking sync once on load, leaving the polite status region empty until user-initiated scrolling settles so page load is not interrupted.
 
 {{ BASELINE_STATUS("scroll-snap-events") }}
 
@@ -219,6 +206,16 @@ The carousel does not depend on snap events. If they are unavailable, use settle
 
 The track remains natively scrollable with touch, pointer, and keyboard input. JavaScript adds fallback controls and announcements without replacing basic scrolling. Place the script in a `<script type="module">` element so it runs after the document has been parsed.
 
+### Looping
+
+{{ BASELINE_STATUS("sibling-count") }}
+
+Wrap the parking rule in `@supports` for `sibling-index()`. Without support, leave the carousel as a finite list: skip the parking and keep disabling the controls at the ends.
+
+{# WORKAROUND, remove when fixed: (1) Chrome drops keyboard focus from native ::scroll-button() when looping reorders the slides, and Next/Previous stop early: https://issues.chromium.org/issues/581318163 . (2) Chrome drops keyboard focus from native ::scroll-marker when it is activated, with no reordering involved: https://issues.chromium.org/issues/582416742 . Delete each swap, its flag, and its CSS rule when its bug is fixed. Consider a BCD key request. #}
+
+**Temporary workaround for keyboard focus (Chrome).** Reordering slides while looping makes Chrome drop focus from native `::scroll-button()` controls, and Chrome also drops focus from native `::scroll-marker` markers when they are activated, so keyboard users cannot activate them repeatedly. Script cannot refocus a pseudo-element. Until this is fixed, build the HTML markers and wire the HTML buttons even where native ones exist, then on the first `Tab` keydown swap them in: when native scroll buttons and looping are both supported, hide the native buttons (for example via a `data-html-buttons` attribute on the track with `::scroll-button(*) { display: none; }`) and reveal the HTML Previous and Next buttons; when native markers are supported, hide them (`data-html-markers` on the track with `scroll-marker-group: none`) and reveal the HTML markers. Then remove the listener (do not use `{ once: true }`, which removes the listener on the first non-`Tab` key such as `Shift` in `Shift+Tab`). Keep each swap behind its own flag and comment it as a workaround so it can be removed once Chrome fixes its bug.
+
 ### Scroll-driven effects
 
 {{ BASELINE_STATUS("scroll-driven-animations") }}
@@ -227,43 +224,39 @@ Treat slide effects as optional enhancements and keep them inside `@media (prefe
 
 ### Status updates and fallback controls
 
-Update slide state after scrolling settles rather than on every animation frame, and measure only the carousel's scrolling axis.
+Update the active marker as the track scrolls (throttled to one update per animation frame) so fallback markers keep pace with native `:target-current`, and run announcements and button state after scrolling settles. Measure only the carousel's scrolling axis.
 
 Write a small script that adapts to your markup and covers these requirements:
 
 - **Detect each feature separately.** Feature-detect native scroll buttons (including the anchor positioning they depend on) and native scroll markers with `CSS.supports`. Hide the fallback controls only for features that exist natively, and wire up only the missing ones.
 - **Track the current slide** along the carousel's scrolling axis, for horizontal or vertical layouts.
-- **Update state after scrolling settles**, not on every frame: announce "Slide N of M" in the status region and mark the active fallback marker with `aria-current`.
+- **Update the active marker live.** From a `scroll` listener throttled with `requestAnimationFrame`, compute the nearest slide and set the active fallback marker (`aria-current="true"` and `data-current`) immediately, and also set it from the pending target the moment a marker or fallback Previous/Next button is clicked, so the dots change when the user decides, as native `::scroll-button()` and `:target-current` do, instead of after the slide moves. Skip the write when the current slide is unchanged, and skip the listener entirely while a click or key press has a pending target, because recomputing every frame during a scripted smooth scroll makes Safari stutter.
+- **Update the rest after scrolling settles**, from a single handler driven by the settled scroll position: update the fallback buttons' disabled state (and slide parking when looping), and announce "Slide N of M" in the status region only when the settled slide changes from the previously settled slide (keeping initial load and compensating park scrolls silent). Controls only initiate scrolling; they never update state directly.
+- **Settle on `scrollend`**, with a debounced `scroll` listener only where `scrollend` is unsupported. Do not run two settle handlers, and do not reorder or re-scroll the track (such as when parking a slide) while a scroll is still in flight, because that cancels it.
+- **Resolve fallback clicks from a pending target.** Make rapid previous/next clicks build on the slide already being scrolled to, not on the nearest slide, and clear the target when scrolling settles. Native `::scroll-button()` controls aim from the in-flight scroll position, so with smooth scrolling a rapid click repeats the same slide. Before the press is handled, finish the running scroll instantly (a `pointerdown` listener on the track whose target is the track itself, which is how presses on its pseudo-element buttons arrive) and park the end slides, then let the native click proceed. Ignore a `scrollend` that arrives after the next scroll has started, because acting on it (such as parking) cancels that scroll.
 - **Respect reduced motion** for any smooth scrolling.
-
-### Chrome keyboard focus (temporary workaround)
-
-{# WORKAROUND, remove when fixed: (1) Chrome drops keyboard focus from native ::scroll-button() when looping reorders the slides: https://issues.chromium.org/issues/581318163 . (2) Chrome drops keyboard focus from native ::scroll-marker when it is activated, with no reordering involved: https://issues.chromium.org/issues/582416742 . Safari and Firefox lack both pseudo-elements and use the HTML controls, which keep focus. Consider a BCD key request. Delete each swap, its flag, and its CSS rule when its bug is fixed. #}
-
-Chrome drops keyboard focus from native `::scroll-button()` controls when looping reorders the slides, and from native `::scroll-marker` markers when they are activated, so keyboard users cannot press them repeatedly. Script cannot refocus a pseudo-element. Until this is fixed, swap in the HTML controls, which keep focus, on the first `Tab` keydown:
-
-- Build the HTML markers and wire the HTML Previous and Next buttons even where native ones exist, because the swap can reveal them.
-- For buttons (only when looping): reveal the HTML buttons and set `data-html-buttons` on the track, with CSS `.carousel-track[data-html-buttons]::scroll-button(*) { display: none; }` so the native buttons are not duplicated.
-- For markers: reveal the HTML markers and set `data-html-markers` on the track, with CSS `.carousel-track[data-html-markers] { scroll-marker-group: none; }`.
-- Keep each swap behind its own flag and comment it as a temporary workaround, so it can be deleted when its bug is fixed. Pointer and touch users keep the native controls.
 
 ## Looping (continuous navigation)
 
-For previous/next that wrap from the last slide to the first and back, keep the track endless instead of disabling controls at the ends. Do not clone or move slides in the DOM, which conflicts with frameworks and duplicates content for assistive technology. Instead, treat the slides as a ring and rotate it with CSS `order` so the current slide always sits in the middle position. The track then always has a neighbor on both sides, so native scroll buttons never disable, and keyboard scrolling, touch, and snapping all keep working.
+Loop previous and next navigation from the last slide to the first and back by keeping the track endless instead of disabling controls at the ends (unless the carousel has fewer than three slides or finite navigation is requested). Do not clone slides or move them in the DOM, which conflicts with frameworks and duplicates content for assistive technology. Instead, park an end slide beside the current one with CSS `order`, and only when the carousel is at or one step from that end. Parking one step early puts the neighbor in place before scrolling reaches an end, so the native scroll button never disables mid-scroll and drops keyboard focus. The track then always has a neighbor on both sides, so native scroll buttons never disable, and keyboard scrolling, touch, and snapping all keep working. Only the first and last slides ever get `order`. Because parking starts one step before an end, a short carousel can have an end slide parked at every position (with 4 slides, always; with 3, both ends at the middle slide). DOM order applies unchanged only at positions that are more than one step from both ends, which needs 5 or more slides.
 
-{{ BASELINE_STATUS("sibling-count") }}
-
-- Drive `order` from `sibling-index()`, `sibling-count()`, and a `--current` custom property on the track (the zero-based index of the current slide), wrapped in `@supports` for `sibling-index()`. The formula below is the part that is easy to get wrong.
-- Start with `--current: 0` and park the track on the middle position with an instant scroll. When scrolling settles, work out how many positions the user moved from the middle, add that to `--current` (wrapping at the slide count), then park on the middle again in the same task. The reorder and the instant scroll must happen together so the change is invisible.
-- Looping needs at least three slides of equal size along the scrolling axis: the parking offset is the middle position times one slide plus the gap. Do not use it for peek layouts or slides of differing sizes.
-- Fallback previous/next controls and the status calculation must work from visual order, not DOM sibling order. Keep counting real slides, so "Slide N of M" announces after the rotation settles.
-- Keep `scroll-behavior: smooth` inside `prefers-reduced-motion: no-preference` for user navigation; only the re-centering is instant.
-- Without `sibling-index()` support, leave the carousel as a finite list: skip the rotation and keep disabling controls at the ends.
+- Keep a `--current` custom property on the track: the zero-based index of the current slide. Do not give it a default in CSS: while it is undefined, `order` falls back to 0, so no slide is parked and the carousel starts on the first slide without JavaScript. The script sets it on load. Park the last slide before the first (`order: -1`) when `--current` is `0` or `1`, and park the first slide after the last (`order: 1`) when `--current` is the last or second-to-last index. Set `order` only on the first and last slides (`:first-child` and `:last-child`), not on every slide. `sibling-count()` is needed to find the last indexes. The formulas below are the part that is easy to get wrong.
+- When scrolling settles, update `--current` from the scroll position. If the parking changes, measure the current slide's offset along the scrolling axis before and after, then instantly scroll by the difference in the same task so the change is invisible. Turn scroll snapping off (`scroll-snap-type: none`) around the reorder and the compensating scroll and restore it afterward, because some browsers otherwise re-snap to another slide and keep scrolling. Also lock overflow on the scrolling axis (`overflow-x: hidden`, or `overflow-y: hidden` for vertical) for the same step and restore it two animation frames later: Safari on iOS otherwise paints the reordered layout for a frame before the compensating scroll lands, which flickers. Restoring it immediately breaks looping, so keep the delay. This also applies when a parked slide is released after the user leaves an end slide.
+- Set `inert` on the parked slide while it is parked, and clear it when it becomes the current slide. It is a visual-only neighbor, so its content must not be reachable by keyboard or assistive technology out of sequence.
+- Looping needs at least three slides. Because the compensation is measured, slides may differ in size.
+- Fallback previous/next controls and the status calculation must work from visual order, not DOM sibling order. Per-slide labels ("2 of 4") and the status region use each slide's original index, which does not change when slides are parked. Do not renumber slides when `--current` changes.
+- Keep `scroll-behavior: smooth` inside `prefers-reduced-motion: no-preference` for user navigation; only the compensating scroll is instant.
 
 ```css
-.carousel-slide {
-  order: mod(sibling-index() - 1 - var(--current) + round(down, sibling-count() / 2), sibling-count());
+/* The first slide parks after the last while --current is the last or second-to-last index. */
+.carousel-track > :first-child {
+  order: clamp(0, var(--current) - (sibling-count() - 3), 1);
+}
+
+/* The last slide parks before the first while --current is 0 or 1. */
+.carousel-track > :last-child {
+  order: calc(-1 * clamp(0, 2 - var(--current), 1));
 }
 ```
 
-Accessibility trade-offs: `order` changes visual order but not DOM or Tab order, so focusable content inside slides can be reached in a different sequence from what is shown. Prefer slides without focusable content, or accept the mismatch knowingly. Native `::scroll-marker` markers follow DOM order, so they do not rotate with the slides; the current marker still highlights correctly.
+Accessibility trade-offs: only the first and last slides are ever parked and a parked slide is inert, so Tab order and the accessibility tree match what the user can interact with. Native `::scroll-marker` markers follow DOM order, so they do not move with the parked slide; the current marker still highlights correctly.
