@@ -5,9 +5,9 @@ description: Workflow for refactoring discipline-level guides (e.g., JavaScript,
 
 # Project Discipline Guides
 
-A **discipline guide** serves as the conceptual orientation "hub" for a category or domain, establishing the coding agent's mental model and routing to granular use-case subguides via the `{{ GUIDE_REF("guide-slug") }}` macro. A guide is recognized as a discipline guide if it is either:
-- A category root guide at `guides/<category>/<category>/guide.md` (such as `guides/css/css/guide.md`), or
-- A named guide registered in `DISCIPLINE_GUIDES` in [`src/core/guide-validation.ts`](../../../src/core/guide-validation.ts) (such as `guides/wasm/cpp-on-the-web/guide.md`).
+A **discipline guide** serves as the conceptual orientation "hub" for a category or domain, establishing the coding agent's mental model and routing to granular use-case subguides via the `{{ GUIDE_REF("guide-slug") }}` macro. A guide is recognized as a discipline guide once registered in `DISCIPLINE_GUIDES` in [`src/core/guide-validation.ts`](../../../src/core/guide-validation.ts), which includes:
+- **Category root guides** that orient an entire discipline (such as `guides/css/css/guide.md`).
+- **Named orientation guides** for cross-cutting feature horizontals or subdisciplines (such as `guides/wasm/cpp-on-the-web/guide.md`).
 
 Discipline guides are exempt from the `description` and `web-feature-ids` frontmatter requirements and are reported as bundled core guides by `src/build/audit-build.ts`.
 
