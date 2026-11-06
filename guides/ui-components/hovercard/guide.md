@@ -48,7 +48,8 @@ You do not need to include an additional link to the content inside of the hover
 
 {{ FEATURE("interest-invokers", "accessibility") }}
 
-Important: Only use hovercards to provide supplemental information (e.g. a preview of information that can otherwise be obtained by clicking on the link), never information that is not available in any other way.
+> [!IMPORTANT]
+> Only use hovercards to provide supplemental information (e.g. a preview of information that can otherwise be obtained by clicking on the link), never information that is not available in any other way.
 
 ## 2. Positioning with Anchor Positioning
 
