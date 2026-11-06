@@ -18,10 +18,12 @@ export interface PublicAllowlist {
   releasedModels: string[];
   /**
    * Limits on how much history stays published. `maxAgeDays` is applied by
-   * `withinMaxAge`; `maxSuites` after the agent/model gate so unreleased runs
-   * do not consume slots.
+   * `withinMaxAge`; `maxSuitesPerAgent` and then `maxSuites` after the
+   * agent/model gate so unreleased runs do not consume slots. The per-agent
+   * cap keeps an agent whose recent runs are unreleased from being aged out
+   * entirely by the others.
    */
-  retention?: { maxAgeDays?: number; maxSuites?: number };
+  retention?: { maxAgeDays?: number; maxSuites?: number; maxSuitesPerAgent?: number };
 }
 
 export const DEFAULT_ALLOWLIST_PATH = path.join(import.meta.dirname, 'allowlist.json');
@@ -36,7 +38,7 @@ const GUIDE_NAME_RE = /^[\w.-]+$/;
 const TOP_LEVEL_KEYS = new Set(['$schema', 'include', 'exclude', 'overrides', 'releasedModels', 'retention']);
 const REQUIRED_KEYS = ['include', 'exclude', 'overrides', 'releasedModels'] as const;
 const OVERRIDE_KEYS = new Set(['id', 'excludeGuides']);
-const RETENTION_KEYS = new Set(['maxAgeDays', 'maxSuites']);
+const RETENTION_KEYS = new Set(['maxAgeDays', 'maxSuites', 'maxSuitesPerAgent']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -167,134 +169,6 @@ export function selectSuites(allowlist: PublicAllowlist, candidates: readonly st
     .sort();
 }
 
-/** The result of applying an edit to the allowlist, before anything is written. */
-export interface AllowlistChange {
-  allowlist: PublicAllowlist;
-  /** Human-readable description of each edit; empty means the allowlist already reflects the command. */
-  edits: string[];
-}
-
-/** Makes `suiteId` eligible: drops it from `exclude`, drops any override, and adds it to `include` if no pattern admits it. */
-export function applyPromote(current: PublicAllowlist, suiteId: string): AllowlistChange {
-  assertExactSuiteId(suiteId);
-  const edits: string[] = [];
-  const allowlist = structuredClone(current);
-
-  if (allowlist.exclude.includes(suiteId)) {
-    allowlist.exclude = allowlist.exclude.filter(id => id !== suiteId);
-    edits.push(`remove ${suiteId} from exclude`);
-  }
-  if (allowlist.overrides.some(override => override.id === suiteId)) {
-    allowlist.overrides = allowlist.overrides.filter(override => override.id !== suiteId);
-    edits.push(`remove overrides for ${suiteId}`);
-  }
-  if (!allowlist.include.some(pattern => globToRegExp(pattern).test(suiteId))) {
-    allowlist.include = [...allowlist.include, suiteId];
-    edits.push(`add ${suiteId} to include`);
-  }
-  return { allowlist, edits };
-}
-
-/** Hides `suiteId` entirely, or only the given guides within it. */
-export function applyUnpublish(current: PublicAllowlist, suiteId: string, guides: readonly string[]): AllowlistChange {
-  assertExactSuiteId(suiteId);
-  for (const guide of guides) {
-    if (!GUIDE_NAME_RE.test(guide)) {
-      throw new Error(`Guide name ${JSON.stringify(guide)} must be a plain directory name (letters, digits, '.', '-', '_')`);
-    }
-  }
-  const edits: string[] = [];
-  const allowlist = structuredClone(current);
-  const wanted = [...new Set(guides)];
-
-  if (wanted.length === 0) {
-    if (!allowlist.exclude.includes(suiteId)) {
-      allowlist.exclude = [...allowlist.exclude, suiteId];
-      edits.push(`add ${suiteId} to exclude`);
-    }
-    return { allowlist, edits };
-  }
-
-  const existing = allowlist.overrides.find(override => override.id === suiteId);
-  const already = new Set(existing?.excludeGuides ?? []);
-  const added = wanted.filter(guide => !already.has(guide));
-  if (added.length > 0) {
-    const excludeGuides = [...already, ...added];
-    allowlist.overrides = [
-      ...allowlist.overrides.filter(override => override.id !== suiteId),
-      { id: suiteId, excludeGuides },
-    ];
-    edits.push(`exclude guide(s) ${added.join(', ')} from ${suiteId}`);
-  }
-  return { allowlist, edits };
-}
-
-/**
- * A `promote` / `unpublish` applied directly to the published output whose
- * allowlist PR has not merged yet. Recorded in build state so later builds,
- * still reading the unmerged allowlist, keep applying the same change instead
- * of undoing it.
- */
-export interface PendingChange {
-  command: 'promote' | 'unpublish';
-  suiteId: string;
-  /** For `unpublish`: hide only these guides. Empty hides the whole suite. */
-  guides: string[];
-  /** When the change was recorded (ISO 8601). After `PENDING_CHANGE_TTL_MS` it is dropped unapplied. */
-  createdAt: string;
-}
-
-/**
- * How long a pending change keeps being applied without its PR merging. A
- * week is long enough for any review; after that the checked-in allowlist,
- * which went through review, wins.
- */
-export const PENDING_CHANGE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
-function applyPendingChange(allowlist: PublicAllowlist, change: PendingChange): AllowlistChange {
-  return change.command === 'promote'
-    ? applyPromote(allowlist, change.suiteId)
-    : applyUnpublish(allowlist, change.suiteId, change.guides);
-}
-
-/**
- * Layers pending changes over the checked-in allowlist. A change the allowlist
- * already reflects (its PR merged) has done its job and is dropped: for an
- * `unpublish`, that includes a suite the allowlist no longer selects at all.
- * So is a pending `promote` for a suite the checked-in allowlist excludes:
- * that exclusion went through review, and an unmerged promotion must not keep
- * overriding it. Changes older than `PENDING_CHANGE_TTL_MS` are dropped too
- * and returned as `expired` so the caller can report them.
- */
-export function applyPendingChanges(
-  allowlist: PublicAllowlist,
-  pending: readonly PendingChange[],
-  now = new Date(),
-): { allowlist: PublicAllowlist; pending: PendingChange[]; expired: PendingChange[] } {
-  const stillPending: PendingChange[] = [];
-  const expired: PendingChange[] = [];
-  let effective = allowlist;
-  for (const change of pending) {
-    // An unreadable timestamp counts as expired: the reviewed allowlist wins by default.
-    if (!(now.getTime() - Date.parse(change.createdAt) <= PENDING_CHANGE_TTL_MS)) {
-      expired.push(change);
-      continue;
-    }
-    if (change.command === 'promote' && allowlist.exclude.includes(change.suiteId)) {
-      continue;
-    }
-    if (change.command === 'unpublish' && selectSuites(effective, [change.suiteId]).length === 0) {
-      continue;
-    }
-    const applied = applyPendingChange(effective, change);
-    if (applied.edits.length > 0) {
-      stillPending.push(change);
-      effective = applied.allowlist;
-    }
-  }
-  return { allowlist: effective, pending: stillPending, expired };
-}
-
 /**
  * `retention.maxAgeDays` half of retention: suites no older than that (all of
  * them when unset). `maxSuites` is applied after the agent/model gate so
@@ -307,6 +181,31 @@ export function withinMaxAge<T extends { createdAt: Date }>(allowlist: PublicAll
   }
   const cutoff = now.getTime() - maxAgeDays * 24 * 60 * 60 * 1000;
   return suites.filter(suite => suite.createdAt.getTime() >= cutoff);
+}
+
+/**
+ * Applies `retention.maxSuitesPerAgent` and then `retention.maxSuites` to
+ * publishable suites in newest-first order, returning the ones that keep a
+ * slot. The per-agent cap runs first so a prolific agent cannot push another
+ * agent's older suites out of the global budget.
+ */
+export function withinSuiteCaps<T extends { agent?: string }>(allowlist: PublicAllowlist, newestFirstSuites: readonly T[]): T[] {
+  const { maxSuites, maxSuitesPerAgent } = allowlist.retention ?? {};
+  const perAgent = new Map<string, number>();
+  const kept: T[] = [];
+  for (const suite of newestFirstSuites) {
+    if (maxSuites !== undefined && kept.length >= maxSuites) {
+      break;
+    }
+    const agent = suite.agent ?? '';
+    const seen = perAgent.get(agent) ?? 0;
+    if (maxSuitesPerAgent !== undefined && seen >= maxSuitesPerAgent) {
+      continue;
+    }
+    perAgent.set(agent, seen + 1);
+    kept.push(suite);
+  }
+  return kept;
 }
 
 /** Returns a copy sorted newest-first by `createdAt`. */
@@ -351,13 +250,6 @@ export function validateAllowlistPolicy(allowlist: PublicAllowlist): string[] {
     seen.add(id);
   }
   return problems;
-}
-
-/** `promote` and `unpublish` take one exact suite id: a pattern or anything with whitespace would silently change more than one entry. */
-function assertExactSuiteId(suiteId: string): void {
-  if (!EXACT_ID_RE.test(suiteId)) {
-    throw new Error(`Suite id ${JSON.stringify(suiteId)} must be a single exact id without wildcards or whitespace`);
-  }
 }
 
 /** The override entry for a suite, if any. */

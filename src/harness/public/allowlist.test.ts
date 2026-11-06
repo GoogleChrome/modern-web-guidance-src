@@ -4,10 +4,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  applyPendingChanges,
-  applyPromote,
-  applyUnpublish,
-  assertAllowlistShape,
   DEFAULT_ALLOWLIST_PATH,
   globToRegExp,
   loadValidatedAllowlist,
@@ -15,16 +11,15 @@ import {
   overrideFor,
   parseAllowlist,
   parseValidatedAllowlist,
-  PENDING_CHANGE_TTL_MS,
   selectSuites,
   suiteCreatedAt,
   validateAllowlistPolicy,
   withinMaxAge,
+  withinSuiteCaps,
 } from './allowlist.ts';
-import type { PendingChange, PublicAllowlist } from './allowlist.ts';
+import type { PublicAllowlist } from './allowlist.ts';
 
 const NIGHTLY = 'nightly-2026-10-20_20-43-48-codex_cli';
-const ONE_OFF = 'opus-4.8-2026-06-10_17-23-16';
 
 const allowlist: PublicAllowlist = {
   include: ['nightly-*-codex_cli', 'nightly-*-claude_code', 'one-off-2026-05-13_19-17-28'],
@@ -123,10 +118,11 @@ describe('loadValidatedAllowlist', () => {
 
   test('accepts a $schema key and an optional retention block', () => {
     assert.deepEqual(loadValidatedAllowlist(writeTemp(JSON.stringify({ $schema: './x.json', ...allowlist }))), allowlist);
-    const withRetention = { ...allowlist, retention: { maxAgeDays: 90, maxSuites: 300 } };
+    const withRetention = { ...allowlist, retention: { maxAgeDays: 90, maxSuites: 300, maxSuitesPerAgent: 10 } };
     assert.deepEqual(loadValidatedAllowlist(writeTemp(JSON.stringify(withRetention))), withRetention);
     assert.throws(() => loadValidatedAllowlist(writeTemp(JSON.stringify({ ...allowlist, retention: { maxAgeDays: 0 } }))), /maxAgeDays must be >= 1/);
     assert.throws(() => loadValidatedAllowlist(writeTemp(JSON.stringify({ ...allowlist, retention: { maxSuites: 0 } }))), /maxSuites must be >= 1/);
+    assert.throws(() => loadValidatedAllowlist(writeTemp(JSON.stringify({ ...allowlist, retention: { maxSuitesPerAgent: 1.5 } }))), /maxSuitesPerAgent must be integer/);
   });
 
   test('loadValidatedAllowlist also applies policy', () => {
@@ -183,172 +179,24 @@ describe('retention helpers', () => {
     assert.deepEqual(newestFirst(input).map(s => s.id), ['c', 'a', 'b']);
     assert.deepEqual(input.map(s => s.id), ['a', 'b', 'c']);
   });
-});
 
-describe('applyPromote', () => {
-  const base: PublicAllowlist = { ...allowlist, include: ['nightly-*-codex_cli'], exclude: [], overrides: [] };
-
-  test('is a no-op for a nightly already admitted by a pattern', () => {
-    const { allowlist: next, edits } = applyPromote(base, NIGHTLY);
-    assert.deepEqual(edits, []);
-    assert.deepEqual(next, base);
-  });
-
-  test('adds an exact id for a one-off suite', () => {
-    const { allowlist: next, edits } = applyPromote(base, ONE_OFF);
-    assert.deepEqual(edits, [`add ${ONE_OFF} to include`]);
-    assert.deepEqual(next.include, ['nightly-*-codex_cli', ONE_OFF]);
-  });
-
-  test('restores a suite by clearing exclude and overrides', () => {
-    const current: PublicAllowlist = {
-      ...base,
-      exclude: [NIGHTLY, 'other'],
-      overrides: [{ id: NIGHTLY, excludeGuides: ['security'] }, { id: 'other', excludeGuides: ['x'] }],
-    };
-    const { allowlist: next, edits } = applyPromote(current, NIGHTLY);
-    assert.deepEqual(edits, [`remove ${NIGHTLY} from exclude`, `remove overrides for ${NIGHTLY}`]);
-    assert.deepEqual(next.exclude, ['other']);
-    assert.deepEqual(next.overrides, [{ id: 'other', excludeGuides: ['x'] }]);
-    assert.deepEqual(current.exclude, [NIGHTLY, 'other'], 'input must not be mutated');
-  });
-});
-
-describe('applyUnpublish', () => {
-  const base: PublicAllowlist = { ...allowlist, include: ['nightly-*-codex_cli'], exclude: [], overrides: [] };
-
-  test('promote and unpublish refuse patterns, whitespace and empty ids before touching anything', () => {
-    for (const bad of ['nightly-*', 'nightly-?-x', 'two words', ' lead', '', 'tab\there']) {
-      assert.throws(() => applyPromote(base, bad), /single exact id/, bad);
-      assert.throws(() => applyUnpublish(base, bad, []), /single exact id/, bad);
-    }
-  });
-
-  test('refuses guide names that are not plain directory names', () => {
-    for (const bad of ['../x', 'a/b', 'a b', '', 'g*']) {
-      assert.throws(() => applyUnpublish(base, NIGHTLY, [bad]), /plain directory name/, bad);
-    }
-    assert.equal(applyUnpublish(base, NIGHTLY, ['web-mcp.v2_x']).edits.length, 1);
-  });
-
-  test('adds the suite to exclude', () => {
-    const { allowlist: next, edits } = applyUnpublish(base, NIGHTLY, []);
-    assert.deepEqual(edits, [`add ${NIGHTLY} to exclude`]);
-    assert.deepEqual(next.exclude, [NIGHTLY]);
-  });
-
-  test('is a no-op when already excluded', () => {
-    const { edits } = applyUnpublish({ ...base, exclude: [NIGHTLY] }, NIGHTLY, []);
-    assert.deepEqual(edits, []);
-  });
-
-  test('creates an override for a guide and extends it on repeat', () => {
-    const first = applyUnpublish(base, NIGHTLY, ['security']);
-    assert.deepEqual(first.allowlist.overrides, [{ id: NIGHTLY, excludeGuides: ['security'] }]);
-
-    const second = applyUnpublish(first.allowlist, NIGHTLY, ['security', 'passkeys']);
-    assert.deepEqual(second.edits, [`exclude guide(s) passkeys from ${NIGHTLY}`]);
-    assert.deepEqual(second.allowlist.overrides, [{ id: NIGHTLY, excludeGuides: ['security', 'passkeys'] }]);
-
-    const third = applyUnpublish(second.allowlist, NIGHTLY, ['passkeys']);
-    assert.deepEqual(third.edits, []);
-  });
-
-  test('never writes a guide twice, even when --guide repeats it', () => {
-    const { allowlist: next, edits } = applyUnpublish(base, NIGHTLY, ['security', 'security']);
-    assert.deepEqual(next.overrides, [{ id: NIGHTLY, excludeGuides: ['security'] }]);
-    assert.deepEqual(edits, [`exclude guide(s) security from ${NIGHTLY}`]);
-    assert.deepEqual(applyUnpublish(next, NIGHTLY, ['security', 'security']).edits, []);
-  });
-
-  test('every change is idempotent and satisfies both schema and policy', () => {
-    const changes = [
-      (current: PublicAllowlist) => applyPromote(current, ONE_OFF),
-      (current: PublicAllowlist) => applyPromote(current, NIGHTLY),
-      (current: PublicAllowlist) => applyUnpublish(current, NIGHTLY, []),
-      (current: PublicAllowlist) => applyUnpublish(current, NIGHTLY, ['security']),
+  test('withinSuiteCaps applies the per-agent cap before the global cap', () => {
+    // Newest first: four codex runs, then two claude, then one with no agent.
+    const ranked = [
+      { id: 'x1', agent: 'codex_cli' },
+      { id: 'x2', agent: 'codex_cli' },
+      { id: 'x3', agent: 'codex_cli' },
+      { id: 'x4', agent: 'codex_cli' },
+      { id: 'c1', agent: 'claude_code' },
+      { id: 'c2', agent: 'claude_code' },
+      { id: 'n1' },
     ];
-    const excludedWithOverride = { ...base, exclude: [NIGHTLY], overrides: [{ id: NIGHTLY, excludeGuides: ['x'] }] };
-    for (const change of changes) {
-      for (const start of [base, excludedWithOverride]) {
-        const first = change(start);
-        assertAllowlistShape(first.allowlist, 'test');
-        assert.deepEqual(validateAllowlistPolicy(first.allowlist), []);
-        assert.deepEqual(change(first.allowlist).edits, [], 'applying the same change again must be a no-op');
-      }
-    }
-  });
-});
+    const ids = (retention: PublicAllowlist['retention']) => withinSuiteCaps({ ...allowlist, retention }, ranked).map(s => s.id);
 
-describe('applyPendingChanges', () => {
-  const base: PublicAllowlist = { ...allowlist, include: ['nightly-*'], exclude: [], overrides: [] };
-  const now = new Date('2026-10-26T00:00:00Z');
-  const createdAt = '2026-10-25T00:00:00Z';
-  const pending = (change: Omit<PendingChange, 'createdAt'>, at = createdAt): PendingChange => ({ ...change, createdAt: at });
-
-  test('layers changes the allowlist does not yet reflect and keeps them pending', () => {
-    const result = applyPendingChanges(base, [
-      pending({ command: 'unpublish', suiteId: 'nightly-1', guides: [] }),
-      pending({ command: 'unpublish', suiteId: 'nightly-2', guides: ['security'] }),
-    ], now);
-    assert.deepEqual(result.allowlist.exclude, ['nightly-1']);
-    assert.deepEqual(result.allowlist.overrides, [{ id: 'nightly-2', excludeGuides: ['security'] }]);
-    assert.equal(result.pending.length, 2);
-    assert.deepEqual(result.expired, []);
-  });
-
-  test('drops changes the allowlist already reflects', () => {
-    const merged = { ...base, exclude: ['nightly-1'] };
-    const result = applyPendingChanges(merged, [
-      pending({ command: 'unpublish', suiteId: 'nightly-1', guides: [] }),
-      pending({ command: 'promote', suiteId: 'nightly-3', guides: [] }),
-    ], now);
-    assert.deepEqual(result.pending, []);
-    assert.deepEqual(result.allowlist, merged);
-  });
-
-  test('an unpublish is reflected once the allowlist no longer selects the suite at all', () => {
-    const narrowed = { ...base, include: ['nightly-*-codex_cli'], exclude: ['nightly-9-codex_cli'] };
-    const result = applyPendingChanges(narrowed, [
-      pending({ command: 'unpublish', suiteId: 'nightly-1-claude_code', guides: [] }),
-      pending({ command: 'unpublish', suiteId: 'nightly-9-codex_cli', guides: ['security'] }),
-      pending({ command: 'unpublish', suiteId: 'nightly-2-codex_cli', guides: ['security'] }),
-    ], now);
-    assert.deepEqual(result.pending.map(change => change.suiteId), ['nightly-2-codex_cli']);
-    assert.deepEqual(result.allowlist.exclude, narrowed.exclude);
-    assert.deepEqual(result.allowlist.overrides, [{ id: 'nightly-2-codex_cli', excludeGuides: ['security'] }]);
-  });
-
-  test('a pending promote does not override an exclude that went through review', () => {
-    const takenDown = { ...base, exclude: ['nightly-1'] };
-    const result = applyPendingChanges(takenDown, [pending({ command: 'promote', suiteId: 'nightly-1', guides: [] })], now);
-    assert.deepEqual(result.allowlist, takenDown);
-    assert.deepEqual(result.pending, []);
-  });
-
-  test('a pending promote still restores a suite the allowlist merely overrides or does not match', () => {
-    const current = { ...base, include: ['nightly-*-codex_cli'], overrides: [{ id: 'nightly-1-codex_cli', excludeGuides: ['security'] }] };
-    const result = applyPendingChanges(current, [
-      pending({ command: 'promote', suiteId: 'nightly-1-codex_cli', guides: [] }),
-      pending({ command: 'promote', suiteId: ONE_OFF, guides: [] }),
-      pending({ command: 'unpublish', suiteId: ONE_OFF, guides: ['security'] }),
-    ], now);
-    assert.deepEqual(result.allowlist.overrides, [{ id: ONE_OFF, excludeGuides: ['security'] }]);
-    assert.deepEqual(result.allowlist.include, ['nightly-*-codex_cli', ONE_OFF]);
-    assert.equal(result.pending.length, 3);
-  });
-
-  test('changes older than the TTL, or without a readable timestamp, expire unapplied', () => {
-    const old = new Date(now.getTime() - PENDING_CHANGE_TTL_MS - 1).toISOString();
-    const justInTime = new Date(now.getTime() - PENDING_CHANGE_TTL_MS).toISOString();
-    const result = applyPendingChanges(base, [
-      pending({ command: 'unpublish', suiteId: 'nightly-1', guides: [] }, old),
-      pending({ command: 'unpublish', suiteId: 'nightly-2', guides: [] }, justInTime),
-      pending({ command: 'unpublish', suiteId: 'nightly-3', guides: [] }, 'not a date'),
-    ], now);
-    assert.deepEqual(result.expired.map(change => change.suiteId), ['nightly-1', 'nightly-3']);
-    assert.deepEqual(result.pending.map(change => change.suiteId), ['nightly-2']);
-    assert.deepEqual(result.allowlist.exclude, ['nightly-2']);
+    assert.deepEqual(ids(undefined), ['x1', 'x2', 'x3', 'x4', 'c1', 'c2', 'n1'], 'no caps keeps everything');
+    assert.deepEqual(ids({ maxSuites: 3 }), ['x1', 'x2', 'x3'], 'a global cap alone lets one agent take every slot');
+    assert.deepEqual(ids({ maxSuitesPerAgent: 2 }), ['x1', 'x2', 'c1', 'c2', 'n1'], 'per-agent cap skips the surplus and keeps scanning');
+    assert.deepEqual(ids({ maxSuitesPerAgent: 2, maxSuites: 3 }), ['x1', 'x2', 'c1'], 'per-agent first, then the global cap');
   });
 });
 

@@ -50,7 +50,8 @@
       "additionalProperties": false,
       "properties": {
         "maxAgeDays": { "type": "integer", "minimum": 1, "description": "Drop suites whose raw evals.json is older than this many days." },
-        "maxSuites": { "type": "integer", "minimum": 1, "description": "Keep at most this many of the newest publishable suites (unreleased runs do not count)." }
+        "maxSuites": { "type": "integer", "minimum": 1, "description": "Keep at most this many of the newest publishable suites in total (unreleased runs do not count)." },
+        "maxSuitesPerAgent": { "type": "integer", "minimum": 1, "description": "Keep at most this many of the newest publishable suites per agent, applied before maxSuites, so one agent cannot age the others out." }
       }
     }
   }

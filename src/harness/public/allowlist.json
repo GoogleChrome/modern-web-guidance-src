@@ -16,12 +16,14 @@
     "claude-sonnet-5",
     "claude-sonnet-5-5",
     "gemini-3.8-flash",
+    "gemini-4-argon",
     "gpt-5.5",
     "gpt-5.6-sol",
     "gpt-6-astra",
     "gpt-6.1-sol"
   ],
   "retention": {
+    "maxSuitesPerAgent": 10,
     "maxSuites": 30
   }
 }

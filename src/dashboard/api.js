@@ -258,7 +258,8 @@ export class ApiClient {
         const actualBaseApp = run.baseApp;
         let logicalBasePath = `${testId}/${run.runNumber}/${guideName}/${taskName}/${runType}`;
 
-        // The public copy carries a pre-built agent.patch and nothing to diff against, so there is nothing to probe.
+        // The public copy carries a pre-built agent.patch and nothing to diff against, so there is
+        // nothing to probe. An empty setupPath tells the UI there is no built app for this run.
         if (this.source === 'public') {
             return { setupPath: '', resultPath: `${logicalBasePath}/agent.patch`, usedBasePath: logicalBasePath };
         }

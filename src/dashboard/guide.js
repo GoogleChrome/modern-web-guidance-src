@@ -156,8 +156,11 @@ async function loadManifestTests(source) {
         }
     } catch (error) {
         console.error(`Error loading ${source} suites:`, error);
-        // The bucket rejected the token; show the public copy rather than nothing.
-        if (source === 'remote' && isAuthRejection(error)) {
+        // The bucket rejected the token; show the public copy rather than nothing. Not on the
+        // dev server's local view, so a stale token there does not mix out/public-evals/ into
+        // local results. (Checked by mode rather than `=== 'remote'` because a 401 has already
+        // cleared the token by this point.)
+        if (source === 'remote' && resolveDataSource() !== 'local' && isAuthRejection(error)) {
             await loadManifestTests('public');
         }
     }
@@ -197,7 +200,9 @@ function setupNavigationControls(currentGuide) {
     const { signal } = navListenersAbort;
     const params = new URLSearchParams(window.location.search);
     const isA11yMode = params.get('mode') === 'a11y';
-    const modeSuffix = isA11yMode ? '&mode=a11y' : '';
+    const sourceParam = params.get('source');
+    // Carry mode and data source forward so navigating between guides does not drop ?source=public.
+    const querySuffix = `${isA11yMode ? '&mode=a11y' : ''}${sourceParam ? `&source=${encodeURIComponent(sourceParam)}` : ''}`;
     const guideSet = new Set();
     Object.values(allTestData).forEach(run => {
         if (run.guides) {
@@ -225,20 +230,20 @@ function setupNavigationControls(currentGuide) {
         prevBtn.disabled = false;
         prevBtn.addEventListener('click', () => {
             const prevIndex = (currentIndex - 1 + allGuides.length) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[prevIndex])}${modeSuffix}`;
+            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[prevIndex])}${querySuffix}`;
         }, { signal });
 
         nextBtn.disabled = false;
         nextBtn.addEventListener('click', () => {
             const nextIndex = (currentIndex + 1) % allGuides.length;
-            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[nextIndex])}${modeSuffix}`;
+            window.location.href = `guide.html?guide=${encodeURIComponent(allGuides[nextIndex])}${querySuffix}`;
         }, { signal });
     }
 
     goBtn.addEventListener('click', () => {
         const val = searchInput.value.trim();
         if (val) {
-            window.location.href = `guide.html?guide=${encodeURIComponent(val)}${modeSuffix}`;
+            window.location.href = `guide.html?guide=${encodeURIComponent(val)}${querySuffix}`;
         }
     }, { signal });
 

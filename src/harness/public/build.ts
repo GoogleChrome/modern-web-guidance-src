@@ -1,19 +1,12 @@
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { cBold, cCyan, cDim, cGreen, cRed, cYellow } from '../../core/colors.ts';
+import { cRed, cYellow } from '../../core/colors.ts';
 import { outDir as defaultOutRoot } from '../../core/paths.ts';
 import { DEFAULT_ALLOWLIST_PATH, loadValidatedAllowlist, selectSuites } from './allowlist.ts';
-import type { PendingChange } from './allowlist.ts';
-import {
-  buildSelectedSuites,
-  buildSuite,
-  effectiveAllowlist,
-  pendingChanges,
-  PUBLIC_EVALS_DIR,
-  writeManifest,
-} from './builder.ts';
+import { buildSelectedSuites, buildSuite, PUBLIC_EVALS_DIR, writeManifest } from './builder.ts';
 import type { BuildOptions, SuiteBuildResult } from './builder.ts';
 import { forbiddenTokens, forbiddenTokensVersion } from './forbidden-tokens.ts';
+import { reportResults } from './report.ts';
 import { GcsSuiteStore, LocalSuiteStore } from './suite-store.ts';
 
 /**
@@ -35,13 +28,6 @@ import { GcsSuiteStore, LocalSuiteStore } from './suite-store.ts';
  * last build in <out> are left alone. Skipped suites (policy) are reported and remembered;
  * failed suites (transient errors) are reported, retried next run, and make the exit code 1.
  */
-
-function reportExpired(expired: readonly PendingChange[]): void {
-  for (const change of expired) {
-    const scope = change.guides.length > 0 ? `${change.suiteId} (${change.guides.join(', ')})` : change.suiteId;
-    console.warn(cYellow(`expired   ${change.command} ${scope}  (created ${change.createdAt}; dropped in favour of allowlist)`));
-  }
-}
 
 async function main(): Promise<number> {
   const { values } = parseArgs({
@@ -69,7 +55,6 @@ async function main(): Promise<number> {
     forbiddenTokens: forbiddenTokens(values['forbidden-tokens'].split(',')),
     forbiddenTokensVersion: forbiddenTokensVersion(),
     force: values.force,
-    onExpiredPending: reportExpired,
   };
 
   if (options.allowlist.releasedModels.length === 0) {
@@ -80,56 +65,20 @@ async function main(): Promise<number> {
   if (values.all) {
     results = await buildSelectedSuites(options);
   } else {
-    const layered = effectiveAllowlist(options.allowlist, options.outDir);
-    reportExpired(layered.expired);
-    const suiteOptions: BuildOptions = { ...options, allowlist: layered.allowlist };
-    const selected = new Set(selectSuites(suiteOptions.allowlist, values.suite));
+    const selected = new Set(selectSuites(options.allowlist, values.suite));
     const unselected = values.suite.filter(suiteId => !selected.has(suiteId));
     if (unselected.length > 0) {
       throw new Error(`${unselected.join(', ')}: not selected by the allowlist; use --all or edit the allowlist`);
     }
     results = [];
     for (const suiteId of values.suite) {
-      results.push(await buildSuite(suiteId, suiteOptions));
+      results.push(await buildSuite(suiteId, options));
     }
-    writeManifest(options.outDir, results, suiteOptions.forbiddenTokens);
+    writeManifest(options.outDir, results, options.forbiddenTokens);
   }
 
-  report(results, path.join(options.outDir, PUBLIC_EVALS_DIR));
-  for (const change of pendingChanges(options.outDir)) {
-    const scope = change.guides.length > 0 ? `${change.suiteId} (${change.guides.join(', ')})` : change.suiteId;
-    console.log(cYellow(`pending   ${change.command} ${scope}  (applied until the allowlist reflects it)`));
-  }
+  reportResults(results, path.join(options.outDir, PUBLIC_EVALS_DIR));
   return results.some(result => result.status === 'failed') ? 1 : 0;
-}
-
-function report(results: SuiteBuildResult[], publicDir: string): void {
-  const byStatus = (status: SuiteBuildResult['status']) => results.filter(result => result.status === status);
-  // Reasons may quote the very string that was rejected; CI logs are retained and widely readable.
-  const why = (result: SuiteBuildResult) => (process.env['CI'] ? '' : `: ${result.reason}`);
-
-  for (const result of byStatus('built')) {
-    const mb = (result.bytes / (1024 * 1024)).toFixed(1);
-    const note = result.truncatedPatches > 0 ? cYellow(` (${result.truncatedPatches} patch(es) over cap)`) : '';
-    console.log(`${cGreen('built    ')} ${result.suiteId}  ${result.files} files, ${mb} MB${note}`);
-  }
-  for (const result of byStatus('removed')) {
-    console.log(`${cYellow('removed  ')} ${result.suiteId}`);
-  }
-  for (const result of byStatus('skipped')) {
-    console.log(`${cRed('skipped  ')} ${result.suiteId}  ${result.code}${why(result)}`);
-  }
-  for (const result of byStatus('failed')) {
-    console.log(`${cRed('FAILED   ')} ${result.suiteId}${why(result)}  (will retry next run)`);
-  }
-  const unchanged = byStatus('unchanged').length;
-  if (unchanged > 0) {
-    console.log(cDim(`unchanged  ${unchanged} suite(s)`));
-  }
-  const failed = byStatus('failed').length;
-  console.log(cBold(
-    `\n${byStatus('built').length} built, ${unchanged} unchanged, ${byStatus('removed').length} removed, ${byStatus('skipped').length} skipped${failed ? `, ${failed} FAILED` : ''} → ${cCyan(publicDir)}`,
-  ));
 }
 
 main().then(

@@ -4,8 +4,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import ghpages from 'gh-pages';
-import { checkoutPublished, publishPublicEvals, remoteHead } from './publish.ts';
+import { checkoutPublished, cloneDir, publishPublicEvals, remoteHead } from './publish.ts';
 
 const TEST_USER = { name: 'Example Publisher', email: 'publisher@example.invalid' };
 const cacheDirs: string[] = [];
@@ -19,7 +18,7 @@ after(() => {
 function makeBareRemote(): string {
   const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'public-evals-bare-'));
   execFileSync('git', ['init', '--bare', '--quiet', bare]);
-  cacheDirs.push(ghpages.getCacheDir(bare));
+  cacheDirs.push(cloneDir(bare));
   return bare;
 }
 
@@ -42,7 +41,7 @@ function seedBranchFile(bareRepo: string, relPath: string, contents: string): vo
   fs.writeFileSync(file, contents);
   execFileSync('git', ['-C', work, 'add', '.']);
   execFileSync('git', ['-C', work, '-c', `user.name=${TEST_USER.name}`, '-c', `user.email=${TEST_USER.email}`, 'commit', '--quiet', '-m', 'seed dashboard']);
-  execFileSync('git', ['-C', work, 'push', '--quiet', bareRepo, 'gh-pages']);
+  execFileSync('git', ['-C', work, 'push', '--quiet', '--force', bareRepo, 'gh-pages']);
   fs.rmSync(work, { recursive: true, force: true });
 }
 
@@ -89,6 +88,30 @@ describe('publishPublicEvals + checkoutPublished', () => {
     assert.equal(fs.readFileSync(path.join(inspect, 'index.html'), 'utf8'), '<html>dashboard</html>\n');
     assert.ok(!fs.existsSync(path.join(inspect, 'public-evals', 'suite-1')), 'old suite inside public-evals/ is removed');
     assert.equal(fs.readFileSync(path.join(inspect, 'public-evals', 'suite-2', 'evals.json'), 'utf8'), '{"n":2}\n');
+    assert.ok(fs.existsSync(path.join(inspect, '.nojekyll')));
+    // The branch is one commit holding the whole site, not a growing history.
+    assert.equal(execFileSync('git', ['-C', inspect, 'rev-list', '--count', 'HEAD'], { encoding: 'utf8' }).trim(), '1');
+  });
+
+  test('publishing an identical copy is a no-op, and dot-prefixed entries are not published', async () => {
+    const bare = makeBareRemote();
+    const out = makeOutDir({
+      'suites.gen.json': '[{"testId":"suite-1"}]\n',
+      'suite-1/evals.json': '{"n":1}\n',
+      '.DS_Store': 'junk',
+      'suite-1/.hidden': 'junk',
+    });
+    await publishPublicEvals(out, { repoUrl: bare, message: 'first', expectedHead: null, user: TEST_USER });
+    const head = remoteHead(bare);
+    assert.ok(head);
+
+    await publishPublicEvals(out, { repoUrl: bare, message: 'again', expectedHead: head, user: TEST_USER });
+    assert.equal(remoteHead(bare), head, 'unchanged content does not create a new commit');
+
+    const inspect = fs.mkdtempSync(path.join(os.tmpdir(), 'public-evals-inspect-'));
+    execFileSync('git', ['clone', '--quiet', '--branch', 'gh-pages', bare, inspect]);
+    assert.ok(!fs.existsSync(path.join(inspect, 'public-evals', '.DS_Store')));
+    assert.ok(!fs.existsSync(path.join(inspect, 'public-evals', 'suite-1', '.hidden')));
   });
 
   test('refuses to publish without suites.gen.json or when expectedHead has moved', async () => {
@@ -105,5 +128,38 @@ describe('publishPublicEvals + checkoutPublished', () => {
       publishPublicEvals(out, { repoUrl: bare, message: 'stale head', expectedHead: '0'.repeat(40), user: TEST_USER }),
       /gh-pages moved while building/,
     );
+  });
+
+  test('a branch that moves after the pre-check is not overwritten: the push itself is rejected', async () => {
+    const bare = makeBareRemote();
+    seedBranchFile(bare, 'index.html', '<html>v1</html>\n');
+    const startHead = remoteHead(bare);
+    assert.ok(startHead);
+
+    // Pass the pre-check, then move the branch underneath the publish via a filesystem hook:
+    // the dotfile filter is evaluated per entry during cpSync, which runs after the pre-check.
+    const out = makeOutDir({ 'suites.gen.json': '[{"testId":"suite-1"}]\n', 'suite-1/evals.json': '{"n":1}\n' });
+    let moved = false;
+    const originalCp = fs.cpSync;
+    fs.cpSync = ((...args: Parameters<typeof fs.cpSync>) => {
+      if (!moved) {
+        moved = true;
+        seedBranchFile(bare, 'index.html', '<html>v2 from someone else</html>\n');
+      }
+      return originalCp(...args);
+    }) as typeof fs.cpSync;
+    try {
+      await assert.rejects(
+        publishPublicEvals(out, { repoUrl: bare, message: 'racing publish', expectedHead: startHead, user: TEST_USER }),
+        /gh-pages moved while building/,
+      );
+    } finally {
+      fs.cpSync = originalCp;
+    }
+
+    const inspect = fs.mkdtempSync(path.join(os.tmpdir(), 'public-evals-inspect-'));
+    execFileSync('git', ['clone', '--quiet', '--branch', 'gh-pages', bare, inspect]);
+    assert.equal(fs.readFileSync(path.join(inspect, 'index.html'), 'utf8'), '<html>v2 from someone else</html>\n', 'the other change survived');
+    assert.ok(!fs.existsSync(path.join(inspect, 'public-evals', 'suite-1')), 'our racing publish did not land');
   });
 });

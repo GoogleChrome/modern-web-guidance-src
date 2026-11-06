@@ -26,9 +26,11 @@ public-evals/
 - `suites.gen.json` is the only index. Do not list the directory.
 - `build-state.json` lets the next build skip suites whose inputs have not
   changed. It holds suite ids, bucket generations, excluded guide names,
-  machine-readable skip codes, the released-model list, and pending `--now`
-  changes (with `createdAt` timestamps that expire after 7 days); never error
-  text, which could quote what was rejected, because it is published too.
+  machine-readable skip codes, and, for published and deferred suites, their
+  agent and model (both already public in `evals.json`); a suite skipped for an
+  unreleased model records the released-model list it was judged against, never
+  its own model. No error text either: it is published too, and could quote what
+  was rejected.
 - Fetch with plain relative URLs: `fetch('public-evals/suites.gen.json')`. Add a
   10-minute bucketed cache-buster (`?t=<Math.floor(Date.now() / 600_000)>`) to
   every `public-evals/` fetch; GitHub Pages caches for ~10 min, and bucketing
@@ -121,30 +123,26 @@ So nothing needs UI for it:
 
 ## Lifecycle
 
-- A suite appears when it matches `src/harness/public/allowlist.json` and the
-  builder runs and publishes. **No scheduled CI job exists yet** — `gd promote --now` /
-  `gd unpublish --now` is currently the only publisher to `gh-pages`.
-- A suite disappears when it is added to `exclude` (or no longer matches) and
-  the builder runs again; its directory is removed and the manifest rewritten.
-- `gd promote --now` / `gd unpublish --now` update the site immediately and
-  record the change as *pending* in `build-state.json`. Every later build
-  layers active pending changes over the checked-in allowlist so a subsequent
-  build against `origin/main` (before the PR merges) neither undoes a takedown
-  nor drops a fresh promotion. Pending changes clear themselves once the
-  allowlist PR merges and expire after 7 days if their PR was closed without
-  merging; to undo an `unpublish --now` early, run `promote --now`. A pending
-  `promote` never overrides an `exclude` that has merged: a reviewed takedown
-  wins. `pnpm public:build` lists active and expired pending changes.
-- Retention (`retention.maxAgeDays` / `retention.maxSuites` in the allowlist)
-  drops whole suites, oldest first by the run time in the suite id, to keep the
-  site under GitHub Pages' 1 GB cap. `maxSuites` counts suites that pass the
-  agent/model gate, so unreleased runs do not use up slots. A published suite
+- `src/harness/public/allowlist.json` on `main` is the single source of truth.
+  A suite appears when it matches the allowlist and `pnpm public:publish` runs;
+  it disappears when it is added to `exclude` (or no longer matches) and the
+  publisher runs again: its directory is removed and the manifest rewritten.
+- `pnpm public:publish` is the only publisher to `gh-pages`. It is stateless:
+  it checks out what is published, rebuilds from the checked-in allowlist, and
+  pushes.
+- Retention (`retention.maxAgeDays`, `retention.maxSuitesPerAgent`, and
+  `retention.maxSuites` in the allowlist) drops whole suites, oldest first by
+  the run time in the suite id, to keep the site under GitHub Pages' 1 GB cap.
+  The caps count suites that pass the agent/model gate, so unreleased runs do
+  not use up slots; the per-agent cap is applied first so an agent whose
+  recent runs are unreleased is not aged out by the others. A published suite
   whose gate check fails transiently keeps its retention slot so an older suite
   is not churned in and out.
 - Builds are incremental: a suite is rebuilt only when its raw `evals.json`
-  changes, its override changes, the released-model list changes, the
+  changes, its override changes, its own model is released or un-released, the
   builder's field lists or scrub patterns change, or
-  `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` is bumped. `--force` rebuilds
+  `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` is bumped. Releasing an additional
+  model only builds the suites that were waiting on it. `--force` rebuilds
   everything. A suite whose build hit a transient error keeps its previously
   published copy and is retried next run.
 
@@ -152,8 +150,8 @@ So nothing needs UI for it:
 
 | variable | purpose |
 |---|---|
-| `PUBLIC_EVALS_FORBIDDEN_TOKENS` | comma-separated operator LDAPs that must not appear in output; required when `CI` is set and for every `gd promote` / `gd unpublish` call |
-| `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` | non-negative integer; bump after changing the list so already-built suites are rescanned (`--now` requires matching the live site's version) |
+| `PUBLIC_EVALS_FORBIDDEN_TOKENS` | comma-separated operator LDAPs that must not appear in output, beyond the OS user and the names harvested from each suite's paths; required when `CI` is set |
+| `PUBLIC_EVALS_FORBIDDEN_TOKENS_VERSION` | non-negative integer; bump after changing the list so already-built suites are rescanned |
 | `CI` | when set, the OS user is not added to the token list (on a runner it is just `runner`), and skip/failure reasons are not printed (only codes), since they may quote what was rejected |
 
 ## Developing against it offline
@@ -165,17 +163,13 @@ cp src/harness/public/fixtures/nightly-sample.evals.json /tmp/store/nightly-2026
 printf '{"include":["nightly-*"],"exclude":[],"overrides":[],"releasedModels":["example-model"]}' > /tmp/allowlist.json
 pnpm public:build --all --source /tmp/store --allowlist /tmp/allowlist.json --out /tmp/pe
 ls /tmp/pe/public-evals
-
-# Preview allowlist edits without writing anything (or plain `gd` after `pnpm link --global`)
-PUBLIC_EVALS_FORBIDDEN_TOKENS=exampleuser node bin/gd.ts promote nightly-2026-10-20_20-43-48-codex_cli --dry-run
-PUBLIC_EVALS_FORBIDDEN_TOKENS=exampleuser node bin/gd.ts unpublish nightly-2026-10-20_20-43-48-codex_cli --guide security --dry-run
 ```
 
 The fixture store above has only `evals.json`, so the build writes one file per
 suite. Add `<run>/<guide>/<task>/<mode>/agent.patch` and `modern-web.log` under
 the suite folder to see per-run artifacts come through. `--suite <id>` builds a
-single suite (layering any active pending changes in `build-state.json`, while
-skipping retention and state updates), provided the effective allowlist selects it.
+single suite (skipping retention and state updates), provided the allowlist
+selects it.
 The dev server (`pnpm dashboard`) serves `out/public-evals/` at `/public-evals/`,
 so a build into `out/` shows up in the signed-out dashboard; nothing under
 `src/dashboard/` is ever read for it.
