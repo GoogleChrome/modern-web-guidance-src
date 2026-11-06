@@ -73,7 +73,7 @@ Because a 2D panning surface often lacks focusable child controls (for example, 
 - **Contain overscroll and prevent accidental navigations**: Add `overscroll-behavior: none` or `overscroll-behavior: contain` to the 2D scroll container so panning into a boundary does not chain to the parent page or trigger browser back/forward swipe navigation and pull-to-refresh gestures.
 - **Nested one-dimensional panels keep railing automatically**: Because `scroll-axis-lock` does not inherit, a sidebar or inspector panel nested inside `.pan-viewport` retains the default `scroll-axis-lock: auto` behavior.
 - **Keep `auto` on standard vertical feeds, articles, and one-dimensional lists**: Axis-locking prevents unintentional perpendicular drift in unidirectional content.
-- **Do not set `touch-action: none` unconditionally**: `touch-action` controls whether the browser handles touch gestures at all (and has no effect on trackpad or wheel input), so setting it disables native compositor touch scrolling. Only apply it inside `@supports not (scroll-axis-lock: none)` when implementing the JavaScript pointer fallback.
+- **Do not set `touch-action` unconditionally**: `touch-action` controls whether the browser handles touch gestures at all (and has no effect on trackpad or wheel input), so restricting it disables native compositor touch scrolling. Only apply it inside `@supports not (scroll-axis-lock: none)` when implementing the JavaScript pointer fallback, and use `touch-action: pinch-zoom` rather than `none`, so users can still pinch-zoom (WCAG 1.4.4 Resize Text).
 - **Pan with `scrollLeft` / `scrollTop`, never CSS `transform`**: Translating the surface with `transform` stops the element from functioning as a scroll container—breaking native scrollbars, boundary clamping, keyboard Arrow-key scrolling, `scroll` events, `IntersectionObserver`, and scroll-driven animations.
 
 ## Fallback strategies
@@ -84,7 +84,7 @@ Choose between **progressive enhancement** and a **JavaScript fallback** based o
 
 ### Option 1: Progressive Enhancement (No JavaScript)
 
-Use progressive enhancement when preserving native compositor-thread touch scrolling, inertial fling momentum, and pinch-to-zoom is more important than eliminating axis-locking in unsupported browsers:
+Use progressive enhancement when preserving native compositor-thread touch scrolling and inertial fling momentum is more important than eliminating axis-locking in unsupported browsers:
 
 - **Supporting browsers**: The browser prevents its axis-locking ("railing") heuristic from kicking in on the 2D scroll container during scroll gestures.
 - **Unsupported browsers**: Browsers that do not recognize `scroll-axis-lock: none` safely ignore the declaration and keep their default `auto` 2D scrolling behavior—scrolling across both axes natively, while still railing gestures that begin predominantly along a single axis.
@@ -96,14 +96,15 @@ If unrestricted two-dimensional panning across all browsers is required, use `@s
 Because `wheel` (`e.deltaX`, `e.deltaY`) and `pointermove` (`e.clientX`, `e.clientY`) expose raw, unlocked 2D deltas before the browser's scrolling engine applies axis-locking, you can apply those deltas directly to `scrollLeft` and `scrollTop`:
 
 - **Why `scrollLeft`/`scrollTop` instead of CSS `transform`**: Updating `scrollLeft` and `scrollTop` keeps the element as a true scroll container. The browser automatically clamps scroll positions to `[0, scrollWidth - clientWidth]` and `[0, scrollHeight - clientHeight]`, native scrollbars stay synchronized, keyboard Arrow-key scrolling continues to work, and `scroll` events and `IntersectionObserver` fire normally.
-- **Trade-offs**: Intercepting `wheel` with `{ passive: false }` moves scrolling onto the main thread, and setting `touch-action: none` on touchscreens disables native inertial fling momentum after `pointerup` (as well as native pinch-to-zoom).
+- **Trade-offs**: Intercepting `wheel` with `{ passive: false }` moves scrolling onto the main thread, and setting `touch-action: pinch-zoom` on touchscreens hands panning to the script, which loses native inertial fling momentum after `pointerup`. `pinch-zoom` keeps pinch-to-zoom working, which `touch-action: none` would also disable.
 
 ```css
-/* Only disable native touch scrolling when scroll-axis-lock is unsupported
-   and the JavaScript pointer fallback below is active. */
+/* Only disable native touch panning when scroll-axis-lock is unsupported
+   and the JavaScript pointer fallback below is active. pinch-zoom keeps
+   pinch-to-zoom working. */
 @supports not (scroll-axis-lock: none) {
   .pan-viewport {
-    touch-action: none;
+    touch-action: pinch-zoom;
   }
 }
 ```
@@ -118,6 +119,7 @@ if (!CSS.supports('scroll-axis-lock', 'none')) {
   viewport.addEventListener(
     'wheel',
     (e) => {
+      if (e.ctrlKey) return; // Ctrl+wheel and trackpad pinch zoom the page
       e.preventDefault();
       viewport.scrollLeft += e.deltaX;
       viewport.scrollTop += e.deltaY;
