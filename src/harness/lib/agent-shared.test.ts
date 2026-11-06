@@ -6,6 +6,7 @@ import path from 'path';
 import { spawn, spawnSync } from 'child_process';
 import { createWorkDir, getGraderScriptContent, runCliAgentCommand } from './agent-shared.ts';
 import { initGitRepo } from '../../core/patch-utils.ts';
+import { DEFAULT_GUIDED_MWGRC } from '../../core/feature-gates.ts';
 import { UNSAFE_NO_SANDBOX_ENV } from './sandbox.ts';
 
 describe('getGraderScriptContent', () => {
@@ -67,14 +68,14 @@ describe('createWorkDir', () => {
     }
   });
 
-  test('provisions .mwgrc with allowOriginTrials: true before git init in single-task workDir for guided run', () => {
+  test('provisions .mwgrc with opt-in flags before git init in single-task workDir for guided run', () => {
     const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-test-'));
     try {
       const workDir = createWorkDir('', tempHome, 'guided');
       const mwgrcPath = path.join(workDir, '.mwgrc');
       assert.ok(fs.existsSync(mwgrcPath), '.mwgrc should exist in workDir');
       const config = JSON.parse(fs.readFileSync(mwgrcPath, 'utf8'));
-      assert.deepStrictEqual(config, { allowOriginTrials: true });
+      assert.deepStrictEqual(config, DEFAULT_GUIDED_MWGRC);
 
       // Verify .mwgrc is tracked in git and clean in git status
       const status = spawnSync('git', ['status', '--porcelain'], { cwd: workDir, encoding: 'utf8' }).stdout.trim();
@@ -99,7 +100,7 @@ describe('createWorkDir', () => {
     }
   });
 
-  test('provisions .mwgrc with allowOriginTrials: true before git init in templated suite workDir', () => {
+  test('provisions .mwgrc with opt-in flags before git init in templated suite workDir', () => {
     const tempHome = fs.mkdtempSync(path.join(os.tmpdir(), 'create-workdir-suite-'));
     const templateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'template-test-'));
     fs.writeFileSync(path.join(templateDir, 'package.json'), '{"name":"test-app"}\n');
@@ -109,7 +110,7 @@ describe('createWorkDir', () => {
       const mwgrcPath = path.join(workDir, '.mwgrc');
       assert.ok(fs.existsSync(mwgrcPath), '.mwgrc should exist in workDir');
       const config = JSON.parse(fs.readFileSync(mwgrcPath, 'utf8'));
-      assert.deepStrictEqual(config, { allowOriginTrials: true });
+      assert.deepStrictEqual(config, DEFAULT_GUIDED_MWGRC);
 
       const status = spawnSync('git', ['status', '--porcelain'], { cwd: workDir, encoding: 'utf8' }).stdout.trim();
       assert.strictEqual(status, '', 'workDir git status should be clean after initGitRepo');
@@ -129,9 +130,9 @@ describe('createWorkDir', () => {
     try {
       const workDir = createWorkDir('', tempHome, 'guided');
       const config = JSON.parse(fs.readFileSync(path.join(workDir, '.mwgrc'), 'utf8'));
-      assert.deepStrictEqual(config, { allowOriginTrials: true, baseline: 'newly' });
+      assert.deepStrictEqual(config, { ...DEFAULT_GUIDED_MWGRC, baseline: 'newly' });
       const homeConfig = JSON.parse(fs.readFileSync(path.join(tempHome, '.mwgrc'), 'utf8'));
-      assert.deepStrictEqual(homeConfig, { allowOriginTrials: true, baseline: 'newly' });
+      assert.deepStrictEqual(homeConfig, { ...DEFAULT_GUIDED_MWGRC, baseline: 'newly' });
     } finally {
       if (prevBaseline === undefined) delete process.env.BASELINE_TARGET;
       else process.env.BASELINE_TARGET = prevBaseline;

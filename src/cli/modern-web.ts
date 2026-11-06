@@ -5,9 +5,9 @@ import { spawnSync } from "node:child_process";
 import { join, dirname, basename } from "node:path";
 import { existsSync, fstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { retrieveUseCase, OriginTrialGateError } from "../rag/retrieve.ts";
+import { retrieveUseCase, FeatureGateError } from "../rag/retrieve.ts";
 import { logToolResult } from "../rag/logger.ts";
-import { handleSetAllowOriginTrials } from "./set-allow-origin-trials.ts";
+import { handleSetAllowOriginTrials, handleSetAllowVolatileFeatures } from "./set-allow-gate.ts";
 import { normalizeBaselineTarget, writeMwgrc } from "../core/mwgrc.ts";
 import { ClearcutLogger } from "./telemetry/clearcut-logger.ts";
 import { CommandType } from "./telemetry/types.ts";
@@ -65,6 +65,7 @@ Commands:
   analyze [path] [options]  Analyze codebase for legacy web platform patterns
   set-baseline <target>     Set project Baseline target in .mwgrc (widely, newly, limited, or YYYY)
   set-allow-origin-trials   Opt in to experimental Origin Trial guidance
+  set-allow-volatile-features Opt in to volatile feature guidance
   install [options]         Install the modern-web-guidance skill
   uninstall                 Uninstall the modern-web-guidance skill
   update                    Update skills
@@ -184,7 +185,7 @@ async function main() {
         await getLogger().logRetrieveResult(Date.now() - startTime, true, id);
       } catch (error) {
         hasError = true;
-        if (error instanceof OriginTrialGateError) {
+        if (error instanceof FeatureGateError) {
           console.error(error.message);
         } else {
           console.error(`Retrieve failed for ${id}:`, error);
@@ -271,6 +272,9 @@ async function main() {
     process.exit(0);
   } else if (command === "set-allow-origin-trials") {
     const code = await handleSetAllowOriginTrials();
+    process.exit(code);
+  } else if (command === "set-allow-volatile-features") {
+    const code = await handleSetAllowVolatileFeatures();
     process.exit(code);
   } else if (command === "uninstall") {
     const startTime = Date.now();

@@ -3,6 +3,7 @@ import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents, type SuiteConfig } from '../config.ts';
 import { ZERO_PASSRATE_PATCH_FILE } from '../../core/guide-validation.ts';
+import { DEFAULT_GUIDED_MWGRC } from '../../core/feature-gates.ts';
 import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import { normalizeBaselineTarget, type MwgConfig } from '../../core/mwgrc.ts';
 import { rootDir, guidesDir } from '../../core/paths.ts';
@@ -464,12 +465,12 @@ export function createWorkDir(templateDir: string, homeDir: string, runType: str
     execSync(`cp -R "${templateDir}" "${homeDir}/"`);
   }
 
-  // Guided sandboxes are pre-opted-in so OT guides can be retrieved; .mwgrc must land in the
+  // Guided sandboxes are pre-opted-in so gated guides can be retrieved; .mwgrc must land in the
   // root commit so it stays out of agent.patch (suite templates arrive with .git already).
   // Also write to homeDir so agents that `cd /tmp` before running `npx modern-web-guidance`
   // still resolve the sandbox's .mwgrc via the HOME fallback.
   if (runType === 'guided') {
-    const mwgConfig: MwgConfig = { allowOriginTrials: true };
+    const mwgConfig: MwgConfig = { ...DEFAULT_GUIDED_MWGRC };
     const normalizedBaseline = normalizeBaselineTarget(process.env.BASELINE_TARGET);
     if (normalizedBaseline && normalizedBaseline !== 'widely') {
       mwgConfig.baseline = normalizedBaseline;
