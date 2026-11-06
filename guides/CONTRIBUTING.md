@@ -31,9 +31,9 @@ Whether a feature may appear in default guidance depends on how far it has shipp
 To raise an objection or petition, apply the `volatility` label to the relevant issue or pull request (or open a new issue with that label) and state the reasoning. Per [`docs/ATLS.md`](../docs/ATLS.md#review--triage-workflows), the assigned Content ATL (or an Owner, if the area has no ATL) triages it within two weeks and recommends an outcome, which the Owners decide through the [governance decision-making process](../GOVERNANCE.md#decision-making).
 
 
-## The Two-Stage Content Lifecycle
+## Content Authoring Workflow (Stages 1 & 2)
 
-Content contributions progress through two stages, each governed by a normative Agent Skill that both human authors and AI coding assistants follow:
+A guide progresses through three sequential stages from concept to evaluated release (see [Guide Development Stages in `docs/CONTEXT.md`](../docs/CONTEXT.md#guide-development-stages--pipeline-tracking)). **Content authors focus on the first two stages**, each governed by a normative Agent Skill:
 
 ### Stage 1: Identifying Use Cases (`Needs use cases`)
 

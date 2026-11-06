@@ -89,7 +89,7 @@ Evaluation harnesses for guides exist in two generational formats:
 
 ### Guide Development Stages & Pipeline Tracking
 
-A guide progresses through three stages before its evals land, tracked canonically in GitHub issue #1815 via `src/ci/sync-pipeline-issue.ts`:
+A guide progresses through three sequential stages before its evals land, tracked canonically in GitHub issue #1815 via `src/ci/sync-pipeline-issue.ts`:
 
 1. **Stage 1: Identifying use cases (`Needs use cases`, [`project-use-cases`](../.agents/skills/project-use-cases/SKILL.md))**
    - **Goal**: Translate a web platform feature (from open `new-feature` issues; see [`project-features`](../.agents/skills/project-features/SKILL.md)) into distinct, action-oriented use cases.
@@ -101,12 +101,12 @@ A guide progresses through three stages before its evals land, tracked canonical
    - **Artifacts**: Full `guide.md` content, standalone `demo.html`, and `expectations.md`.
    - Validated using the [`project-guide-validation`](../.agents/skills/project-guide-validation/SKILL.md) skill and reviewed/approved by the category Content ATL. **Content contributors stop here.**
 
-3. **Stage 3: Evaluating guidance (`Needs evals`, [`project-evals`](../.agents/skills/project-evals/SKILL.md))**
+3. **Stage 3: Evaluating guidance (`Needs evals`)**
    - **Goal**: Generate evaluation capsules, calibrate graders, run evaluations, and generate reports.
    - **Artifacts**: `targets/<base_app>/` (`grader.ts`, `patches/`, `task.md`) and `results/guides/<category>/<slug>/report.md`.
    - Handled downstream by the engineering/evaluation pipeline (`gd dev`, `gd pr`, and `gd dev-gap`; see [`src/harness/README.md`](../src/harness/README.md)).
 
-4. **Evals landed**: Non-draft guides on `main` that have expectations and a grader. Stale graders (where `expectations.md` has substantive changes newer than `grader.ts` or `targets/`) are flagged separately in issue #1815.
+Once Stage 3 is complete, the guide reaches the terminal status **Evals landed** (non-draft guides on `main` that have expectations and passing graders). Stale graders (where `expectations.md` has substantive changes newer than `grader.ts` or `targets/`) are flagged separately in issue #1815.
 
 A `draft` field in a guide's frontmatter withholds it from distribution. It must be `stub` (placeholder, next step: write it), `wip` (next step: finish it), or `blocked` (held back by the platform or spec, with a required `draft-reason`; next step: revisit when that changes). Anything else fails validation.
 
