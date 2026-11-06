@@ -21,9 +21,9 @@
 - The implementation MUST work around a Safari scroll-latching bug when committing: detect Safari (e.g., `globalThis.GestureEvent`) and, after the WAAPI collapse animation completes, defer the actual `item.remove()` until after the swipe momentum has settled (e.g., via `setTimeout` with a conservative delay). On non-Safari browsers, the node MAY be removed immediately after the animation finishes. The row is already visually collapsed at this point, so the deferred removal is not visible.
 - The implementation MUST observe each list (the `<ul>`) with a `MutationObserver` configured for `{childList: true}` so that list items added to the list at runtime are wired up for swipe detection the same way as the initial items. This handles real-world scenarios where items arrive after page load (initial render after data loads, infinite scroll, server push).
 - When the `scroll-initial-target` fallback is in use, the implementation MUST also handle Safari resetting snap-container scroll position whenever the track resizes (URL-bar show/hide, viewport resize, container queries, etc.): gated on the same `CSS.supports('scroll-initial-target', 'nearest')` check being false, the implementation MUST attach a `ResizeObserver` to each track that re-scrolls it to its content column (e.g., `track.scrollLeft = track.clientWidth`) whenever its size changes. The implementation MUST unobserve the track in the commit handler before `removeItem` runs, otherwise the row's height-collapse animation will retrigger the resize callback during removal. When `scroll-initial-target` is supported, no such workaround is needed — the browser handles it.
-- Each list item contains a `<button>` for every swipe action.
-- Activating a list item's button performs the same action as the swipe it stands in for.
-- Each list item's button has an accessible name that includes the item's text.
+- Every swipe action can also be performed without a swipe or other path-based gesture, both with a pointer and with the keyboard.
+- Each control that performs a swipe action without a swipe does the same thing as that swipe.
+- Each such control has an accessible name that includes its item's text.
 - After the item containing focus is removed, focus is on an element inside the list or on the list's heading, not on `<body>`.
 - After an item is removed, an element with `role="status"` contains text naming the removed item.
 - The `<ul>` either has a `list-style` property value other than `none` or has the `role="list"` attribute.

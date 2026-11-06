@@ -39,7 +39,9 @@ The component has two layers: a **list** (the `<ul>`) and the **items** inside i
       <div class="SwipeableList-content">
         <span class="SwipeableList-label">Item One</span>
         <!-- Swiping can't be done with a keyboard, a single tap or a screen
-             reader, so give each swipe action its own button. data-direction
+             reader, so each swipe action needs another way to run it (see
+             "Accessibility considerations"). This example gives each swipe
+             action its own button. data-direction
              is the swipe direction the button stands in for (Step 4), and
              including the item name in the button text tells screen reader
              users which row it acts on. This example has a single action. -->
@@ -550,9 +552,9 @@ With this setup, the spacers no longer need their own background-color (the trac
 
 ## Accessibility considerations
 
-To adhere to WCAG 2.5.1 Pointer Gestures, functionality must not be available solely through swiping gestures. Visible button elements are an accessible alternative way to activate the same functionality. Buttons provide people with disabilities, particularly people using voice control software, with a usable way of activating the same functionality. Make each button at least 24×24 CSS pixels (WCAG 2.5.8 Target Size (Minimum)) and ensure that there's a way of moving focus to the button and operating it using a keyboard alone.
+To adhere to WCAG 2.5.1 Pointer Gestures, functionality must not be available solely through swiping gestures. Visible button elements are an accessible alternative way to activate the same functionality. Buttons provide people with disabilities, particularly people using voice control software, with a usable way of activating the same functionality. Make each button at least 24×24 CSS pixels (WCAG 2.5.8 Target Size (Minimum)), name it after the item it acts on, and ensure that there's a way of moving focus to the button and operating it using a keyboard alone. Once a row contains a button, don't add `tabindex` to the track: arrow keys on a focused track commit the action with no confirmation.
 
-Another way of adhering to the 2.5.1 Pointer Gestures success criterion is by ensuring that the functionality exists elsewhere. For example, in an email app's inbox, if the email can be swiped left to be favourited, but this can also be achieved via a "Favourite email" button after navigating to an email, this would be sufficient. If the intended use case may require many repeated actions, this approach will be less usable, as it would require people with disabilities to have to spend more time accessing the alternative control. Operating system or browser features (such as a long press on iOS) can also be a sufficient alternative, but are often not as discoverable as permanently visible buttons.
+Another way of adhering to the 2.5.1 Pointer Gestures success criterion is by ensuring that the functionality exists elsewhere. For example, in an email app's inbox, if the email can be swiped left to be favorited, but this can also be achieved via a "Favorite email" button after navigating to an email, this would be sufficient, as long as that button can also be reached and operated with a keyboard. If the intended use case may require many repeated actions, this approach will be less usable, as it would require people with disabilities to have to spend more time accessing the alternative control. A menu opened with a long press that offers the same actions can also be a sufficient alternative, but it's often not as discoverable as permanently visible buttons. If the buttons only appear on hover or focus, also show them when the item is tapped, so touch users can reach them.
 
 ## Fallback strategies
 
