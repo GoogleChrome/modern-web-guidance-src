@@ -299,7 +299,7 @@ const server = http.createServer(async (req, res) => {
       const taskMap = getTaskMap();
       /** @type {Record<string, Record<string, string[]>>} */
       const grouped = {}; // categoryName -> guideName -> [tasks]
-      
+
       for (const [key, info] of taskMap.entries()) {
         const [guide, task] = key.split('/');
         const category = (info && info.guideDir)
@@ -309,7 +309,7 @@ const server = http.createServer(async (req, res) => {
         if (!grouped[category][guide]) grouped[category][guide] = [];
         grouped[category][guide].push(task);
       }
-      
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ guides: grouped }));
     } catch (e) {

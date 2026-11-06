@@ -51,8 +51,13 @@ export function setupPiCredentials(tempHome: string): void {
     const src = path.join(piSource, 'agent', file);
     copyFileIfExists(src, path.join(piDestAgent, file));
   }
+}
 
-  process.env.PI_CODING_AGENT_DIR = piDestAgent;
+export function getPiEnvOverrides(homeDir?: string): NodeJS.ProcessEnv {
+  return {
+    PI_CODING_AGENT: 'true',
+    ...(homeDir ? { PI_CODING_AGENT_DIR: path.join(homeDir, '.pi', 'agent') } : {}),
+  };
 }
 
 export function getPiCommandAndArgs(prompt: string, extraArgs: string[] = []): { command: string; commandArgs: string[] } {
@@ -110,8 +115,6 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.PI_CODING_AGENT = 'true';
-
     try {
       await runCliAgentCommand(
         command,
@@ -119,7 +122,8 @@ async function run() {
         workDir,
         targetDir,
         'Pi',
-        runType
+        runType,
+        getPiEnvOverrides(path.dirname(workDir)),
       );
     } finally {
       exportPiTrajectories(workDir, targetDir);

@@ -105,7 +105,9 @@ function updateVersionsInDir(publishCliDir: string, newVersion: string) {
   fs.writeFileSync(agentPluginPath, JSON.stringify(agentPluginData, null, 2) + '\n');
 }
 
-export function processSkills(publishRoot: string) {
+export type DistTag = 'latest' | 'next';
+
+export function processSkills(publishRoot: string, distTag: DistTag = 'latest') {
   console.log("Processing standalone skills from configuration...");
   const skills = config.standaloneSkills;
 
@@ -147,15 +149,16 @@ export function processSkills(publishRoot: string) {
     fs.writeFileSync(path.join(skillDestDir, 'skill-version.txt'), skillVersion);
 
     const content = replaceMacros(fs.readFileSync(source, 'utf8'), source, { target })
-      .replaceAll('SKILL_VERSION', skillVersion);
+      .replaceAll('SKILL_VERSION', skillVersion)
+      .replaceAll('modern-web-guidance@latest', `modern-web-guidance@${distTag}`);
     fs.writeFileSync(path.join(skillDestDir, "SKILL.md"), content);
   }
 
   return { skillsCount: skills.length, skillNames: skills.map(s => s.name) };
 }
 
-async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean }): Promise<BuildResult | undefined> {
-  const { publishRoot, version, failOnMissingVectors } = opts;
+async function main(opts: { publishRoot: string, version?: string, failOnMissingVectors?: boolean, distTag?: DistTag }): Promise<BuildResult | undefined> {
+  const { publishRoot, version, failOnMissingVectors, distTag = 'latest' } = opts;
 
   const DIST_DIR = path.join(publishRoot, "skills/modern-web-guidance");
 
@@ -258,6 +261,7 @@ const __dirname = __dirnameFunction(__filename);
         metafile: true,
         minify: true,
         legalComments: "none",
+        plugins: [createStripTsMorphLibFilesPlugin()],
       });
 
       fs.writeFileSync(
@@ -272,6 +276,9 @@ const __dirname = __dirnameFunction(__filename);
         platform: "node",
         format: "esm",
         outfile: path.join(publishRoot, "skills/modern-web-guidance/modern-web.mjs"),
+        define: {
+          "__MWG_DIST_TAG__": JSON.stringify(distTag),
+        },
         plugins: [{
           name: 'external-cli-modules',
           setup(build) {
@@ -311,7 +318,7 @@ const __dirname = __dirnameFunction(__filename);
       process.exit(1);
     }
 
-    const { skillsCount, skillNames } = processSkills(publishRoot);
+    const { skillsCount, skillNames } = processSkills(publishRoot, distTag);
 
     console.log(`\nSuccess! standalone distribution generated in ${publishRoot}`);
     return { skillsCount, skillNames };
@@ -405,6 +412,44 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       process.exit(1);
     }
   })();
+}
+
+/**
+ * Strips unused 2.37 MB TypeScript .d.ts standard library strings (lib.dom.d.ts,
+ * lib.webworker.d.ts, etc.) inlined in @ts-morph/common for in-memory type checking,
+ * which analyzer rules never invoke.
+ *
+ * Fails fast if the file is never matched or if the replacement fails.
+ */
+export function createStripTsMorphLibFilesPlugin(): esbuild.Plugin {
+  return {
+    name: 'strip-ts-morph-lib-files',
+    setup(build) {
+      let didStrip = false;
+
+      build.onLoad({ filter: /ts-morph-common\.js$/ }, async (args) => {
+        const source = await fs.promises.readFile(args.path, 'utf8');
+        const transformed = source.replace(
+          /const libFiles = \[[\s\S]*?\];\s*(function getLibFiles\(\))/m,
+          'const libFiles = [];\n$1'
+        );
+        if (transformed.length === source.length) {
+          throw new Error('strip-ts-morph-lib-files: failed to match and strip inlined libFiles array');
+        }
+        didStrip = true;
+        return {
+          contents: transformed,
+          loader: 'js',
+        };
+      });
+
+      build.onEnd((result) => {
+        if (result.errors.length === 0 && !didStrip) {
+          throw new Error('strip-ts-morph-lib-files: filter /ts-morph-common\\.js$/ did not match any file during bundle');
+        }
+      });
+    },
+  };
 }
 
 export { main as buildDist };
