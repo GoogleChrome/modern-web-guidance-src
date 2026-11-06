@@ -22,7 +22,7 @@ The Prompt API is currently available in Chrome as of version 148 (Desktop) for 
 
 ### Initializing the API
 
-**User Gesture Requirement:** When `availability()` returns `'downloadable'` or `'downloading'`, `LanguageModel.create()` starts, or joins, the model download and requires a user gesture (such as a button click). Call it from an event listener, not unconditionally on page load, or it rejects with a `NotAllowedError`.
+**User Gesture Requirement:** When `availability()` returns `'downloadable'` or `'downloading'`, `LanguageModel.create()` starts the download and needs a user gesture, such as a button click. Call it from an event listener, not on page load, or it rejects with a `NotAllowedError`.
 
 Check model availability before triggering a download:
 
@@ -35,9 +35,7 @@ function createSession() {
 			// Inform the user while the model downloads so the UI doesn't appear frozen.
 			m.addEventListener('downloadprogress', (e) => {
 				console.log(`Downloaded ${e.loaded * 100}%`);
-				// outputEl is a polite live region (see "Basic and Streamed Output"),
-				// so the progress is shown and announced.
-				outputEl.textContent = `Downloading model: ${Math.round(e.loaded * 100)}%`;
+				progressEl.value = e.loaded; // a <progress max="1"> with an accessible name
 			});
 		},
 	});
@@ -50,11 +48,12 @@ if (availability === 'available') {
 	// Starting the download requires a user gesture.
 	downloadButton.addEventListener('click', async () => {
 		const session = await createSession();
+		downloadStatusEl.textContent = 'Model downloaded'; // a polite live region
 	});
 }
 ```
 
-Show the download progress in the page, not only in the console, in a polite live region such as the element that shows the model's output, so screen reader users hear it too (WCAG 4.1.3 Status Messages: screen readers can announce the message without it receiving focus). If the button that starts the download is hidden while it has focus, move focus to the text that shows the progress (give it `tabindex="-1"`), so focus isn't lost (WCAG 2.4.3 Focus Order: focus moves in an order that preserves meaning and operability).
+Show the download progress in a `<progress>` element with an accessible name, not only in the console, and announce when the download finishes in a polite live region (WCAG 4.1.3 Status Messages). If the button that starts the download is hidden while it has focus, move focus to the download's status text (give it `tabindex="-1"`) (WCAG 2.4.3 Focus Order).
 
 ## 2. Core Prompting Capabilities
 
@@ -78,40 +77,21 @@ outputEl.textContent = result;
 // use for longer content so each chunk can be rendered progressively.
 const stream = session.promptStreaming('Write a long story about a robot.');
 let completeResult = '';
-for await (const chunk of stream) {
-	completeResult += chunk;
-	outputEl.append(chunk);
-}
-console.log('Full story:', completeResult);
-```
-
-Screen reader users can't see the output arrive, so make the element that receives it a polite live region (`aria-live="polite"`) that is in the page from page load (WCAG 4.1.3 Status Messages: screen readers can announce the message without it receiving focus). Set `aria-busy="true"` on it while a response streams in, and back to `"false"` when the response is complete, so screen readers can wait for the whole response rather than announcing each chunk. Don't move focus while the response streams in.
-
-```html
-<!-- In the page from page load: screen readers only announce changes to a
-     live region that already exists. -->
-<div id="output" aria-live="polite" aria-busy="false"></div>
-```
-
-```javascript
-outputEl.textContent = '';
-outputEl.setAttribute('aria-busy', 'true');
+outputEl.setAttribute('aria-busy', 'true'); // outputEl: <div aria-live="polite">
 try {
-	const stream = session.promptStreaming(promptText, { signal: controller.signal });
 	for await (const chunk of stream) {
+		completeResult += chunk;
 		outputEl.append(chunk);
-	}
-} catch (error) {
-	// A user's stop rejects with an AbortError and keeps the partial response.
-	if (error.name !== 'AbortError') {
-		outputEl.textContent = `The response couldn't be generated: ${error.message}`;
 	}
 } finally {
 	outputEl.setAttribute('aria-busy', 'false');
 }
+console.log('Full story:', completeResult);
 ```
 
-**MANDATORY:** If the output language is different from the page language, apply the `lang` attribute to the output element, and set its value to the language declared in `expectedOutputs` (for example, `languages: ['es']` on an English page), so screen readers pronounce it correctly (WCAG 3.1.2 Language of Parts).
+Make the element that receives the output a polite live region that is in the page from page load, and set `aria-busy="true"` on it while a response streams in, so assistive technologies announce the complete response rather than each chunk (WCAG 4.1.3 Status Messages). Don't move focus while it streams in.
+
+**MANDATORY:** If the output language differs from the page language, set `lang` on the output element to the language declared in `expectedOutputs`, so screen readers pronounce it correctly (WCAG 3.1.2 Language of Parts).
 
 ### Multimodal Input
 
@@ -214,8 +194,8 @@ const character = await session.prompt([
 - **Resource Cleanup**: Always call `session.destroy()` when a conversation is finished to free up memory.
 - **Output Safety**: Model output is untrusted. Always write results to `textContent`, not `innerHTML`, to prevent XSS injection from malicious model output.
 - Use a sanitizer like the native Sanitizer API or DOMPurify if you need to allow limited HTML.
-- **Aborting Tasks**: Use `AbortController` to allow users to stop long-running generations. Pass the `signal` to `prompt()` or `promptStreaming()`, not to `LanguageModel.create()`. If the stop button is hidden or removed when generation ends while it has focus, move focus to the control that started the generation, so keyboard and screen reader users don't lose their place (WCAG 2.4.3 Focus Order: focus moves in an order that preserves meaning and operability).
-- **Error Handling**: `create()`, `prompt()`, `promptStreaming()` and `JSON.parse()` can all fail (for example, a download that is blocked or fails, an input larger than the context window, or a canceled request), so wrap them, and the loop that reads a `promptStreaming()` stream, in `try`/`catch`. Show a plain-language error in the output element, whose live region announces it (WCAG 3.3.1 Error Identification: the error is described to the user in text). Treat the `AbortError` from a user's stop as expected, not as an error.
+- **Aborting Tasks**: Use `AbortController` to allow users to stop long-running generations. Pass the `signal` to `prompt()` or `promptStreaming()`, not to `LanguageModel.create()`. If the stop button is hidden while it has focus, move focus to the control that started the generation (WCAG 2.4.3 Focus Order).
+- **Error Handling**: `create()`, `prompt()`, `promptStreaming()` and `JSON.parse()` can all fail, so wrap them, and the loop that reads a stream, in `try`/`catch`, and show a plain-language error in the output's live region (WCAG 3.3.1 Error Identification). Treat the `AbortError` from a user's stop as expected, not as an error.
 - **Security**: Use Permission Policies to control access in iframes: `<iframe src="..." allow="language-model"></iframe>`.
 - **Design**: Review the [People + AI Guidebook](https://pair.withgoogle.com/guidebook/) to ensure responsible AI implementation.
 
@@ -349,9 +329,9 @@ output. Some ideas:
 
 - Streaming for long content: For summaries or chat, streaming creates a per-token typewriter effect by default. This can feel natural and provide immediate feedback.
 - Non-streaming for short tasks (or long async tasks): For short outputs, for example, alt-text, non-streaming can create a more polished UI. It also provides time to speculatively prepare the next AI task while the current one renders. This approach also works for longer asynchronous or background tasks. If the user is not blocked on the output to continue their journey, there is no urgent need to produce the output as it happens. Signal that the process is ongoing in the UI.
-- Visual transitions for updates: When translating or rewriting text, use animations, for example, word-morphing. Only add these text animations inside `@media (prefers-reduced-motion: no-preference)`.
+- Visual transitions for updates: When translating or rewriting text, use animations, for example, word-morphing. For respecting reduced-motion preferences, see {{ GUIDE_REF("motion") }}.
 
-**Don't:** Update the UI without visual cues, or without announcing the update to screen reader users.
+**Don't:** Update the UI without visual cues, or without announcing the update to assistive technology users.
 
 #### Align with the user's mental model of time and work
 
@@ -360,8 +340,7 @@ output. Some ideas:
 **Do:** Consider an artificial delay of one or two seconds if a response is
 nearly instant. Paradoxically, users might find results more trustworthy when
 they perceive a generation process that aligns with their perceived difficulty
-of the task. Use animations to signal that an AI process has occurred, inside
-`@media (prefers-reduced-motion: no-preference)`.
+of the task. Use animations to signal that an AI process has occurred.
 
 **Don't:** Surprise users with instant UI replacements.
 

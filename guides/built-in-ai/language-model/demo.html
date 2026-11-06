@@ -28,8 +28,10 @@
   <h1>Language Model (Prompt API)</h1>
 
   <section>
-    <h2>Download Progress</h2>
-    <!-- A polite live region, so the download progress is announced.
+    <h2 id="download-heading">Download Progress</h2>
+    <!-- <progress> exposes its value on demand without announcing every change. -->
+    <progress id="download-bar" aria-labelledby="download-heading" max="1" value="0" hidden></progress>
+    <!-- A polite live region for the download's start and end, not each percentage.
          tabindex="-1" lets focus move here when the Download model button hides. -->
     <p id="download-progress" tabindex="-1" aria-live="polite">Checking…</p>
     <!-- create() starts a download only from a user gesture, such as this click. -->
@@ -70,6 +72,7 @@
   <script type="module">
     const availabilityEl = document.getElementById('availability');
     const downloadProgressEl = document.getElementById('download-progress');
+    const downloadBar = document.getElementById('download-bar');
     const downloadBtn = document.getElementById('download-btn');
     const promptInput = document.getElementById('prompt-input');
     const promptBtn = document.getElementById('prompt-btn');
@@ -115,15 +118,17 @@
           ...languageOptions,
           monitor(m) {
             m.addEventListener('downloadprogress', (e) => {
-              downloadProgressEl.textContent = `Downloading model: ${Math.round(e.loaded * 100)}%`;
+              downloadBar.value = e.loaded;
             });
           },
         });
       } catch (error) {
+        downloadBar.hidden = true;
         downloadProgressEl.textContent = `The model couldn't be loaded: ${error.message}`;
         availabilityEl.textContent = 'Status: failed to load';
         return false;
       }
+      downloadBar.hidden = true;
       downloadProgressEl.textContent = needsDownload ? 'Model downloaded' : 'No download needed';
       updateTokenDisplay();
       for (const button of [promptBtn, sentimentBtn, cloneBtn]) button.removeAttribute('aria-disabled');
@@ -138,6 +143,8 @@
       downloadProgressEl.textContent = 'Download the model to use the prompts below.';
       downloadBtn.hidden = false;
       downloadBtn.addEventListener('click', async () => {
+        downloadBar.value = 0;
+        downloadBar.hidden = false;
         downloadProgressEl.textContent = 'Downloading model…';
         // Focus moves to the progress text, which reads the new state, so it
         // doesn't fall to <body> when the button hides.
@@ -161,7 +168,7 @@
       promptBtn.setAttribute('aria-disabled', 'true');
       controller = new AbortController();
       stopBtn.hidden = false;
-      // aria-busy lets screen readers wait for the whole answer rather than
+      // aria-busy lets assistive technologies wait for the whole answer rather than
       // announcing each chunk.
       promptOutput.setAttribute('aria-busy', 'true');
       try {
