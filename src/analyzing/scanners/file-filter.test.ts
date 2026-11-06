@@ -1,14 +1,27 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import { promisify } from 'node:util';
+import { SyntaxKind } from 'ts-morph';
+import type { AnalyzerRule } from '../schema.ts';
 import {
+  BUILD_OR_INSTALL_DIR_SEGMENTS,
   DOCS_AND_TESTS_DIR_SEGMENTS,
   hasVendoredLicenseHeader,
+  isBuildOrInstallPath,
+  isCorpusNonAppPath,
   isDocsOrTestsPath,
   isExcludedCorpusNonAppPath,
   isMinifiedContent,
   isVendoredOrGeneratedPath,
   shouldScanFile,
 } from './file-filter.ts';
+import { scanRepoFiles } from './index.ts';
+
+const execFileAsync = promisify(execFile);
 
 describe('file-filter vendored and hashed asset exclusions', () => {
   it('excludes unminified vendored library filenames regardless of directory', async (t) => {
@@ -333,5 +346,212 @@ describe('file-filter vendored and hashed asset exclusions', () => {
   it('rejects files exceeding 1 MB source cap', () => {
     assert.equal(shouldScanFile('src/small.js', 'const x = 1;\n'.repeat(100)), true);
     assert.equal(shouldScanFile('src/bundle.js', 'a'.repeat(1_000_001)), false);
+  });
+});
+
+describe('file-filter and repository scanning: agent dot-dirs, .gitignore, and walker fallback', () => {
+  const scanMeRule: AnalyzerRule = {
+    id: 'test-scan-me',
+    guideId: 'test-guide',
+    guideHash: '0123456789ab',
+    summary: 'Flags scanMe calls for file discovery testing',
+    verifierRubric: { keepWhen: ['calls'], dropWhen: [] },
+    matcher: {
+      kind: 'js',
+      fastTokens: ['scanMe'],
+      matchFile: (sourceFile) => {
+        const matches = [];
+        for (const descendant of sourceFile.getDescendants()) {
+          if (
+            descendant.getKind() === SyntaxKind.Identifier &&
+            descendant.getText() === 'scanMe'
+          ) {
+            matches.push({
+              line: descendant.getStartLineNumber(),
+              message: 'scanMe called',
+            });
+          }
+        }
+        return matches;
+      },
+    },
+  };
+
+  async function withTempDir(
+    prefix: string,
+    fn: (tempDir: string) => Promise<void>,
+  ): Promise<void> {
+    const tempDir = await mkdtemp(join(tmpdir(), prefix));
+    try {
+      await fn(tempDir);
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  }
+
+  async function initGitRepo(dir: string): Promise<void> {
+    await execFileAsync('git', ['init', '-q'], { cwd: dir });
+  }
+
+  async function gitCommit(dir: string, message: string): Promise<void> {
+    await execFileAsync(
+      'git',
+      ['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-qm', message],
+      { cwd: dir },
+    );
+  }
+
+  it('excludes all dot-directories without hardcoding them in BUILD_OR_INSTALL_DIR_SEGMENTS', async (t) => {
+    for (const dir of BUILD_OR_INSTALL_DIR_SEGMENTS) {
+      assert.equal(
+        dir.startsWith('.'),
+        false,
+        `BUILD_OR_INSTALL_DIR_SEGMENTS should not hardcode dot-directory ${dir}`,
+      );
+    }
+
+    const dotDirPaths = [
+      '.agents/skills/impeccable/scripts/live-browser.js',
+      '.claude/skills/foo.js',
+      '.gemini/skills/helper.ts',
+      '.cursor/rules/style.js',
+      '.codex/skills/runner.js',
+      '.antigravitycli/scripts/automation.mjs',
+      '.vscode/settings.json',
+      '.github/workflows/ci.js',
+      '.storybook/preview.js',
+      '.vitepress/theme/index.ts',
+      'src/.cache/chunk.js',
+      './.hidden/secret.js',
+    ];
+
+    for (const p of dotDirPaths) {
+      await t.test(`excludes ${p}`, () => {
+        assert.equal(isVendoredOrGeneratedPath(p), true);
+        assert.equal(isBuildOrInstallPath(p), true);
+        assert.equal(shouldScanFile(p), false);
+      });
+    }
+
+    assert.equal(shouldScanFile('src/components/button.tsx'), true);
+    // Relative '.' and '..' segments and root dotfiles are not dot-directories
+    assert.equal(isBuildOrInstallPath('./src/components/button.tsx'), false);
+    assert.equal(shouldScanFile('./src/components/button.tsx'), true);
+    assert.equal(isBuildOrInstallPath('../src/components/button.tsx'), false);
+    assert.equal(shouldScanFile('../src/components/button.tsx'), true);
+    assert.equal(isBuildOrInstallPath('.eslintrc.js'), false);
+    assert.equal(shouldScanFile('.eslintrc.js'), true);
+    assert.equal(isCorpusNonAppPath('.agents/skills/foo.js'), false);
+  });
+
+  it('ignores custom gitignored build directories via git ls-files while scanning untracked non-ignored files', async () => {
+    await withTempDir('git-ignore-discovery-', async (tempDir) => {
+      await initGitRepo(tempDir);
+      await writeFile(join(tempDir, '.gitignore'), 'custom-build-out/\n');
+      await mkdir(join(tempDir, 'custom-build-out'), { recursive: true });
+      await mkdir(join(tempDir, 'src'), { recursive: true });
+
+      await writeFile(
+        join(tempDir, 'custom-build-out', 'leaked.js'),
+        'function leak() { scanMe(); }',
+      );
+      await writeFile(
+        join(tempDir, 'src', 'app.js'),
+        'function app() { scanMe(); }',
+      );
+
+      await execFileAsync('git', ['add', '.gitignore', 'src/app.js'], { cwd: tempDir });
+      await gitCommit(tempDir, 'initial commit');
+
+      await writeFile(
+        join(tempDir, 'src', 'untracked.js'),
+        'function untracked() { scanMe(); }',
+      );
+
+      const findings = await scanRepoFiles(tempDir, [scanMeRule]);
+
+      assert.deepEqual(
+        findings.map((f) => f.file).sort(),
+        ['src/app.js', 'src/untracked.js'],
+      );
+    });
+  });
+
+  it('handles tracked files deleted from disk gracefully without throwing ENOENT', async () => {
+    await withTempDir('git-deleted-discovery-', async (tempDir) => {
+      await initGitRepo(tempDir);
+      await mkdir(join(tempDir, 'src'), { recursive: true });
+
+      await writeFile(
+        join(tempDir, 'src', 'deleted.js'),
+        'function deleted() { scanMe(); }',
+      );
+      await writeFile(
+        join(tempDir, 'src', 'kept.js'),
+        'function kept() { scanMe(); }',
+      );
+
+      await execFileAsync('git', ['add', '.'], { cwd: tempDir });
+      await gitCommit(tempDir, 'initial commit');
+
+      // Remove tracked file from disk so git ls-files still lists it in the index
+      await rm(join(tempDir, 'src', 'deleted.js'));
+
+      const findings = await scanRepoFiles(tempDir, [scanMeRule]);
+
+      assert.deepEqual(findings.map((f) => f.file), ['src/kept.js']);
+    });
+  });
+
+  it('falls back to filesystem walker in non-git directory while skipping dot-dirs and build output', async () => {
+    await withTempDir('non-git-discovery-', async (tempDir) => {
+      await mkdir(join(tempDir, 'src'), { recursive: true });
+      await mkdir(join(tempDir, 'dist'), { recursive: true });
+      await mkdir(join(tempDir, '.agents', 'skills'), { recursive: true });
+      await mkdir(join(tempDir, '.custom-cache'), { recursive: true });
+
+      await writeFile(
+        join(tempDir, 'src', 'app.js'),
+        'function app() { scanMe(); }',
+      );
+      await writeFile(
+        join(tempDir, 'dist', 'bundle.js'),
+        'function bundle() { scanMe(); }',
+      );
+      await writeFile(
+        join(tempDir, '.agents', 'skills', 'tool.js'),
+        'function tool() { scanMe(); }',
+      );
+      await writeFile(
+        join(tempDir, '.custom-cache', 'cached.js'),
+        'function cached() { scanMe(); }',
+      );
+
+      const findings = await scanRepoFiles(tempDir, [scanMeRule]);
+
+      assert.deepEqual(findings.map((f) => f.file), ['src/app.js']);
+    });
+  });
+
+  it('falls back to directory walker when target directory is inside a gitignored folder of enclosing git repo', async () => {
+    await withTempDir('git-enclosing-repo-', async (enclosingRepo) => {
+      await initGitRepo(enclosingRepo);
+      await writeFile(join(enclosingRepo, '.gitignore'), 'tmp/\n');
+      await execFileAsync('git', ['add', '.gitignore'], { cwd: enclosingRepo });
+      await gitCommit(enclosingRepo, 'init');
+
+      // Create a sub-app inside the gitignored tmp/ directory
+      const subAppDir = join(enclosingRepo, 'tmp', 'sub-app');
+      await mkdir(subAppDir, { recursive: true });
+      await writeFile(
+        join(subAppDir, 'app.js'),
+        'function subApp() { scanMe(); }',
+      );
+
+      // Scanning the sub-app directly must discover and scan app.js via fallback to walker
+      const findings = await scanRepoFiles(subAppDir, [scanMeRule]);
+
+      assert.deepEqual(findings.map((f) => f.file), ['app.js']);
+    });
   });
 });
