@@ -1,0 +1,355 @@
+diff --git a/index.html b/index.html
+index 66c9173..e9009d4 100644
+--- a/index.html
++++ b/index.html
+@@ -14,6 +14,11 @@
+       --light: #fafafa;
+     }
+ 
++    /* The root scroller remembers the direction of the most recent scroll. */
++    html {
++      container-type: scroll-state;
++    }
++
+     * {
+       box-sizing: border-box;
+       margin: 0;
+@@ -27,32 +32,56 @@
+       background-color: var(--light);
+     }
+ 
+-    /* Navigation */
+-    nav {
++    /* Navigation: single compact sticky bar (<12% viewport height) */
++    .top-bar {
+       background: var(--primary);
+       color: white;
+-      padding: 1rem 5%;
++      padding: 0.5rem 5%;
++      max-height: 12vh;
+       display: flex;
+       justify-content: space-between;
+       align-items: center;
++      flex-wrap: nowrap;
+       position: sticky;
+       top: 0;
+-      z-index: 1000;
++      z-index: 1;
++      transition: transform 0.2s ease-in-out;
++    }
++
++    /* Scrolling down: move the bar out of view. transform doesn't change layout, so content doesn't jump. */
++    @container scroll-state((scrolled: bottom) and (scrollable: top)) {
++      .top-bar {
++        transform: translateY(-100%);
++      }
++    }
++
++    /* Keep the bar visible while it contains keyboard focus. */
++    .top-bar:focus-within {
++      transform: none;
++    }
++
++    /* Fallback class for browsers without scroll-state queries. */
++    .top-bar.is-hidden:not(:focus-within) {
++      transform: translateY(-100%);
++    }
++
++    /* Ensure in-page link targets don't land under the sticky bar. */
++    :target {
++      scroll-margin-top: 4rem;
+     }
+ 
+     .logo {
+-      font-size: 1.5rem;
++      font-size: 1.25rem;
+       font-weight: bold;
+       letter-spacing: 1px;
++      white-space: nowrap;
+     }
+ 
+     nav ul {
+       display: flex;
++      align-items: center;
+       list-style: none;
+-    }
+-
+-    nav ul li {
+-      margin-left: 20px;
++      gap: 20px;
+     }
+ 
+     nav a {
+@@ -66,15 +95,50 @@
+       color: var(--accent);
+     }
+ 
++    .more-btn {
++      background: transparent;
++      color: white;
++      border: 1px solid var(--accent);
++      padding: 4px 12px;
++      border-radius: 4px;
++      font-size: 0.9rem;
++      font-family: inherit;
++      cursor: pointer;
++      transition: background 0.2s, color 0.2s;
++    }
++
++    .more-btn:hover,
++    .more-btn:focus-visible {
++      background: var(--accent);
++      color: var(--text);
++    }
++
++    #more-links {
++      background: var(--primary);
++      color: white;
++      border: 1px solid var(--secondary);
++      border-radius: 8px;
++      padding: 1rem;
++      min-width: 180px;
++      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
++    }
++
++    #more-links:popover-open {
++      display: flex;
++      flex-direction: column;
++      gap: 0.75rem;
++    }
++
+     .logout-link {
+       border: 1px solid var(--accent);
+       padding: 5px 12px;
+       border-radius: 4px;
++      text-align: center;
+     }
+ 
+     /* Hero Section */
+     .hero {
+-      height: 60vh;
++      min-height: 28vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+         url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+       background-size: cover;
+@@ -85,18 +149,18 @@
+       align-items: center;
+       color: white;
+       text-align: center;
+-      padding: 0 20px;
++      padding: 2.5rem 20px;
+     }
+ 
+     .hero h1 {
+-      font-size: 3rem;
+-      margin-bottom: 1rem;
++      font-size: 2.25rem;
++      margin-bottom: 0.5rem;
+     }
+ 
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+-      margin: 40px auto;
++      margin: 32px auto;
+       padding: 0 20px;
+     }
+ 
+@@ -120,14 +184,53 @@
+       color: var(--primary);
+     }
+ 
++    .card details,
++    .site-info details,
++    footer details {
++      margin-top: 12px;
++      text-align: left;
++      border-top: 1px solid var(--secondary);
++      padding-top: 10px;
++    }
++
++    .card summary,
++    .site-info summary,
++    footer summary {
++      cursor: pointer;
++      font-weight: 600;
++      color: var(--primary);
++      font-size: 0.9rem;
++    }
++
++    .card details p,
++    .site-info details p {
++      margin-top: 8px;
++      font-size: 0.9rem;
++    }
++
++    .site-info {
++      margin-top: 32px;
++      background: white;
++      padding: 20px;
++      border-radius: 8px;
++      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
++    }
++
++    .site-info h2 {
++      font-size: 1.25rem;
++      color: var(--primary);
++      margin-bottom: 8px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+       color: white;
+-      padding: 10px 20px;
++      padding: 8px 16px;
+       text-decoration: none;
+       border-radius: 5px;
+-      margin-top: 15px;
++      margin-top: 12px;
++      font-size: 0.9rem;
+       transition: background 0.3s;
+     }
+ 
+@@ -138,12 +241,20 @@
+     footer {
+       background: var(--secondary);
+       text-align: center;
+-      padding: 40px 20px;
++      padding: 24px 20px;
+       margin-top: 40px;
+     }
+ 
++    footer details {
++      max-width: 600px;
++      margin: 0 auto 12px;
++      text-align: center;
++      border-top: none;
++      padding-top: 0;
++    }
++
+     .footer-links {
+-      margin-bottom: 20px;
++      margin-top: 10px;
+     }
+ 
+     .footer-links a {
+@@ -157,14 +268,19 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav class="top-bar" aria-label="Main navigation">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+       <li><a href="/menu">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+-      <li><a href="/rewards">Rewards</a></li>
+-      <li><a href="/account">My Account</a></li>
+-      <li><a href="/logout" class="logout-link">Logout</a></li>
++      <li>
++        <button type="button" class="more-btn" popovertarget="more-links">More</button>
++        <div id="more-links" popover aria-label="More navigation links">
++          <a href="/rewards">Rewards</a>
++          <a href="/account">My Account</a>
++          <a href="/logout" class="logout-link">Logout</a>
++        </div>
++      </li>
+     </ul>
+   </nav>
+ 
+@@ -175,38 +291,84 @@
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="seasonal-favorites">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <details>
++            <summary>View Details</summary>
++            <p><strong>Tasting Notes:</strong> Warm toasted maple, velvety oat, and medium-roast espresso.</p>
++            <p><strong>Dietary Info:</strong> 100% plant-based, dairy-free, 180 kcal (12 oz).</p>
++            <a href="/menu/seasonal" class="btn">Order Maple Oat Latte</a>
++          </details>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <details>
++            <summary>View Details</summary>
++            <p><strong>Tasting Notes:</strong> Dark cocoa, caramelized sugar, and roasted walnut finish.</p>
++            <p><strong>Origin:</strong> Single-origin Sumatra Mandheling, small-batch roasted daily.</p>
++            <a href="/menu/espresso" class="btn">Order Dark Roast Espresso</a>
++          </details>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <details>
++            <summary>View Details</summary>
++            <p><strong>Tasting Notes:</strong> Silky chocolate body with low acidity and clean citrus undertones.</p>
++            <p><strong>Preparation:</strong> Coarse-ground Colombian beans cold-filtered in small batches.</p>
++            <a href="/menu/cold-brew" class="btn">Order Cold Brew</a>
++          </details>
+         </div>
+       </div>
+     </section>
++
++    <section class="site-info" aria-label="Additional site information">
++      <h2>Roastery &amp; Ordering Information</h2>
++      <details>
++        <summary>Sourcing &amp; Roasting Standards</summary>
++        <p>All beans are 100% direct-trade Arabica, roasted in small batches at our local roastery within 48 hours of dispatch.</p>
++      </details>
++      <details>
++        <summary>Pickup, Shipping &amp; Returns</summary>
++        <p>In-store pickup orders are ready in under 10 minutes. Whole-bean subscriptions ship free on orders over $35 with 30-day satisfaction support.</p>
++      </details>
++    </section>
+   </main>
+ 
+   <footer>
+-    <div class="footer-links">
+-      <a href="/about">Our Story</a> |
+-      <a href="/careers">Join the Team</a> |
+-      <a href="/contact">Contact Us</a> |
+-      <a href="/privacy-policy">Privacy</a>
+-    </div>
++    <details>
++      <summary>Company Links &amp; Policies</summary>
++      <div class="footer-links">
++        <a href="/about">Our Story</a> |
++        <a href="/careers">Join the Team</a> |
++        <a href="/contact">Contact Us</a> |
++        <a href="/privacy-policy">Privacy</a>
++      </div>
++    </details>
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module">
++    // Runs only where scroll-state queries aren't supported.
++    if (!CSS.supports('container-type', 'scroll-state')) {
++      const bar = document.querySelector('.top-bar');
++      let lastY = scrollY;
++      addEventListener('scroll', () => {
++        // Clamp so rubber-band overscroll at the top or bottom doesn't flip the scroll direction.
++        const y = Math.max(0, Math.min(scrollY, document.documentElement.scrollHeight - innerHeight));
++        if (y === lastY) return;
++        // Hide only after scrolling down past the bar's own height, so it doesn't flicker near the top.
++        bar?.classList.toggle('is-hidden', y > lastY && y > bar.offsetHeight);
++        lastY = y;
++      }, { passive: true });
++    }
++  </script>
++
+ </body>
+ 
+ </html>

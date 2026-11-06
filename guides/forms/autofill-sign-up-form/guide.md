@@ -32,7 +32,7 @@ To label an `<input>`, `<select>`, or `<textarea>`, use a `<label>`. Associate a
 
 ### Make the most of HTML attributes
 
-Make it easy for users to enter data, by using the appropriate `<input>` element `<type>` attribute to provide the right keyboard on mobile and enable basic built-in validation by the browser.
+Make it easy for users to enter data, by using the appropriate `<input>` element with a `type` attribute to provide the right keyboard on mobile and enable basic built-in validation by the browser.
 
 Always use `type="email"` for email addresses and `type="tel"` for phone numbers.
 
@@ -48,7 +48,11 @@ Give each form submit button a value that says what it does. Use a clear, recogn
 
 ### Use a single name input where possible
 
-Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler.
+Allow your users to enter their name using a single input, unless you have a good reason for separately storing given names, family names, honorifics, or other name parts. Using a single name input makes forms less complex, enables cut-and-paste, and makes autofill simpler. Use `autocomplete="name"` for a single input for name.
+
+```html
+<input type="text" id="full-name" name="ful-name" autocomplete="name">
+```
 
 Allow international names. For validation, avoid using regular expressions that only match Latin characters. Latin-only excludes users with names or addresses that include characters that aren't in the Latin alphabet. Allow Unicode letter matching instead—and ensure your backend supports Unicode securely as both input and output. Unicode in regular expressions is well supported by modern browsers.
 
@@ -72,7 +76,7 @@ Validate data entry both in realtime and before form submission. Use `type="emai
 
 Always use the `<form>` element when you're getting users to enter data
 
-Don't wrap inputs in a `<div>` and handle input data submission purely with JavaScript. It's generally better to use a `<form>` element. This makes your site accessible to screenreaders and other assistive devices, enables a range of built-in browser features, makes it simpler to build basic functional sign-up for older browsers, and can still work even if JavaScript fails.
+Don't wrap inputs in a `<div>` and handle input data submission purely with JavaScript. It's generally better to use a `<form>` element. This makes your site accessible to screen readers and other assistive devices, enables a range of built-in browser features, makes it simpler to build basic functional sign-up for older browsers, and can still work even if JavaScript fails.
 
 ### Don't double up inputs
 
@@ -82,7 +86,7 @@ Some sites force users to enter emails or passwords twice. That might reduce err
 
 Passwords inputs should have `type="password"` to hide password text and help the browser understand that the input is for passwords. (Note that browsers use a variety of techniques to understand input roles and decide whether or not to offer to save passwords.)
 
-You should add a **Show password** toggle to enable users to check the text they've entered—and don't forget to add a **Forgot password** link.
+You should add a **Show password** toggle to enable users to check the text they've entered.
 
 ### Give mobile users the right keyboard
 

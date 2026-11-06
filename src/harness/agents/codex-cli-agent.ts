@@ -297,6 +297,69 @@ export function extractCommandsFromCodexItem(obj: any): string[] {
   return commands;
 }
 
+export function extractWebRunsFromText(raw: string): string[] {
+  if (typeof raw !== 'string' || !raw.includes('tools.web__run')) {
+    return [];
+  }
+
+  const results: string[] = [];
+  const prefix = 'tools.web__run(';
+  let searchFrom = 0;
+
+  while (searchFrom < raw.length) {
+    const start = raw.indexOf(prefix, searchFrom);
+    if (start === -1) break;
+
+    let depth = 0;
+    let quote: string | null = null;
+    let end = -1;
+
+    for (let i = start + prefix.length - 1; i < raw.length; i++) {
+      const ch = raw[i];
+      if (quote) {
+        if (ch === '\\') {
+          i++;
+        } else if (ch === quote) {
+          quote = null;
+        }
+      } else if (ch === '"' || ch === "'" || ch === '`') {
+        quote = ch;
+      } else if (ch === '(') {
+        depth++;
+      } else if (ch === ')') {
+        depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+    }
+
+    if (end !== -1) {
+      results.push(raw.slice(start, end));
+      searchFrom = end;
+    } else {
+      results.push(raw.slice(start));
+      break;
+    }
+  }
+
+  return results;
+}
+
+export function extractWebRunsFromCodexItem(obj: any): string[] {
+  const payload = obj?.payload || obj;
+  if (!payload) return [];
+
+  const itemType = payload.type || obj?.type;
+  if (itemType !== 'function_call' && itemType !== 'custom_tool_call') {
+    return [];
+  }
+
+  const raw = payload.input ?? payload.arguments ?? obj.input ?? obj.arguments;
+  return typeof raw === 'string' ? extractWebRunsFromText(raw) : [];
+}
+
 export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subagentsMap: Record<string, CodexRolloutLine[] | any[]> = {}): TrajectorySummary {
   const steps: StandardizedStep[] = [];
   let currentThought = '';
@@ -342,6 +405,7 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         const callId = p.call_id;
         const cmdName = p.name || 'unknown';
         const commands = extractCommandsFromCodexItem(entry);
+        const webRuns = extractWebRunsFromCodexItem(entry);
 
         let actionType: NonNullable<StandardizedStep['action']>['type'] = mapToolType(cmdName);
         let actionName = cmdName;
@@ -353,18 +417,34 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         if (commands.length > 0 && !inputStr.includes('*** Begin Patch')) {
           actionType = 'run_command';
           actionName = commands[0];
-          params = { command: commands[0] };
+          params = {
+            command: commands[0],
+            ...(commands.length > 1 ? { commands } : {}),
+            ...(webRuns.length > 0 ? { webRuns } : {})
+          };
         } else if (inputStr.includes('*** Begin Patch') || inputStr.includes('Update File:') || inputStr.includes('Add File:')) {
           actionType = 'write_file';
           actionName = 'apply_patch';
           const fileMatch = inputStr.match(/\*\*\*\s*(?:Update|Add)\s*File:\s*([^\n\r\\"]+)/i);
           const patchPath = fileMatch ? fileMatch[1].trim() : '';
-          params = { path: patchPath, patch: inputStr };
+          params = {
+            path: patchPath,
+            patch: inputStr,
+            ...(webRuns.length > 0 ? { webRuns } : {})
+          };
         } else {
           try {
             params = typeof p.arguments === 'string' ? JSON.parse(p.arguments) : (p.arguments || p.input);
           } catch {
             params = p.arguments || p.input;
+          }
+          if (webRuns.length > 0) {
+            params =
+              params && typeof params === 'object' && !Array.isArray(params)
+                ? { ...params, webRuns }
+                : params !== undefined
+                  ? { value: params, webRuns }
+                  : { webRuns };
           }
         }
 
@@ -381,6 +461,23 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         }
         if (callId) {
           callMap.set(callId, step);
+        }
+        currentThought = '';
+      }
+
+      if (entry.type === 'response_item' && entry.payload?.type === 'web_search_call') {
+        const p = entry.payload;
+        const action = p.action && typeof p.action === 'object' ? p.action : {};
+        const step: StandardizedStep = {
+          stepNumber: 0,
+          timestamp,
+          subagentId,
+          thought: currentThought || 'Executing web_search',
+          action: standardizeAction('other', 'web_search', action)
+        };
+        steps.push(step);
+        if (subagentId) {
+          subagentStepCounts[subagentId] = (subagentStepCounts[subagentId] || 0) + 1;
         }
         currentThought = '';
       }
@@ -407,6 +504,19 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
         }
         const step = callId ? callMap.get(callId) : undefined;
         if (step) {
+          const stepParams =
+            step.action?.params && typeof step.action.params === 'object'
+              ? (step.action.params as Record<string, unknown>)
+              : undefined;
+          if (stepParams && Array.isArray(stepParams.webRuns)) {
+            const failedUrls = Array.from(
+              outStr.matchAll(/(?:Failed to fetch|URL)\s+(https?:\/\/\S+?)(?::(?:\s|$)|\s+is not accessible)/g),
+              (m) => m[1]
+            );
+            if (failedUrls.length > 0) {
+              stepParams.failedOpenUrls = [...new Set(failedUrls)];
+            }
+          }
           const isError =
             p.is_error === true ||
             outStr.startsWith('Script failed') ||

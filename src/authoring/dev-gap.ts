@@ -357,7 +357,8 @@ async function fixOne(gap: GapToFix, options: FixEvalGapsOptions): Promise<Outco
     fs.rmSync(resultsDir, { recursive: true, force: true });
 
     const devOk = await evalGapFixCli.runDevGuide(inv, { ...options, targets, prContext });
-    if (!devOk || !fs.existsSync(path.join(resultsDir, REPORT_FILE))) {
+    // A failed run that still wrote a report (e.g. CALIBRATION_FAILED) is pushed so the PR shows its diagnosis.
+    if (!fs.existsSync(path.join(resultsDir, REPORT_FILE))) {
       outcome = { gap, status: 'dev-failed', detail: devOk ? `gd dev wrote no ${REPORT_FILE}` : 'gd dev failed' };
     } else {
       const prUrl = await evalGapFixCli.runDevPr(inv.dir);
