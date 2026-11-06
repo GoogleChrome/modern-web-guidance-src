@@ -59,7 +59,7 @@ node .agents/skills/grader-replay/scripts/replay.ts \
 
 **Why never run `grade.mjs` inside a suite folder?** Saved `grade.mjs` files hardcode the original runner's home directory, use an older `runPlaywright` signature, and overwrite the saved `*_results.json` baseline you are comparing against.
 
-**Why stacking matters on Gen 2 targets:** Eval runs apply `zero-passrate.patch` before invoking the agent, so `agent.patch` is diffed on top of `base-apps/<app> + zero-passrate.patch`. `scripts/replay.ts` verifies both patches apply cleanly on a throwaway copy before launching Playwright and passes each task's `baselineTarget` (`widely`, `newly`, or `limited`).
+**Why stacking matters on Gen 2 targets:** Eval runs apply `zero-passrate.patch` before invoking the agent, so `agent.patch` is diffed on top of `base-apps/<app> + zero-passrate.patch`. `runPlaywright` stacks both patches in a throwaway workspace and throws `PatchApplyError` (reported as `PATCH_CONFLICT`) if either fails to apply, while passing each task's `baselineTarget` (`widely`, `newly`, or `limited`).
 
 ## 3. Triage Every `DIFF`, `PATCH_CONFLICT`, or `ERROR`
 
@@ -69,6 +69,7 @@ Inspect the saved `agent.patch` (or `index.html` for Gen 1 tasks), the modified 
 - **Intentional grader fix (expected diff):**
   - `pass -> fail` when tightening a check that previously false-passed on unrelated CSS/markup. Confirm in `agent.patch` that the saved solution missed the requirement.
   - `fail -> pass` when loosening an overly brittle check. Confirm in `agent.patch` that the saved solution satisfied `expectations.md` in spirit.
+- **Timeout flakiness:** Specs involving `timedOut` (`pass -> timedOut` or `timedOut -> pass`) point to worker contention rather than grader changes — re-run at lower `--concurrency`.
 - **Title or structure drift (expected diff):** Spec titles appear as `saved -> <missing>` and `<missing> -> now` because tests were renamed or consolidated on `main`. Check `git log -p -n 3 -- <grader>` and compare pass/fail totals.
 - **Base-app drift (`PATCH_CONFLICT`):** An older `agent.patch` fails to apply against current `src/harness/base-apps/` or `zero-passrate.patch`. Not a grader bug — re-run against a newer nightly suite from GCS.
 

@@ -12,14 +12,13 @@ import {
   type TaskInfo,
 } from '../../../../src/core/guide-validation.ts';
 import { rootDir, suitesDir } from '../../../../src/core/paths.ts';
-import { applyPatchSync } from '../../../../src/core/patch-utils.ts';
 import {
   isSpecSkipped,
+  PatchApplyError,
   runPlaywright,
   type PlaywrightSuite,
 } from '../../../../src/grading/run-grader.ts';
 import { Agents } from '../../../../src/harness/config.ts';
-import { copyBaseAppToWorkspace } from '../../../../src/harness/lib/utils.ts';
 
 interface CliOptions {
   guides: string[];
@@ -54,6 +53,7 @@ interface SpecDiff {
 interface SpecCounts {
   passed: number;
   failed: number;
+  timedOut: number;
   skipped: number;
 }
 
@@ -409,13 +409,26 @@ async function mapPool<T, R>(
   return results;
 }
 
+function isSpecTimedOut(spec: {
+  tests?: Array<{ results?: Array<{ status?: string }> }>;
+}): boolean {
+  return Boolean(spec.tests?.some((t) => t.results?.at(-1)?.status === 'timedOut'));
+}
+
 function extractSpecMap(pwJson: unknown): Map<string, string> {
   const map = new Map<string, string>();
   if (!isRecord(pwJson) || !Array.isArray(pwJson.suites)) return map;
 
   function visit(suite: PlaywrightSuite, prefix = ''): void {
     for (const spec of suite.specs || []) {
-      map.set(`${prefix}${spec.title}`, isSpecSkipped(spec) ? 'skipped' : spec.ok ? 'pass' : 'fail');
+      const status = isSpecSkipped(spec)
+        ? 'skipped'
+        : spec.ok
+          ? 'pass'
+          : isSpecTimedOut(spec)
+            ? 'timedOut'
+            : 'fail';
+      map.set(`${prefix}${spec.title}`, status);
     }
     for (const child of suite.suites || []) {
       visit(child, `${prefix}${child.title} > `);
@@ -431,44 +444,23 @@ function extractSpecMap(pwJson: unknown): Map<string, string> {
 function summarizeCounts(specMap: Map<string, string>): SpecCounts {
   let passed = 0;
   let failed = 0;
+  let timedOut = 0;
   let skipped = 0;
   for (const status of specMap.values()) {
     if (status === 'pass') passed++;
+    else if (status === 'timedOut') timedOut++;
     else if (status === 'fail') failed++;
     else if (status === 'skipped') skipped++;
   }
-  return { passed, failed, skipped };
+  return { passed, failed, timedOut, skipped };
 }
 
 function formatCounts(counts: SpecCounts): string {
-  const skipNote = counts.skipped > 0 ? `, ${counts.skipped} skip` : '';
-  return `${counts.passed}/${counts.passed + counts.failed} pass${skipNote}`;
-}
-
-async function verifyPatchApplies(
-  baseApp: string,
-  zeroPassratePath: string | undefined,
-  patchPath: string
-): Promise<{ ok: boolean; error?: string }> {
-  const stagingRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'pw-patch-check-'));
-  const workDir = path.join(stagingRoot, baseApp);
-  try {
-    await copyBaseAppToWorkspace(baseApp, workDir);
-    for (const file of [zeroPassratePath, patchPath]) {
-      if (file && fs.existsSync(file) && fs.readFileSync(file, 'utf8').trim().length > 0) {
-        const res = applyPatchSync(workDir, file);
-        if (!res.success) {
-          return {
-            ok: false,
-            error: `Failed to apply ${path.basename(file)}: ${res.error || 'unknown patch error'}`,
-          };
-        }
-      }
-    }
-    return { ok: true };
-  } finally {
-    fs.rmSync(stagingRoot, { recursive: true, force: true });
-  }
+  const notes: string[] = [];
+  if (counts.timedOut > 0) notes.push(`${counts.timedOut} timedOut`);
+  if (counts.skipped > 0) notes.push(`${counts.skipped} skip`);
+  const suffix = notes.length > 0 ? `, ${notes.join(', ')}` : '';
+  return `${counts.passed}/${counts.passed + counts.failed + counts.timedOut} pass${suffix}`;
 }
 
 async function runReplayJob(job: ReplayJob, testResultsDir: string): Promise<ReplayEntry> {
@@ -485,17 +477,6 @@ async function runReplayJob(job: ReplayJob, testResultsDir: string): Promise<Rep
   };
 
   try {
-    if (job.mode === 'patch') {
-      const patchCheck = await verifyPatchApplies(
-        job.entry.taskInfo.baseApp,
-        job.entry.zeroPassratePath,
-        job.solutionPath
-      );
-      if (!patchCheck.ok) {
-        return { ...base, status: 'PATCH_CONFLICT', error: patchCheck.error };
-      }
-    }
-
     const savedMap = extractSpecMap(JSON.parse(fs.readFileSync(job.savedResultsPath, 'utf8')));
     const savedCounts = summarizeCounts(savedMap);
 
@@ -534,6 +515,9 @@ async function runReplayJob(job: ReplayJob, testResultsDir: string): Promise<Rep
       diffs: diffs.length > 0 ? diffs : undefined,
     };
   } catch (err) {
+    if (err instanceof PatchApplyError) {
+      return { ...base, status: 'PATCH_CONFLICT', error: err.message };
+    }
     return {
       ...base,
       status: 'ERROR',
