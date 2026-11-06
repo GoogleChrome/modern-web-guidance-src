@@ -257,6 +257,14 @@
         .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
           border-radius: .5lh; /* Large enough to read as rounded at any block height */
         }
+
+        /* clip-path accepts shape() in Safari and Firefox, so text still shows as bars */
+        @supports (clip-path: shape(from 0 0, close)) {
+          .skeleton[aria-busy="true"] :is(p, h2, a:where(:not(:is(p, li, h1, h2, h3) a))) {
+            border-radius: 0;
+            clip-path: var(--bars);
+          }
+        }
       }
 
       /* Without line-clamp, cap the height at the bar count so overflow: hidden
@@ -297,6 +305,7 @@
 
       .skeleton[aria-busy="true"] li::marker {
         color: var(--skeleton-tone);
+        font-size: 1.5em; /* Skeleton markers read as larger, abstract shapes */
       }
 
       .skeleton[aria-busy="true"] li:nth-child(2) {
