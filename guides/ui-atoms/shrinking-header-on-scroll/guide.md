@@ -56,7 +56,7 @@ Here’s how to create a shrinking header on scroll:
     }
     ```
 
-If using `position: sticky` on the header element, set `scroll-padding-top` to ensure that when elements receive focus, they aren't displayed under the sticky content. Set the `scroll-padding-top` value to be the height of the sticky element, which will ensure that when controls receive focus, they'll be consistently visible, positioned following the sticky content. This ensures adherence to WCAG 2.4.11 Focus Not Obscured, ensuring that focused controls aren't completely obscured.
+If using `position: sticky` on the header element, set `scroll-padding-top` to ensure that when elements receive focus, they aren't displayed under the sticky content. Set the `scroll-padding-top` value to be the height of the sticky element, which will ensure that when controls receive focus, they'll be consistently visible, positioned following the sticky content. This ensures adherence to WCAG 2.4.11 Focus Not Obscured, ensuring that focused controls aren't completely obscured. The value of `scroll-padding-top` can be animated on the same `scroll-timeline` used to shrink the header, keeping the value inline with the visual updates.
 
 **Tip:** To prevent the content following the header from being obscured by it, add a `padding-top` to the `body` (or the main content container) that is equal to the initial height of the header.
 
