@@ -261,6 +261,7 @@ const __dirname = __dirnameFunction(__filename);
         metafile: true,
         minify: true,
         legalComments: "none",
+        plugins: [createStripTsMorphLibFilesPlugin()],
       });
 
       fs.writeFileSync(
@@ -411,6 +412,44 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       process.exit(1);
     }
   })();
+}
+
+/**
+ * Strips unused 2.37 MB TypeScript .d.ts standard library strings (lib.dom.d.ts,
+ * lib.webworker.d.ts, etc.) inlined in @ts-morph/common for in-memory type checking,
+ * which analyzer rules never invoke.
+ *
+ * Fails fast if the file is never matched or if the replacement fails.
+ */
+export function createStripTsMorphLibFilesPlugin(): esbuild.Plugin {
+  return {
+    name: 'strip-ts-morph-lib-files',
+    setup(build) {
+      let didStrip = false;
+
+      build.onLoad({ filter: /ts-morph-common\.js$/ }, async (args) => {
+        const source = await fs.promises.readFile(args.path, 'utf8');
+        const transformed = source.replace(
+          /const libFiles = \[[\s\S]*?\];\s*(function getLibFiles\(\))/m,
+          'const libFiles = [];\n$1'
+        );
+        if (transformed.length === source.length) {
+          throw new Error('strip-ts-morph-lib-files: failed to match and strip inlined libFiles array');
+        }
+        didStrip = true;
+        return {
+          contents: transformed,
+          loader: 'js',
+        };
+      });
+
+      build.onEnd((result) => {
+        if (result.errors.length === 0 && !didStrip) {
+          throw new Error('strip-ts-morph-lib-files: filter /ts-morph-common\\.js$/ did not match any file during bundle');
+        }
+      });
+    },
+  };
 }
 
 export { main as buildDist };

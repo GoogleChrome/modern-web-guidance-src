@@ -98,14 +98,13 @@ async function main() {
     const cmdIdx = args.indexOf("analyze");
     if (cmdIdx !== -1) args.splice(cmdIdx, 1);
     const result = await runAnalyzeCli(args);
-    if (result.data) {
+    if (result.exitCode === 0 && result.data) {
       logToolResult(
         "analyze",
         result.data.guides.map((g) => ({ id: g.guideId, count: g.count })),
       );
     }
-    writeAnalyzeCliResult(result);
-    process.exit(result.exitCode);
+    process.exit(writeAnalyzeCliResult(result));
   }
 
   if (values.help || positionals.length === 0) {
