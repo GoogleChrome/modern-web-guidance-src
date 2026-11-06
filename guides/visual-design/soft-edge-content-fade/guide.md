@@ -16,7 +16,7 @@ To implement a soft edge fade:
 ### Fading the bottom edge of a container
 This is useful for indicating that there is more content below in a scrollable area.
 
-The mask stays fixed to the container while the content scrolls, so give the fade a fixed length and add the same amount of padding at the end of the container. The last lines can then scroll clear of the fade and be read at full contrast (WCAG 1.4.3 Contrast (Minimum)).
+The mask stays fixed to the container while the content scrolls, so give the fade a fixed length and add the same amount of padding at the end of the container. The last lines can then scroll clear of the fade and be read at full contrast (WCAG 1.4.3 Contrast (Minimum)). This only applies to containers that scroll: when the fade marks content that is withheld on purpose, such as a paywall teaser with `overflow: hidden`, the faded text isn't meant to be read, so a fixed percentage-based fade is fine.
 
 ```css
 .container {
