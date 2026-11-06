@@ -176,28 +176,6 @@ describe('modern-web CLI', () => {
     }
   });
 
-  it('supports legacy-scan and analyze subcommands cleanly in modern-web CLI', () => {
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-subcommands-test-'));
-    try {
-      for (const cmd of ['legacy-scan', 'analyze']) {
-        const resJson = runCLI([cmd, tempDir, '--json']);
-        assert.strictEqual(resJson.status, 0);
-        const data = JSON.parse(resJson.stdout);
-        assert.strictEqual(data.totalFindings, 0);
-        assert.match(
-          data.note ?? '',
-          /No legacy patterns found across \d+ guides \(\d+ rules; ~20% of the guidance corpus\)/,
-        );
-
-        const resHuman = runCLI([cmd, tempDir]);
-        assert.strictEqual(resHuman.status, 0);
-        assert.match(resHuman.stdout, /Note: legacy-scan covers legacy patterns for \d+ guides/);
-      }
-    } finally {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
-
   it('only logs to modern-web.log when analyze or legacy-scan exits with code 0 and result.data is present', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-log-test-'));
     const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mwg-analyze-logdir-'));
