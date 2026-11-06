@@ -25,7 +25,7 @@ Icon storage and rendering are separate choices. For example, an SVG sprite can 
 
 To decide, ask two questions. Does CSS need to pick or swap the icon (component defaults, state changes, theming)? If yes, use the CSS icon system. Do you need to reach inside the icon beyond color? If yes and you control the icon source, design the symbol with custom properties and use `<use>`; if you do not control the source, inline the SVG. Third-party icon sets rarely expose custom properties, so `<use>` against them gives you color and little else.
 
-Whichever method you choose, make sure that all icons have a contrast of at least 3:1 against their backgrounds in light and dark color schemes.
+Whichever method you choose, make sure that all icons have a contrast of at least 3:1 against their backgrounds in light and dark color schemes. Refer to the Contrast section of {{ GUIDE_REF("color") }} for more details.
 
 ### Embedded or remote icons
 
