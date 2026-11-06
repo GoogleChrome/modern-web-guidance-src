@@ -81,7 +81,7 @@ progress.loading-spinner:indeterminate {
   --_to: calc(90deg + var(--arc-end, 158deg));
   --size: 40px;
   --thickness: 2px;
-  --spinner-color: #3b82f6;
+  --spinner-color: #2563eb;
   --track-color: #e2e5e7;
   --spinner-duration: 1.5s;
   --_used-spinner-duration: var(--spinner-duration);
