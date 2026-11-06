@@ -94,8 +94,10 @@ You can also animate in the opposite direction—starting from a natural size an
 const alertElement = document.querySelector('.collapsible-alert');
 function dismissAlert() {
   alertElement.classList.add('is-dismissed');
-  // Waits for every transition the class starts; under reduced motion there are none
-  Promise.allSettled(alertElement.getAnimations().map((animation) => animation.finished)).then(() => {
+  // Waits for the transitions the class starts, ignoring any other animations
+  // on the element; under reduced motion there are none
+  const transitions = alertElement.getAnimations().filter((animation) => animation instanceof CSSTransition);
+  Promise.allSettled(transitions.map((transition) => transition.finished)).then(() => {
     if (alertElement.classList.contains('is-dismissed')) {
       alertElement.hidden = true;
     }

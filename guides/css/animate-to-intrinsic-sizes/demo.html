@@ -262,8 +262,10 @@
         document.getElementById('alert-reset').focus();
       }
       alertEl.classList.add('is-dismissed');
-      // Waits for every transition the class starts; under reduced motion there are none
-      Promise.allSettled(alertEl.getAnimations().map((animation) => animation.finished)).then(() => {
+      // Waits for the transitions the class starts, ignoring any other animations
+      // on the element; under reduced motion there are none
+      const transitions = alertEl.getAnimations().filter((animation) => animation instanceof CSSTransition);
+      Promise.allSettled(transitions.map((transition) => transition.finished)).then(() => {
         if (alertEl.classList.contains('is-dismissed')) {
           alertEl.hidden = true;
         }
