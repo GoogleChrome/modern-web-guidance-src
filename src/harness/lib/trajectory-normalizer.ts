@@ -65,7 +65,7 @@ export {
 
 
 export const TRAJECTORY_SUMMARY_FILE = 'trajectory_summary.json';
-export const NORMALIZER_VERSION = 3;
+export const NORMALIZER_VERSION = 4;
 
 const TRAJECTORY_GLOB = '{session,subagent}-*.{json,jsonl}';
 

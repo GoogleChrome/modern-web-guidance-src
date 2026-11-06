@@ -48,6 +48,9 @@ test('stagePages copies demo assets but not eval sources', () => {
         'demos/index.html',
         'demos/demos.js',
         'demos/demos.css',
+        'search/index.html',
+        'search/search.js',
+        'search/search.css',
         'demos.gen.json',
         'guides/css/animate-to-intrinsic-sizes/demo.html',
     ];
