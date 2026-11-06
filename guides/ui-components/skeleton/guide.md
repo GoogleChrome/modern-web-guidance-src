@@ -24,7 +24,7 @@ A skeleton is a simplified placeholder shown while content loads. It reduces per
 
 Style the real semantic elements in place instead of inserting placeholder `<div>`s. One hook on the container (`aria-busy="true"`, scoped by a class such as `.skeleton`) applies a different treatment per element type: text becomes rounded bars, media and avatars become solid blocks, and buttons, inputs and chips keep their own shape and take the fill. The markup does not change to suit the skeleton, and items can be empty or contain real text.
 
-`border-shape` draws the text bars. Each bar is one closed subpath of a single `shape()`, so bars can have rounded ends and variable lengths, which `text-decoration` and gradient tricks cannot do.
+`clip-path` with `shape()` draws the text bars. Each bar is one closed subpath of a single `shape()`, so bars can have rounded ends and variable lengths, which `text-decoration` and gradient tricks cannot do.
 
 For indeterminate activity when layout is unknown, see {{ GUIDE_REF("spinner") }}. For determinate loading, see {{ GUIDE_REF("progress") }}.
 
@@ -122,7 +122,7 @@ Text, standalone links and list items share one rule that hides the content and 
   color: transparent;
   text-decoration: none; /* Link underlines would otherwise show through */
   background-color: var(--skeleton-tone);
-  border-shape: var(--bars); /* Each element below sets its own --bars */
+  clip-path: var(--bars); /* Each element below sets its own --bars */
 }
 
 /* Inline links keep their own color and underline, so make them inherit the hidden text */
@@ -143,25 +143,20 @@ Text, standalone links and list items share one rule that hides the content and 
 }
 ```
 
-Set the shape on `--bars` and read it with `border-shape: var(--bars)`. Do not call `--skeleton-bar()` directly inside a `border-shape: shape()` declaration: some browsers then discard the rules that follow it.
+Set the shape on `--bars` and read it with `clip-path: var(--bars)`. Do not call `--skeleton-bar()` directly inside a `clip-path: shape()` declaration: some browsers then discard the rules that follow it.
 
 Derive the bar size from the element instead of tuning it per element: `cap` follows the element's font size, so a heading gets taller bars than body text with no override, and `lh` gives the line pitch, so bars land where the real lines would and the placeholder takes the same height as the text for any leading. Do not size bars in `lh` alone, which scales with line-height rather than glyph size, or with fixed values that need a different number for each element.
 
-Keep the real `::marker` for the bullet. The shared `display: block` removes it, so set `display: list-item` with `list-style-position: outside`, and give the marker the flat `--skeleton-tone` color, since a marker cannot take the shimmer background. Leave the list's `padding-inline-start` untouched so the indent matches the loaded list and nothing shifts when loading finishes, and zero only the item's start margin. Inside `border-shape` support, set `overflow: visible` so the marker is not clipped. This applies to numbered lists too.
+Keep the real `::marker` for the bullet. The shared `display: block` removes it, so set `display: list-item` with `list-style-position: outside`, and give the marker the flat `--skeleton-tone` color, since a marker cannot take the shimmer background. Leave the list's `padding-inline-start` untouched so the indent matches the loaded list and nothing shifts when loading finishes, and zero only the item's start margin. Items are solid rounded blocks, not bars: set `clip-path: none` and `overflow: visible` so the outside marker is not clipped. This applies to numbered lists too.
 
 ```css
 .skeleton[aria-busy="true"] li {
   display: list-item;
   list-style-position: outside;
   margin-inline-start: 0;
-  --line-one: 72%; /* Vary this per item */
-  --bars: shape(from 0 0, --skeleton-bar(0, var(--line-one)));
-}
-
-@supports (border-shape: shape(from 0 0, close)) {
-  .skeleton[aria-busy="true"] li {
-    overflow: visible; /* Lets the outside marker show; the shape clips the fill */
-  }
+  clip-path: none;       /* Would clip the outside marker */
+  overflow: visible;     /* Lets the outside marker show */
+  border-radius: .5lh;
 }
 
 .skeleton[aria-busy="true"] li::marker {
@@ -265,27 +260,27 @@ Paint the shimmer on each placeholder shape's own `background`, not on a parent 
 
 With `background-attachment: fixed` the sweep is sized to the viewport, so a small loading area catches the highlight only briefly on each pass. Shorten the duration for small areas.
 
-DO NOT animate the `border-shape` path or the bars' visibility: it flashes. Animate the background.
+DO NOT animate the `clip-path` shape or the bars' visibility: it flashes. Animate the background.
 
 MANDATORY: Apply the shimmer (gradient and animation) only under `@media (prefers-reduced-motion: no-preference)`. Without it, the placeholders stay visible as a flat `--skeleton-tone` fill.
 
 ## Fallbacks
 
-### border-shape
+### shape()
 
-{{ BASELINE_STATUS("border-shape") }}
+{{ BASELINE_STATUS("shape") }}
 
-If your Baseline target does not support `border-shape`, use `@supports (border-shape: shape(from 0 0, close))` to scope the bar shapes, and let other browsers show a solid `--skeleton-tone` fill with `border-radius` on the same elements, sized by `min-block-size` in `lh` units. Multi-line bars and variable lengths are the progressive enhancement. The layout reservation still prevents shift.
+If your Baseline target does not support `shape()` in `clip-path`, let other browsers show a solid `--skeleton-tone` fill with `border-radius` on the same elements, sized by `min-block-size` in `lh` units. Multi-line bars and variable lengths are the progressive enhancement. The layout reservation still prevents shift.
 
 ```css
-@supports not (border-shape: shape(from 0 0, close)) {
+@supports not (clip-path: shape(from 0 0, close)) {
   .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
     border-radius: .5lh; /* Large enough to read as rounded at any block height */
   }
 }
 ```
 
-Multi-line bars and variable lengths belong to the `border-shape` enhancement: without it, each element is one solid rounded block, and each list item is one block that keeps its outside bullet.
+Multi-line bars and variable lengths belong to the `shape()` enhancement: without it, each element is one solid rounded block. List items are always one block that keeps its outside bullet.
 
 ### @function
 

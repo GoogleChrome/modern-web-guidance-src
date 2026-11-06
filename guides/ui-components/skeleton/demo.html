@@ -244,26 +244,26 @@
         overflow: hidden;
         user-select: none;
         background-color: var(--skeleton-tone);
-        border-shape: var(--bars);
+        clip-path: var(--bars);
         color: transparent;
         /* Underlines would otherwise show through transparent link text */
         text-decoration: none;
       }
 
-      /* Without border-shape the elements show as solid rounded blocks. The
-         height reservation still prevents layout shift. List items keep their
-         outside bullet and are one block each. */
-      @supports not (border-shape: shape(from 0 0, close)) {
-        .skeleton[aria-busy="true"] :is(p, h2, li, a:where(:not(:is(p, li, h1, h2, h3) a))) {
-          border-radius: .5lh; /* Large enough to read as rounded at any block height */
-        }
+      /* List items are solid rounded blocks in every browser, so their outside
+         marker is not clipped. Bars for p, h2 and links come from --bars above;
+         change --bar-height or --bar-radius there and the rounded blocks here
+         follow. Without shape() support, those elements fall back to the same
+         blocks. The height reservation still prevents layout shift. */
+      .skeleton[aria-busy="true"] li {
+        clip-path: none;
+        overflow: visible; /* Lets the outside marker show */
+        border-radius: .5lh;
+      }
 
-        /* clip-path accepts shape() in Safari and Firefox, so text still shows as bars */
-        @supports (clip-path: shape(from 0 0, close)) {
-          .skeleton[aria-busy="true"] :is(p, h2, a:where(:not(:is(p, li, h1, h2, h3) a))) {
-            border-radius: 0;
-            clip-path: var(--bars);
-          }
+      @supports not (clip-path: shape(from 0 0, close)) {
+        .skeleton[aria-busy="true"] :is(p, h2, a:where(:not(:is(p, li, h1, h2, h3) a))) {
+          border-radius: .5lh; /* Large enough to read as rounded at any block height */
         }
       }
 
@@ -295,12 +295,6 @@
         list-style-position: outside;
         margin-inline-start: 0;
         --line-one: 72%;
-      }
-
-      @supports (border-shape: shape(from 0 0, close)) {
-        .skeleton[aria-busy="true"] li {
-          overflow: visible; /* Lets the outside marker show; the shape clips the fill */
-        }
       }
 
       .skeleton[aria-busy="true"] li::marker {

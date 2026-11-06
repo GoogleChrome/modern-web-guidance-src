@@ -2,7 +2,7 @@
 
 - Skeleton styles apply to the semantic elements (`h2`, `p`, `li`, `a`, `button`, `input`) while the container has `aria-busy="true"`, without wrapper `<span>`s or per-element data attributes.
 - Text bar sizes are derived from each element's own font size and line height (for example with `cap` and `lh` units), without separate bar-size overrides for headings.
-- Text bars are drawn with `border-shape: shape(...)` using rounded-end bar subpaths, with a filled `background`.
+- Text bars are drawn with `clip-path: shape(...)` using rounded-end bar subpaths, with a filled `background`.
 - Multi-line paragraphs render 3-4 bars with the last one shorter than the rest, via multiple closed subpaths in one `shape()`. Headings render one bar.
 - Skeleton text elements limit real text to the bar count with `line-clamp`, or with `overflow: hidden` and a `max-block-size` in `lh` units where `line-clamp` is unsupported, so long content does not add lines.
 - Buttons, inputs, and other controls (e.g. badges) keep their own padding and `border-radius` and have no fixed block size.
