@@ -324,10 +324,8 @@
         border-radius: 50%;
         border: 3px solid var(--border);
         border-top-color: var(--primary);
-        opacity: 0.5;
         flex-shrink: 0;
         @media (prefers-reduced-motion: no-preference) {
-          opacity: 1;
           animation: spin 1s linear infinite;
         }
       }
@@ -347,7 +345,7 @@
         border-radius: 999px;
         animation: slide 1.5s infinite linear;
         @media (prefers-reduced-motion: reduce) {
-          animation: none;
+          animation-duration: 20s;
         }
       }
 

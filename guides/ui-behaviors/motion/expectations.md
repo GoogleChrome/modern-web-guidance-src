@@ -3,6 +3,6 @@
 - With `prefers-reduced-motion: reduce`, an element that has an entry or scroll-driven reveal animation has the same computed `opacity` once revealed (opened, or scrolled fully into view) as it has with `prefers-reduced-motion: no-preference`.
 - Reduced-motion styles do not use a blanket `0.01ms` duration override.
 - Reduced-motion styles do not disable non-motion transitions such as `color` or `background-color` changes on interactive elements.
-- Auto-running or persistent animations (such as carousels, banners, or continuous status indicators) provide a mechanism to pause or stop the animation.
+- Auto-running or persistent animations (such as carousels, banners, or continuous status indicators) provide a mechanism to pause and resume the animation.
 - Each control that pauses or stops persistent animations is a button that can be reached and operated with the keyboard.
 - JavaScript `AnimationEvent` and `TransitionEvent` listeners access the triggered animation via `event.animation` rather than filtering `event.target.getAnimations()` by name.
