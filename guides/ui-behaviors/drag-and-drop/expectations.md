@@ -17,7 +17,7 @@
 - Moving the first item toward the start or the last item toward the end with the keyboard mechanism leaves the DOM order unchanged.
 - If the keyboard mechanism is a drag handle, `Space` or `Enter` toggles a grabbed state exposed with `aria-pressed`, arrow keys move the item only while grabbed, and `Escape` restores the item's original position.
 - Reordering is animated: displaced siblings travel to their new positions instead of jumping, and the animation is skipped under `prefers-reduced-motion: reduce`.
-- During a pointer drag, a clone of the dragged item follows the pointer, is `aria-hidden="true"` and `inert`, and is removed when the drag ends.
+- During a pointer drag, the real dragged item (not a clone) follows the pointer via `translate`, stays a child of the list, and animates to its resting place when the drag ends.
 - When the items are in a scrollable container, holding a dragged item near or beyond the container's start or end edge on its axis scrolls the container, and the item can still be dropped at the first or last position.
 - Reordering actions are announced in a live region with the item's new position.
 - Releasing a drag without changing the item's position (such as a plain click on the handle) does not announce a move.

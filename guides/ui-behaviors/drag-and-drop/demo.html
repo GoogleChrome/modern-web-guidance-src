@@ -25,8 +25,8 @@
       --drop-marker-dot: 0.75rem;
       --drop-marker-gap: 0.75rem;
       --drag-preview-opacity: 0.9;
-      --drag-preview-shadow: 0 12px 28px rgb(25 52 45 / 28%);
       --drag-placeholder-opacity: 0.35;
+      --drag-preview-shadow: 0 12px 28px rgb(25 52 45 / 28%);
 
       /* SVG Icon Variables */
       --icon-grip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='5' r='1'/%3E%3Ccircle cx='9' cy='12' r='1'/%3E%3Ccircle cx='9' cy='19' r='1'/%3E%3Ccircle cx='15' cy='5' r='1'/%3E%3Ccircle cx='15' cy='12' r='1'/%3E%3Ccircle cx='15' cy='19' r='1'/%3E%3C/svg%3E");
@@ -108,8 +108,18 @@
       grid-template-columns: minmax(0, 1fr) auto;
     }
 
+    /* The real item is lifted and follows the pointer; its slot stays as the gap it was picked up from. */
+    .task.pointer-dragging,
+    .task.dropping {
+      position: relative;
+      z-index: 2;
+    }
+
     .task.pointer-dragging {
-      opacity: var(--drag-placeholder-opacity);
+      pointer-events: none;
+      opacity: var(--drag-preview-opacity);
+      scale: 1.02;
+      box-shadow: var(--drag-preview-shadow);
     }
 
     /* Sits in the gap between the items around the drop spot, so nothing shifts until release. */
@@ -158,6 +168,14 @@
       }
     }
 
+    /* Clone mode: the source fades in place and a floating copy follows the pointer. */
+    [data-drag="clone"] > .task.pointer-dragging {
+      z-index: auto;
+      opacity: var(--drag-placeholder-opacity);
+      scale: none;
+      box-shadow: none;
+    }
+
     .drag-preview {
       position: fixed;
       z-index: 2;
@@ -167,7 +185,11 @@
       box-shadow: var(--drag-preview-shadow);
     }
 
-    .task:not(.pointer-dragging):has(.drag-handle:focus-visible),
+    [data-drag="clone"] > .task.pointer-dragging:has(.drag-handle:focus-visible) {
+      outline: none;
+    }
+
+    .task:has(.drag-handle:focus-visible),
     .drag-preview.has-focus {
       outline: 3px solid var(--accent);
       outline-offset: 2px;
@@ -328,8 +350,8 @@
     <section>
       <h2>1. Drag handle, vertical</h2>
       <p>Drag an item with its handle, or press <kbd>Space</kbd> on a focused handle to grab it, move it with
-        <kbd>ArrowUp</kbd> or <kbd>ArrowDown</kbd>, then press <kbd>Space</kbd> to drop or <kbd>Esc</kbd> to cancel. The default for a single axis: the source item
-        fades in place and a marker shows where it will land.</p>
+        <kbd>ArrowUp</kbd> or <kbd>ArrowDown</kbd>, then press <kbd>Space</kbd> to drop or <kbd>Esc</kbd> to cancel. The default for a single axis: the item itself is
+        lifted, its slot stays as the gap, and a marker shows where it will land.</p>
       <ol class="task-list" id="taskList" data-axis="block">
       <li class="task" data-reorder-item data-label="Outline project">
         <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" aria-pressed="false" title="Drag to reorder Outline project"
@@ -419,6 +441,55 @@
       </ol>
     </section>
 
+    <section>
+      <h2>4. Drag handle, vertical, with a clone</h2>
+      <p>The same list, but a clone of the item follows the pointer while the source fades in place. For comparison with section 1.</p>
+      <ol class="task-list" id="taskListClone" data-drag="clone" data-axis="block">
+      <li class="task" data-reorder-item data-label="Outline project">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Outline project" aria-pressed="false" title="Drag to reorder Outline project"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Outline project <input value="Write the first draft"></label>
+      </li>
+      <li class="task" data-reorder-item data-label="Review research">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Review research" aria-pressed="false" title="Drag to reorder Review research"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Review research <input value="Collect source notes"></label>
+      </li>
+      <li class="task" data-reorder-item data-label="Schedule review">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Schedule review" aria-pressed="false" title="Drag to reorder Schedule review"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Schedule review <input value="Invite the team"></label>
+      </li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>5. Drag handle, horizontal, with a clone</h2>
+      <p>The same row, but a clone of the card follows the pointer while the source fades in place. For comparison with section 3.</p>
+      <ol class="task-list" id="rowListClone" data-drag="clone" data-axis="inline">
+      <li class="task" data-reorder-item data-label="Draft">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Draft" aria-pressed="false" title="Drag to reorder Draft"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Draft <input value="Outline"></label>
+      </li>
+      <li class="task" data-reorder-item data-label="Review">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Review" aria-pressed="false" title="Drag to reorder Review"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Review <input value="Sources"></label>
+      </li>
+      <li class="task" data-reorder-item data-label="Edit">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Edit" aria-pressed="false" title="Drag to reorder Edit"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Edit <input value="Tighten"></label>
+      </li>
+      <li class="task" data-reorder-item data-label="Design">
+        <button class="drag-handle icon" type="button" aria-label="Reorder Design" aria-pressed="false" title="Drag to reorder Design"
+          style="--icon: var(--icon-grip);"></button>
+        <label>Design <input value="Layout"></label>
+      </li>
+      </ol>
+    </section>
+
     <p class="status" id="reorderStatus" role="status" aria-live="polite" aria-atomic="true"></p>
   </main>
 
@@ -438,8 +509,12 @@
     // One reorderable list. `data-axis` is "block" (vertical) or "inline" (horizontal, reading direction aware).
     function setupReorderable(list) {
       const inline = list.dataset.axis === 'inline';
-      let pointerItem = null;
+      const cloneMode = list.dataset.drag === 'clone';
       let pointerPreview = null;
+      let pointerItem = null;
+      let startRect = null;
+      let startScrollLeft = 0;
+      let startScrollTop = 0;
       let pointerOffsetX = 0;
       let pointerOffsetY = 0;
       let activePointerId = null;
@@ -547,6 +622,11 @@
       function finishPointerReorder(cancelled = false) {
         if (!pointerItem) return;
         clearDropMarker();
+        const from = (pointerPreview ?? pointerItem).getBoundingClientRect();
+        if (!cloneMode) {
+          pointerItem.classList.remove('pointer-dragging');
+          pointerItem.style.translate = '';
+        }
         if (!cancelled && dropBefore !== undefined && dropBefore !== pointerItem.nextElementSibling) {
           moveItem(pointerItem, dropBefore, true);
         }
@@ -561,25 +641,44 @@
         }
         const item = pointerItem;
         const preview = pointerPreview;
-        const from = preview?.getBoundingClientRect();
-        // Finish the item's in-flight FLIP animation so the target is its real layout position.
-        item.getAnimations().forEach((animation) => animation.finish());
-        const to = item.getBoundingClientRect();
-        const done = () => {
-          // A new drag of this item may already be running; don't clear its placeholder state.
-          if (item !== pointerItem) item.classList.remove('pointer-dragging');
-          preview?.remove();
-        };
-        if (!reduceMotion.matches && preview) {
-          const snap = preview.animate(
-            { translate: [`0 0`, `${to.left - from.left}px ${to.top - from.top}px`] },
-            { duration: 200, easing: 'ease-out', fill: 'forwards' }
-          );
-          snap.finished.then(done, done);
-        }
         pointerItem = null;
         pointerPreview = null;
-        if (reduceMotion.matches || !preview) done();
+        if (cloneMode) {
+          const removePreview = () => {
+            // A new drag of this item may already be running; leave its placeholder state alone.
+            if (item !== pointerItem) item.classList.remove('pointer-dragging');
+            preview.remove();
+          };
+          if (reduceMotion.matches) {
+            removePreview();
+          } else {
+            item.getAnimations().forEach((animation) => animation.finish());
+            const to = item.getBoundingClientRect();
+            const snap = preview.animate(
+              { translate: ['0 0', `${to.left - from.left}px ${to.top - from.top}px`] },
+              { duration: 200, easing: 'ease-out', fill: 'forwards' }
+            );
+            snap.finished.then(removePreview, removePreview);
+          }
+        } else {
+        item.classList.add('dropping');
+        const done = () => {
+          // A new drag of this item may already be running; leave its state alone.
+          if (item !== pointerItem) item.classList.remove('dropping');
+        };
+        if (!reduceMotion.matches) {
+          // Glide from where it was released to its resting place, once any in-flight FLIP has finished.
+          item.getAnimations().forEach((animation) => animation.finish());
+          const to = item.getBoundingClientRect();
+          const snap = item.animate(
+            { translate: [`${from.left - to.left}px ${from.top - to.top}px`, '0 0'] },
+            { duration: 200, easing: 'ease-out' }
+          );
+          snap.finished.then(done, done);
+        } else {
+          done();
+        }
+        }
         activePointerId = null;
         pointerHandle?.removeEventListener('lostpointercapture', onLostPointerCapture);
         pointerHandle = null;
@@ -610,6 +709,14 @@
         finishPointerReorder(true);
       }
 
+      // The item keeps its layout slot; a translate carries it to the pointer, allowing for list scrolling.
+      function placePointerItem() {
+        if (cloneMode) return;
+        const x = pointerX - pointerOffsetX - startRect.left + list.scrollLeft - startScrollLeft;
+        const y = pointerY - pointerOffsetY - startRect.top + list.scrollTop - startScrollTop;
+        pointerItem.style.translate = `${x}px ${y}px`;
+      }
+
       function movePointerItem(event) {
         if (event.pointerId !== activePointerId) return;
         pointerX = event.clientX;
@@ -618,6 +725,7 @@
           pointerPreview.style.left = `${pointerX - pointerOffsetX}px`;
           pointerPreview.style.top = `${pointerY - pointerOffsetY}px`;
         }
+        placePointerItem();
         updateDropTarget();
       }
 
@@ -664,7 +772,10 @@
           const property = inline ? 'scrollLeft' : 'scrollTop';
           const before = list[property];
           list[property] += speed * (now - lastFrame) / 1000;
-          if (list[property] !== before) updateDropTarget();
+          if (list[property] !== before) {
+            placePointerItem();
+            updateDropTarget();
+          }
         }
         lastFrame = now;
         scrollFrame = requestAnimationFrame(autoScroll);
@@ -685,17 +796,24 @@
         pointerOffsetX = event.clientX - rect.left;
         pointerOffsetY = event.clientY - rect.top;
 
-        pointerPreview = pointerItem.cloneNode(true);
-        pointerPreview.classList.remove('pointer-dragging');
-        // A clone never matches :focus-visible, so carry the keyboard focus ring over to the preview.
-        pointerPreview.classList.toggle('has-focus', handle.matches(':focus-visible'));
-        pointerPreview.classList.add('drag-preview');
-        pointerPreview.setAttribute('aria-hidden', 'true');
-        pointerPreview.inert = true;
-        pointerPreview.style.width = `${rect.width}px`;
-        pointerPreview.style.left = `${rect.left}px`;
-        pointerPreview.style.top = `${rect.top}px`;
-        document.body.append(pointerPreview);
+        startRect = rect;
+        startScrollLeft = list.scrollLeft;
+        startScrollTop = list.scrollTop;
+        pointerItem.classList.remove('dropping');
+        pointerItem.getAnimations().forEach((animation) => animation.finish());
+        if (cloneMode) {
+          pointerPreview = pointerItem.cloneNode(true);
+          pointerPreview.classList.remove('pointer-dragging');
+          // A clone never matches :focus-visible, so carry the keyboard focus ring over to the preview.
+          pointerPreview.classList.toggle('has-focus', handle.matches(':focus-visible'));
+          pointerPreview.classList.add('drag-preview');
+          pointerPreview.setAttribute('aria-hidden', 'true');
+          pointerPreview.inert = true;
+          pointerPreview.style.width = `${rect.width}px`;
+          pointerPreview.style.left = `${rect.left}px`;
+          pointerPreview.style.top = `${rect.top}px`;
+          document.body.append(pointerPreview);
+        }
         pointerItem.classList.add('pointer-dragging');
         document.documentElement.classList.add('is-dragging');
         pointerX = event.clientX;
