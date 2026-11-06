@@ -177,9 +177,9 @@ test.describe('menu Target Grader', () => {
         r.style.getPropertyValue('position-area').includes('inline-end') &&
         r.style.getPropertyValue('position-try-fallbacks').includes('--below')
     );
-    const hasPositionTryBelow =
-      getRules(targetFiles, CSSPositionTryRule).some((r) => r.name === '--below') ||
-      getRules(targetFiles).some((r) => r.cssText.includes('@position-try --below') || r.cssText.includes('--below'));
+    const hasPositionTryBelow = getRules(targetFiles, CSSPositionTryRule).some(
+      (r) => r.name === '--below'
+    );
 
     expect(hasTopLevelPositionArea && hasSubmenuPositionArea && hasPositionTryBelow).toBe(true);
   });

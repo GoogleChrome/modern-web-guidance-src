@@ -30,7 +30,7 @@ interface CustomPropertyDeclaration {
 
 function isAncestorSelector(selector: string): boolean {
   if (!selector) return false;
-  return /(^|[\s,>+~])(:root\b|html\b|&)/i.test(selector.trim());
+  return /(?:^|[\s,>+~]|:(?:is|where)\(\s*)(:root\b|html\b|&)/i.test(selector.trim());
 }
 
 function getCustomPropertyDeclarations(root: RuleRoot | string[]): CustomPropertyDeclaration[] {

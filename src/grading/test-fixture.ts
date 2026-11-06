@@ -4,14 +4,11 @@ import * as fs from 'fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'url';
 import type { Project } from 'ts-morph';
-import {
-  parse,
-  getRules as cssomGetRules,
+import type {
   CSSStyleSheet,
-  CSSStyleDeclaration,
   CSSRule,
-  type RuleRoot,
-  type AnyRuleConstructor,
+  RuleRoot,
+  AnyRuleConstructor,
 } from 'cssomnom';
 import { extractTargetFilesFromPatch } from '../core/patch-utils.ts';
 import { startTargetServer } from './target-server.ts';
@@ -216,6 +213,7 @@ export function getRules(root: RuleRoot | string[], ruleType?: AnyRuleConstructo
   } else {
     actualRoot = root;
   }
+  const { getRules: cssomGetRules } = require('cssomnom') as typeof import('cssomnom');
   return ruleType ? cssomGetRules(actualRoot, ruleType) : cssomGetRules(actualRoot);
 }
 
@@ -253,6 +251,7 @@ export function getCssStyleSheet(files: string[]): CSSStyleSheet {
   if (cached) {
     return cached;
   }
+  const { parse, CSSStyleDeclaration } = require('cssomnom') as typeof import('cssomnom');
   const cssBlocks: string[] = [];
   for (const file of files) {
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;

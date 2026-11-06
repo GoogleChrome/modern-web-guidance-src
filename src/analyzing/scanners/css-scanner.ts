@@ -7,6 +7,7 @@ import {
   CSSNestedDeclarations,
   CSSStyleRule,
   getDeclaredProperties,
+  getPropertyValues,
   getRules,
   parse as parseCss,
   resolveSelector,
@@ -93,10 +94,15 @@ function prepareCssContext(
       column: rule.location?.column ?? 1,
       parentAtRule: getEnclosingAtRule(rule),
       get declarations() {
-        return (cachedDecls ??= Array.from(style, (property) => ({
-          property,
-          value: style.getPropertyValue(property),
-        })));
+        return (cachedDecls ??= Array.from(style).flatMap((property) => {
+          const values = getPropertyValues(style, property, {
+            logical: false,
+            shorthands: false,
+          });
+          return values.length > 0
+            ? values.map((value) => ({ property, value }))
+            : [{ property, value: style.getPropertyValue(property) }];
+        }));
       },
       getPropertyValue: (p: string) => style.getPropertyValue(p) || null,
       hasProperty: (p: string) => {
