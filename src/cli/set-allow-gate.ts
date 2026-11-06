@@ -14,6 +14,7 @@ export interface SetAllowGateOptions {
   isTTY?: boolean;
   askConfirmation?: (targetPath: string) => Promise<boolean>;
   cwd?: string;
+  env?: NodeJS.ProcessEnv;
 }
 
 export async function handleSetAllowOriginTrials(opts?: SetAllowGateOptions): Promise<number> {
@@ -41,13 +42,13 @@ export async function handleSetAllowGate(
   gate: FeatureGateSpec<any>,
   opts: SetAllowGateOptions = {},
 ): Promise<number> {
-  const detected = determineAgent();
-  const isAgent = opts.isAgent ?? detected.isAgent;
   const isTTY = opts.isTTY ?? Boolean(process.stdin.isTTY);
+  const detected = opts.isAgent === false ? undefined : determineAgent(opts.env, undefined, isTTY);
+  const isAgent = opts.isAgent ?? Boolean(detected?.isAgent);
 
   if (isAgent || !isTTY) {
     const reason = isAgent
-      ? `detected agent environment${detected.agent?.name ? `: ${detected.agent.name}` : ''}`
+      ? `detected agent environment${detected?.agent?.name ? `: ${detected.agent.name}` : ''}`
       : 'non-interactive stdin';
     console.error(
       `Error: \`${gate.cliCommand}\` must be run interactively by a human developer, not an AI agent (${reason}).\n` +
