@@ -99,6 +99,8 @@ Be mindful that the native `title` attribute is not keyboard focusable in any br
 
 MANDATORY: Position the hint on the axis the toolbar does not stack along: `position-area: block-end` (fallback `flip-block`) for a horizontal toolbar, `position-area: inline-end` (fallback `flip-inline`) for a vertical one. A hint placed along the stacking axis covers the next control and swallows its click, because the hint stays open while the pointer is over it.
 
+As popovers are added to the end of the DOM, hide them using `aria-hidden="true"` so that they are not exposed to screen readers out of context. The tooltip text duplicates the accessible name for each of their related toolbar buttons, so screen reader users will not miss out on anything.
+
 ```html
 <button type="button" aria-label="Bold" title="Bold">…</button>
 ```
@@ -112,6 +114,7 @@ if ("interestForElement" in HTMLButtonElement.prototype && CSS.supports("positio
     b.setAttribute("interestfor", tip.id);
     b.removeAttribute("title"); // avoid a second, native tooltip
     document.body.append(tip); // keep open hint nodes out of role="group" / role="toolbar"
+    tip.setAttribute("aria-hidden", "true"); // hide popovers from screen readers
   });
 }
 ```
