@@ -8,7 +8,6 @@ import {
   spawnAsync,
   setupAgentCredentials,
   getAgentCommandAndArgs,
-  getAgentChildEnvOverrides,
   sanitizeAgentChildEnv,
 } from './agent-shared.ts';
 import { Agents } from '../config.ts';
@@ -61,12 +60,12 @@ export async function runAgent(
   workDir?: string,
   options: { captureOutput?: boolean; homeDir?: string } = {}
 ): Promise<string> {
-  const raw = getAgentCommandAndArgs(agent, prompt);
+  const raw = getAgentCommandAndArgs(agent, prompt, options.homeDir);
   const { command, commandArgs } = options.homeDir
     ? wrapCommandInSandbox(raw.command, raw.commandArgs, buildSandboxPolicy(options.homeDir, 'unguided'))
     : raw;
   const env = sanitizeAgentChildEnv(process.env, {
-    ...getAgentChildEnvOverrides(agent, options.homeDir),
+    ...raw.envOverrides,
     ...(options.homeDir ? { HOME: options.homeDir, ZDOTDIR: options.homeDir } : {}),
     ...(workDir ? { PWD: workDir } : {}),
   });

@@ -41,7 +41,11 @@ export function setupAgentCredentials(agent: Agents, tempHome: string): void {
   }
 }
 
-export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command: string; commandArgs: string[] } {
+export function getAgentCommandAndArgs(
+  agent: Agents,
+  prompt: string,
+  homeDir?: string,
+): { command: string; commandArgs: string[]; envOverrides?: NodeJS.ProcessEnv } {
   switch (agent) {
     case Agents.JETSKI_CLI:
       return getJetskiCliCommandAndArgs(prompt);
@@ -52,7 +56,7 @@ export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command
     case Agents.CODEX_CLI:
       return getCodexCliCommandAndArgs(prompt);
     case Agents.PI:
-      return getPiCommandAndArgs(prompt);
+      return { ...getPiCommandAndArgs(prompt), envOverrides: getPiEnvOverrides(homeDir) };
     case Agents.ANTIGRAVITY_CLI:
       return getAntigravityCliCommandAndArgs(prompt);
     default:
@@ -626,11 +630,6 @@ const STRIPPED_ENV_FRAGMENTS = [
 ];
 
 const HARNESS_STRIPPED_ENV_PATTERN = new RegExp(`^(?:${STRIPPED_ENV_FRAGMENTS.join('|')})`);
-
-export function getAgentChildEnvOverrides(agent: Agents, homeDir?: string): NodeJS.ProcessEnv | undefined {
-  if (agent === Agents.PI) return getPiEnvOverrides(homeDir);
-  return undefined;
-}
 
 /**
  * Strips package-manager, harness-internal, and host AI-agent session markers before

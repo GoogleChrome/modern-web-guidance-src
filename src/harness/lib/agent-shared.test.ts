@@ -6,7 +6,7 @@ import path from 'path';
 import { spawn, spawnSync } from 'child_process';
 import {
   createWorkDir,
-  getAgentChildEnvOverrides,
+  getAgentCommandAndArgs,
   getGraderScriptContent,
   runCliAgentCommand,
   sanitizeAgentChildEnv,
@@ -317,9 +317,9 @@ describe('runCliAgentCommand', () => {
       assert.strictEqual(pathEntries[0], shimDir);
       assert.ok(!pathEntries.some((p: string) => p.includes('secret-guide') || p.startsWith(targetDir) || p.includes('/.pi/agent')));
 
-      assert.strictEqual(getAgentChildEnvOverrides(Agents.CLAUDE_CODE, tempDir), undefined);
-      assert.deepStrictEqual(getAgentChildEnvOverrides(Agents.PI), { PI_CODING_AGENT: 'true' });
-      const piOverrides = getAgentChildEnvOverrides(Agents.PI, tempDir);
+      assert.strictEqual(getAgentCommandAndArgs(Agents.CLAUDE_CODE, 'test', tempDir).envOverrides, undefined);
+      assert.deepStrictEqual(getAgentCommandAndArgs(Agents.PI, 'test').envOverrides, { PI_CODING_AGENT: 'true' });
+      const piOverrides = getAgentCommandAndArgs(Agents.PI, 'test', tempDir).envOverrides;
       assert.deepStrictEqual(piOverrides, { PI_CODING_AGENT: 'true', PI_CODING_AGENT_DIR: piAgentDir });
 
       await runCliAgentCommand(
