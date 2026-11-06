@@ -514,21 +514,7 @@ export function parseCodexTrajectory(logData: CodexRolloutLine[] | any[], subage
               (m) => m[1]
             );
             if (failedUrls.length > 0) {
-              stepParams.webRuns = (stepParams.webRuns as unknown[]).map((r) => {
-                if (typeof r !== 'string') return r;
-                let cleaned = r;
-                for (const url of failedUrls) {
-                  cleaned = cleaned.replaceAll(url, '');
-                }
-                return cleaned;
-              });
-              if (typeof stepParams.value === 'string') {
-                let cleanedVal = stepParams.value;
-                for (const url of failedUrls) {
-                  cleanedVal = cleanedVal.replaceAll(url, '');
-                }
-                stepParams.value = cleanedVal;
-              }
+              stepParams.failedOpenUrls = [...new Set(failedUrls)];
             }
           }
           const isError =

@@ -36,6 +36,9 @@ let activeAgentId = AGENT_ORDER[0];
 let checksExpanded = false;
 let taskPillsListenersBound = false;
 let agentPillsListenersBound = false;
+/** Data source the landing page loaded from; carried on links so they open the same copy. */
+/** @type {import('./data-source.js').DataSource | null} */
+let linkSource = null;
 const rootEl = /** @type {HTMLElement | null} */ (document.getElementById('ab-spotlight'));
 if (rootEl) {
     ensureGuideCategoriesLoaded();
@@ -47,10 +50,11 @@ if (rootEl) {
  * or from evals.json hydration). When no data is loaded yet, renders placeholders in place to
  * match the rest of the page and avoid layout shifts.
  * @param {import('./insights.js').ManifestSuite[]} suites
- * @param {{ hydrated?: boolean }} [options]
+ * @param {{ hydrated?: boolean, source?: import('./data-source.js').DataSource }} [options]
  */
-export function updateShowcaseFromSuites(suites, { hydrated = false } = {}) {
+export function updateShowcaseFromSuites(suites, { hydrated = false, source } = {}) {
     if (!rootEl) return;
+    if (source) linkSource = source;
     tasks = buildTasksFromRecentSuites(suites);
     if (tasks.length && !tasks.some(t => t.id === activeTaskId)) {
         activeTaskId = tasks[0].id;
@@ -287,8 +291,9 @@ function renderPromptBar(task, pair) {
         promptEl.textContent = task.prompt ? `“${task.prompt}”` : 'Task prompt unavailable.';
     }
     if (metaEl) {
-        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}#guide-${encodeURIComponent(task.id)}`;
-        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.suiteId)}`;
+        const sourceQuery = linkSource ? `&source=${encodeURIComponent(linkSource)}` : '';
+        const suiteHref = `dashboard.html?testId=${encodeURIComponent(pair.suiteId)}${sourceQuery}#guide-${encodeURIComponent(task.id)}`;
+        const trendHref = `guide.html?guide=${encodeURIComponent(task.id)}&testId=${encodeURIComponent(pair.suiteId)}${sourceQuery}`;
         const rawGuides = pair.guided.guidesUsed.length ? pair.guided.guidesUsed : [task.id];
         const cleanGuides = rawGuides.map(g => g.replace(/;+$/, '')).filter(Boolean);
         const guideLinksHtml = cleanGuides.map(slug => {

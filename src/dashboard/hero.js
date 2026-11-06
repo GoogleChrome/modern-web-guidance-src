@@ -1,6 +1,7 @@
 import { getAccessToken, escapeHtml, getAgentBadge, formatSuiteDate } from './utils.js';
 import { computeHeadlineInsights, hydrateMissingStats } from './insights.js';
 import { AGENT_FAMILIES } from './agents.js';
+import { isLocalServer } from './data-source.js';
 /** @typedef {import('./insights.js').FamilyInsight} FamilyInsight */
 /** @typedef {import('./insights.js').HeadlineInsights} HeadlineInsights */
 /** @typedef {import('./insights.js').ManifestSuite} ManifestSuite */
@@ -11,7 +12,7 @@ const FAMILY_HINT = { antigravity_cli: 'Gemini' };
 const heroEl = /** @type {HTMLElement | null} */ (document.getElementById('hero'));
 let heroLoadSeq = 0;
 let currentRecentN = 1;
-/** @type {{ suites: ManifestSuite[], fetchEvals?: (testId: string) => Promise<import('../harness/lib/metrics.ts').EvalsReport>, onHydrated?: () => void } | null} */
+/** @type {{ suites: ManifestSuite[], fetchEvals?: (testId: string) => Promise<import('../harness/lib/metrics.ts').EvalsReport>, onHydrated?: () => void, source?: import('./data-source.js').DataSource } | null} */
 let latestHeroInput = null;
 document.addEventListener('DOMContentLoaded', () => {
     const authBtn = document.getElementById('auth-btn');
@@ -31,18 +32,21 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 /**
  * @param {ManifestSuite[]} suites
- * @param {{ fetchEvals?: (testId: string) => Promise<import('../harness/lib/metrics.ts').EvalsReport>, onHydrated?: () => void }} [options]
+ * @param {{ fetchEvals?: (testId: string) => Promise<import('../harness/lib/metrics.ts').EvalsReport>, onHydrated?: () => void, source?: import('./data-source.js').DataSource }} [options]
  */
-export function updateHeroFromSuites(suites, { fetchEvals, onHydrated } = {}) {
+export function updateHeroFromSuites(suites, { fetchEvals, onHydrated, source } = {}) {
     if (!heroEl) return;
-    latestHeroInput = { suites, fetchEvals, onHydrated };
+    latestHeroInput = { suites, fetchEvals, onHydrated, source };
     const seq = ++heroLoadSeq;
-    const isRemote = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-    const isSignedOut = () => (isRemote || suites.length === 0) && !getAccessToken();
+    const isSignedOut = () => (!isLocalServer() || suites.length === 0) && !getAccessToken();
+    const emptyStatus = () => {
+        if (source === 'public') return suites.length === 0 ? 'public-empty' : 'empty';
+        return isSignedOut() ? 'auth' : 'empty';
+    };
     if (suites.length === 0 && isSignedOut()) {
         syncWindowToggle(0);
         renderPending();
-        setStatus('auth');
+        setStatus(emptyStatus());
         setBusy(false);
         return;
     }
@@ -63,7 +67,7 @@ export function updateHeroFromSuites(suites, { fetchEvals, onHydrated } = {}) {
     syncWindowToggle(insights.maxSuitesPerFamily);
     if (!insights.families.length) {
         renderPending();
-        setStatus(isSignedOut() ? 'auth' : 'empty');
+        setStatus(emptyStatus());
         setBusy(false);
         return;
     }
@@ -104,7 +108,7 @@ function syncWindowToggle(maxSuitesPerFamily) {
 }
 /** @param {boolean} busy */
 function setBusy(busy) { if (heroEl) heroEl.setAttribute('aria-busy', String(busy)); }
-/** @param {'auth' | 'empty' | null} kind */
+/** @param {'auth' | 'empty' | 'public-empty' | null} kind */
 function setStatus(kind) {
     const el = document.getElementById('hero-status');
     const text = document.getElementById('hero-status-text');
@@ -112,10 +116,13 @@ function setStatus(kind) {
     if (!el || !text || !btn) return;
     if (!kind) { el.hidden = true; text.textContent = ''; return; }
     el.hidden = false;
-    btn.hidden = kind !== 'auth';
+    // The sign-in CTA stays for an empty public copy so Googlers can reach internal runs,
+    // unless a token is already held (clicking it would sign out).
+    btn.hidden = kind === 'empty' || Boolean(getAccessToken());
     const messages = {
         'auth': 'Results live in a private bucket. Sign in with Google to load the latest nightly numbers.',
-        'empty': 'No nightly evaluation runs were found for this data source yet.'
+        'empty': 'No nightly evaluation runs were found for this data source yet.',
+        'public-empty': 'No published results yet. Googlers can sign in to see internal runs.'
     };
     text.textContent = messages[kind];
     announce(text.textContent);

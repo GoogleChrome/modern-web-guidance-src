@@ -117,6 +117,19 @@ void test('autofill-sign-in-form: positive brownfield matches', async (t) => {
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /current-password/);
   });
+
+  await t.test('flags password input with id="passwordBox" or name="passwordBox" inside sign-in form', () => {
+    const html = `
+      <form action="/signin" method="post">
+        <label for="passwordBox">Password</label>
+        <input type="password" id="passwordBox" name="passwordBox" required>
+        <button type="submit">Sign In</button>
+      </form>
+    `;
+    const matches = scanHtml('signin.html', html, [matcher]);
+    assert.equal(matches.length, 1);
+    assert.match(matches[0]?.message ?? '', /current-password/);
+  });
 });
 
 void test('autofill-sign-in-form: negative / exempt cases', async (t) => {
@@ -245,6 +258,25 @@ void test('autofill-sign-in-form: negative / exempt cases', async (t) => {
       </form>
     `;
     const matches = scanHtml('system-config.html', html, [matcher]);
+    assert.equal(matches.length, 0);
+  });
+
+  await t.test('exempts service and infrastructure configuration fields (proxy, dbConfig, database, webhook, apikey, client_secret)', () => {
+    const html = `
+      <form>
+        <input type="password" v-model="proxy.password">
+        <input type="password" v-model="dbConfig.password">
+        <input type="password" name="proxy_password">
+        <input type="password" name="db_password">
+        <input type="password" name="database_password">
+        <input type="password" name="smtp_password">
+        <input type="password" name="webhook_secret">
+        <input type="password" name="api_key">
+        <input type="password" name="apikey">
+        <input type="password" name="client_secret">
+      </form>
+    `;
+    const matches = scanHtml('infra-config.html', html, [matcher]);
     assert.equal(matches.length, 0);
   });
 
