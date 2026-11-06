@@ -75,7 +75,7 @@ export function extractManifestEntries(graderFilePath: string): Map<number, Mani
     const start = Number.parseInt(match[1], 10);
     const end = match[2] ? Number.parseInt(match[2], 10) : start;
     const status = match[3].toUpperCase() === 'SKIPPED' ? 'SKIPPED' : 'TESTED';
-    const reason = (match[4] ?? match[5] ?? '').trim();
+    const reason = (match[4] ?? '').trim();
 
     for (let num = start; num <= end; num++) {
       if (!entries.has(num)) {

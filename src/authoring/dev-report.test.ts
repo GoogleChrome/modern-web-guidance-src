@@ -11,7 +11,7 @@ import {
   getReportGraderRevertReason,
   type TargetEvalSummary,
 } from './dev-report.ts';
-import { extractManifestEntries, extractTestTitles } from '../core/grader-coverage.ts';
+import { extractTestTitles } from '../core/grader-coverage.ts';
 import { getGuideResultsDir } from '../core/paths.ts';
 import { findSharedFailingTests, collectSpecs, isSpecSkipped } from '../grading/run-grader.ts';
 import { Agents } from '../harness/config.ts';
