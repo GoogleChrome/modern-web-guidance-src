@@ -15,7 +15,7 @@ web-feature-ids:
 
 ## Overview
 
-A navigation drawer is a panel that slides in from the edge of the viewport over the page content, dimming everything behind it. It is opened from a trigger button and dismissed by swiping the panel off-screen, tapping the dimmed backdrop, or pressing Escape.
+A navigation drawer is a panel that slides in from the edge of the viewport over the page content, dimming everything behind it. It is opened from a trigger button and dismissed by swiping the panel off-screen, tapping the dimmed backdrop, activating an explicit Close button inside the panel, or pressing Escape.
 
 This guide implements the drawer as:
 
@@ -30,16 +30,22 @@ This approach is preferred over JavaScript-driven `transform` animations because
 
 ### 1. Markup
 
-The drawer is a single popover containing a horizontal scroller, which contains the visible "sheet". The trigger button lives in the page content.
+The drawer is a single popover containing a horizontal scroller, which contains the visible "sheet". The trigger button lives in the page content. The drawer's close button has an `autofocus` attribute so that this control receives focus when the drawer is opened.
 
 ```html
 <!-- popover="manual" is REQUIRED. Do not use popover="auto" or "hint". -->
-<div class="Drawer" id="drawer" popover="manual">
+<!-- MANDATORY: Use a dialog element so that the drawer is exposed as a dialog
+     to assistive technologies. Use the aria-label attribute to provide an accessible name for the dialog or, if there is already text within the drawer that can act as its accessible name, use the aria-labelledby attribute instead. --> 
+<dialog class="Drawer" id="drawer" popover="manual" aria-label="Navigation drawer">
   <div class="Drawer-scroller">
+    <!-- tabindex="-1" makes the sheet programmatically focusable so we
+         can move focus into it when the drawer opens, without adding it
+         to the natural tab order. -->
     <nav class="Drawer-sheet" tabindex="-1">
-      <!-- tabindex="-1" makes the sheet programmatically focusable so we
-           can move focus into it when the drawer opens, without adding it
-           to the natural tab order. -->
+      <!-- Close button that can be used to dismiss the drawer -->
+      <button id="drawer-close" aria-label="Close menu" autofocus>
+        <!-- close icon or blank if icon inserted via CSS -->
+      </button>
       <ul>
         <li><a href="/page-1">Page 1</a></li>
         <li><a href="/page-2">Page 2</a></li>
@@ -47,7 +53,7 @@ The drawer is a single popover containing a horizontal scroller, which contains 
       </ul>
     </nav>
   </div>
-</div>
+</dialog>
 
 <main>
   <header>
@@ -57,13 +63,14 @@ The drawer is a single popover containing a horizontal scroller, which contains 
             aria-label="Menu"
             aria-expanded="false"
             aria-controls="drawer">
-      <!-- MANDATORY: Inline decorative SVGs MUST define aria-hidden="true" -->
-      <svg aria-hidden="true" viewBox="0 0 24 24">...</svg>
+      <!-- open icon or blank if icon inserted via CSS -->
     </button>
   </header>
   <!-- Page content. -->
 </main>
 ```
+
+See {{ GUIDE_REF('icons') }} for maintaining accessibility when using icons.
 
 ### 2. Styles
 
@@ -76,7 +83,7 @@ The popover must cover the whole viewport so its `::backdrop` dims the entire pa
   /* min() caps the sheet width on large screens but on a phone leaves
      a 20% peek of page content visible, which is the affordance that
      tells the user they can tap outside to dismiss. */
-  --drawer-width: min(20em, 80dvw);
+  --drawer-width: min(20em, 80dvw, 100dvw - 24px);
 
   /* Custom property driven by the scroll-driven animation below.
      0 = drawer fully closed (transparent backdrop).
@@ -210,6 +217,7 @@ const drawer = document.getElementById('drawer');
 const openBtn = document.getElementById('drawer-open');
 const scroller = drawer.querySelector('.Drawer-scroller');
 const sheet = drawer.querySelector('.Drawer-sheet');
+const closeBtn = document.getElementById('drawer-close');
 
 function openDrawer() {
   // Show the popover first so the element is in the top layer before
@@ -239,11 +247,14 @@ function closeDrawer() {
 
 Use an `IntersectionObserver` on the sheet — not the scroll position — as the source of truth for the drawer's state. The observer fires regardless of how the sheet moved (user swipe, programmatic scroll, snap settle), so all dismissal paths converge in the same callback.
 
+As the state of the dialog is managed using a popover, manually apply `aria-modal='true'` when the dialog is open, and remove the attribute when the drawer is closed.
+
 ```js
 function onDrawerOpened() {
   // Mark the rest of the page inert so keyboard and screen-reader
   // users cannot tab into content hidden behind the drawer.
   document.querySelector('main').inert = true;
+  drawer.setAttribute('aria-modal', 'true');
   openBtn.setAttribute('aria-expanded', 'true');
   // Move focus into the drawer for keyboard users.
   sheet.focus();
@@ -254,7 +265,11 @@ function onDrawerClosed() {
   // so the slide-out is visible to the user.
   drawer.hidePopover();
   document.querySelector('main').inert = false;
+  if (drawer.hasAttribute('aria-modal')) {
+    drawer.removeAttribute('aria-modal');
+  }
   openBtn.setAttribute('aria-expanded', 'false');
+  openBtn.focus();
 }
 
 // Treat "any pixel of the sheet visible inside the popover root" as
@@ -284,6 +299,9 @@ observer.observe(sheet);
 ```js
 // Open trigger.
 openBtn.addEventListener('click', openDrawer);
+
+// Close trigger.
+closeBtn.addEventListener('click', closeDrawer);
 
 // Light-dismiss: a tap on the dimmed area (anywhere inside the
 // popover but outside the sheet) closes the drawer. We implement

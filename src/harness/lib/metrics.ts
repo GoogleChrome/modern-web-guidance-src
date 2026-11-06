@@ -1,3 +1,10 @@
+export interface PageLoadResult {
+  ok: boolean;
+  errors: string[];
+  buildWarning?: string;
+  noPage?: boolean;
+}
+
 export interface ScenarioCheck {
   id?: string;
   testId?: string;
@@ -23,6 +30,7 @@ export interface RunResult {
   prompt?: string;
   targetFile?: string;
   tokenUsage?: { total: number; cached: number };
+  pageLoad?: PageLoadResult;
 }
 
 export interface Metrics {

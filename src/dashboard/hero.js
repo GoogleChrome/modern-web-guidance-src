@@ -98,7 +98,7 @@ function renderPending() {
     const list = document.getElementById('hero-takeaways');
     if (list) {
         list.innerHTML = [
-            pendingCard('overall', 'Change in aggregate pass rate of using best practices', 'percentage-point lift', true),
+            pendingCard('overall', 'Best-practice pass rate', 'pass-rate lift', true),
             pendingCard('a11y', 'Accessibility', '', false)
         ].join('');
     }
@@ -107,7 +107,7 @@ function renderPending() {
         body.innerHTML = `<tr><th scope="row">No data loaded</th><td data-label="Pass rate">${naCell()}</td><td data-label="Accessibility">${naCell()}</td><td data-label="Runs">${naCell()}</td></tr>`;
     }
     const eyebrow = document.getElementById('hero-eyebrow');
-    if (eyebrow) eyebrow.textContent = 'Nightly evaluations';
+    if (eyebrow) eyebrow.textContent = 'Latest nightly runs';
 }
 /** @param {HeadlineInsights} insights */
 function renderEyebrow(insights) {
@@ -121,9 +121,9 @@ function renderEyebrow(insights) {
     const el = document.getElementById('hero-eyebrow');
     if (!el) return;
     const latest = latestDateOf(insights);
-    const n = insights.pooled?.suiteCount || 0;
-    const detail = n > 0 ? `<span class="eyebrow-detail"> · ${n} recent ${n === 1 ? 'run' : 'runs'} across ${insights.families.length} agent ${insights.families.length === 1 ? 'family' : 'families'}</span>` : '';
-    el.innerHTML = `<span class="hero-live-dot" aria-hidden="true"></span>Nightly evaluations${detail}${latest ? ` · latest data <span class="nowrap">${escapeHtml(formatDate(latest))}</span>` : ''}`;
+    const recentN = insights.options.perAgentRecentN;
+    const label = recentN === 1 ? 'Latest nightly run per agent' : `Most recent ${recentN} nightly runs per agent`;
+    el.innerHTML = `<span class="hero-live-dot" aria-hidden="true"></span>${escapeHtml(label)}${latest ? ` · <span class="nowrap">${escapeHtml(formatDate(latest))}</span>` : ''}`;
 }
 /** @param {number | null} uRate @param {number | null} gRate */
 function renderTakeawayDumbbell(uRate, gRate) {
@@ -148,24 +148,23 @@ function renderTakeaways(insights) {
         const o = pooled.overall;
         const taskCounts = insights.families.flatMap(f => f.suites.map(s => s.taskCount || 0)).filter(n => n > 0);
         const yTasks = taskCounts.length > 0 ? Math.max(...taskCounts) : 0;
-        const nRuns = pooled.suiteCount || 0;
         const mAgents = pooled.familyCount || insights.families.length;
-        const scopeClause = yTasks > 0
-            ? `, across ${yTasks} ${yTasks === 1 ? 'task' : 'tasks'} over ${nRuns} ${nRuns === 1 ? 'run' : 'runs'} and ${mAgents} ${mAgents === 1 ? 'agent' : 'agents'}.`
-            : '';
-        const overallShortText = `~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} checks · ${nRuns} nightly ${nRuns === 1 ? 'run' : 'runs'}`;
+        const statement = yTasks > 0
+            ? `lift across ${yTasks} ${yTasks === 1 ? 'task' : 'tasks'}`
+            : 'pass-rate lift';
+        const overallShortText = `~${fmtCompact(Math.min(o.unguidedTotal, o.guidedTotal))} checks · ${mAgents} ${mAgents === 1 ? 'agent' : 'agents'}`;
         cards.push(takeawayCard({
             metric: 'overall',
             primary: true,
-            label: `Change in aggregate pass rate of using best practices${scopeClause}`,
+            label: 'Best-practice pass rate',
             figure: `<span class="figure-val">${signed(o.upliftPp, 0)}</span><span class="unit"> pp</span>`,
             figureText: `${signed(o.upliftPp, 0)} percentage points`,
-            statement: 'percentage-point lift',
+            statement,
             visual: renderTakeawayDumbbell(o.unguidedRate, o.guidedRate),
             short: `<span class="visually-hidden">${fmtPct(o.unguidedRate)} → ${fmtPct(o.guidedRate)} · </span><a href="#all-guides" class="takeaway-action-link" data-open-guides="all">${overallShortText} <span aria-hidden="true">→</span></a>`
         }));
     } else {
-        cards.push(pendingCard('overall', 'Change in aggregate pass rate of using best practices', 'percentage-point lift', true));
+        cards.push(pendingCard('overall', 'Best-practice pass rate', 'pass-rate lift', true));
     }
     if (!pooled?.a11y || pooled.a11y.upliftPp === null) { cards.push(pendingCard('a11y', 'Accessibility', '', false)); } else {
         const a = pooled.a11y;

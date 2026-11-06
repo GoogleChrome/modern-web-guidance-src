@@ -1,7 +1,7 @@
 import { getRunStats, isEarlyFailureRun, isUnguidedLeakRun, getEligibleScenarioIds, parseResultKey, calculateChartData, median, getTokenBreakdown, getAgentRuntimeMs } from './utils.js';
 import { A11Y_SUBCATEGORIES, classifyScenarioCheck } from './a11y-classifier.js';
 import { SHOWCASE_GUIDE_IDS } from './showcase-config.js';
-const TIMEOUT_MS = 600000;
+const TIMEOUT_MS = 900000;
 
 /**
  * @typedef {Object} GuideSummary
