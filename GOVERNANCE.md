@@ -63,7 +63,7 @@ Owners:
 * Release packages and manage major version releases.
 
 
-#### Board Composition & Roster
+#### Owners Group
 
 The Owners group comprises seats representing browser and developer ecosystem stakeholders alongside independent web platform experts, structured to ensure multi-stakeholder governance and cross-browser neutrality:
 
