@@ -1,0 +1,110 @@
+diff --git a/index.html b/index.html
+index 66c9173..13c4864 100644
+--- a/index.html
++++ b/index.html
+@@ -142,6 +142,10 @@
+       margin-top: 40px;
+     }
+ 
++    rating-input:invalid {
++      outline: 1px dashed #c62828;
++    }
++
+     .footer-links {
+       margin-bottom: 20px;
+     }
+@@ -195,8 +199,94 @@
+         </div>
+       </div>
+     </section>
++    <section style="margin-top: 40px;">
++      <h2 style="text-align: center;">Rate Your Visit</h2>
++      <form id="feedback-form" class="card" style="margin-top: 20px;">
++        <fieldset style="border: 0;">
++          <label id="rating-label">How was your coffee?</label>
++          <rating-input name="rating" required aria-labelledby="rating-label"></rating-input>
++        </fieldset>
++        <button type="submit" class="btn" style="border: 0; cursor: pointer;">Send Feedback</button>
++        <button type="reset" class="btn" style="border: 0; cursor: pointer;">Reset</button>
++      </form>
++    </section>
+   </main>
+ 
++  <script>
++    class RatingInput extends HTMLElement {
++      static formAssociated = true;
++
++      #internals;
++      #value = '';
++
++      constructor() {
++        super();
++        this.#internals = this.attachInternals();
++        const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++        root.innerHTML = `
++          <style>
++            :host { display: inline-block; }
++            div { display: flex; gap: 4px; justify-content: center; }
++            button { font-size: 1.8rem; background: none; border: 0; cursor: pointer; color: #bbb; }
++            button[aria-checked="true"], button.filled { color: #ffab40; }
++            button:disabled { cursor: not-allowed; opacity: 0.5; }
++          </style>
++          <div role="radiogroup" part="group">
++            ${[1, 2, 3, 4, 5].map((n) =>
++              `<button type="button" tabindex="0" role="radio" aria-checked="false" aria-label="${n} star${n > 1 ? 's' : ''}" data-value="${n}">★</button>`
++            ).join('')}
++          </div>`;
++        root.addEventListener('click', (e) => {
++          const btn = e.target.closest('button');
++          if (!btn || btn.disabled) return;
++          const changed = btn.dataset.value !== this.#value;
++          this.value = btn.dataset.value;
++          if (changed) {
++            this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
++            this.dispatchEvent(new Event('change', { bubbles: true }));
++          }
++        });
++      }
++
++      connectedCallback() {
++        this.#validate();
++      }
++
++      get value() { return this.#value; }
++      set value(v) {
++        this.#value = v == null ? '' : String(v);
++        this.#internals.setFormValue(this.#value);
++        for (const b of this.shadowRoot.querySelectorAll('button')) {
++          const n = Number(b.dataset.value);
++          b.setAttribute('aria-checked', String(b.dataset.value === this.#value));
++          b.classList.toggle('filled', this.#value !== '' && n <= Number(this.#value));
++        }
++        this.#validate();
++      }
++
++      #validate() {
++        if (this.hasAttribute('required') && !this.#value) {
++          this.#internals.setValidity(
++            { valueMissing: true },
++            'Please choose a rating.',
++            this.shadowRoot.querySelector('[tabindex]'),
++          );
++        } else {
++          this.#internals.setValidity({});
++        }
++      }
++
++      formResetCallback() { this.value = ''; }
++      formDisabledCallback(disabled) {
++        for (const el of this.shadowRoot.querySelectorAll('button')) {
++          el.disabled = disabled;
++        }
++      }
++      formStateRestoreCallback(state) { this.value = state; }
++    }
++    customElements.define('rating-input', RatingInput);
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

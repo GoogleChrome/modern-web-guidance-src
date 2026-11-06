@@ -1,0 +1,115 @@
+diff --git a/index.html b/index.html
+index 66c9173..55276e1 100644
+--- a/index.html
++++ b/index.html
+@@ -57,7 +57,6 @@
+ 
+     nav a {
+       color: white;
+-      text-decoration: none;
+       font-size: 0.9rem;
+       transition: color 0.3s;
+     }
+@@ -149,9 +148,92 @@
+     .footer-links a {
+       margin: 0 10px;
+       color: var(--text);
+-      text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Text decorations */
++    :where(nav a:not(.logout-link), .footer-links a) {
++      text-decoration: underline solid currentColor max(1px, 0.08em);
++      text-underline-offset: 0.2em;
++      text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
++    }
++
++    :where(.logout-link) {
++      text-decoration: underline solid currentColor max(1px, 0.08em);
++      text-underline-offset: 0.25em;
++    }
++
++    :where(nav a, .footer-links a):is(:hover, :focus-visible) {
++      text-decoration-color: currentColor;
++      text-decoration-thickness: max(1px, 0.12em);
++    }
++
++    /* Overline on card titles; skip ink everywhere, inset trimmed at the ends */
++    .card h3 {
++      text-decoration: overline solid var(--accent) max(2px, 0.12em);
++      text-decoration-skip-ink: all;
++      text-decoration-inset: 0.1em;
++    }
++
++    /* Squiggle drawn under the section heading */
++    .draw {
++      position: relative;
++      display: inline-block;
++      padding-block-end: 0.4em;
++    }
++
++    .draw::after {
++      content: "";
++      position: absolute;
++      inset: auto 0 0 0;
++      border-block-end: var(--deco-thickness, max(2px, 0.08em)) solid var(--accent);
++      pointer-events: none;
++    }
++
++    @supports (border-shape: circle(50%)) {
++      .draw::after {
++        block-size: 0.4em;
++        border: var(--deco-thickness, max(2px, 0.08em)) solid var(--accent);
++        border-shape: shape(from 0% 50%,
++          curve to 20% 50% with 5% 0% / 15% 100%,
++          smooth to 40% 50% with 35% 100%,
++          smooth to 60% 50% with 55% 100%,
++          smooth to 80% 50% with 75% 100%,
++          smooth to 100% 50% with 95% 100%);
++      }
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav a,
++      .footer-links a {
++        text-decoration-inset: 0 100%;
++        transition: color 0.3s, text-decoration-inset 0.25s ease-out;
++      }
++
++      nav a:is(:hover, :focus-visible),
++      .footer-links a:is(:hover, :focus-visible) {
++        text-decoration-inset: 0 0;
++      }
++
++      .card h3 {
++        text-decoration-inset: 100% 0.1em;
++        transition: text-decoration-inset 0.3s ease-out;
++      }
++
++      .card:is(:hover, :focus-within) h3 {
++        text-decoration-inset: 0.1em;
++      }
++
++      .draw::after {
++        clip-path: inset(-1em 100% -1em 0);
++        transition: clip-path 0.6s ease-out;
++      }
++
++      .draw:is(:hover, :focus-visible)::after,
++      .section-title:hover .draw::after {
++        clip-path: inset(-1em 0 -1em 0);
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -176,7 +258,7 @@
+ 
+   <main class="container">
+     <section>
+-      <h2 style="text-align: center;">Seasonal Favorites</h2>
++      <h2 class="section-title" style="text-align: center;"><span class="draw">Seasonal Favorites</span></h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>

@@ -242,7 +242,7 @@ Query the size (or computed style) of an ancestor container rather than the view
 - Don't mix physical and logical keywords in a single `position-area` value — pick one coordinate system.
 - Feature-detect with `@supports (anchor-name: --x)` and provide an absolute-position fallback.
 
-> For full implementation detail, polyfill strategies, and `popover` value reference, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("position-aware-tooltips") }}. For anchor positioning applied to menus and tab indicators, see {{ GUIDE_REF("resilient-context-menus-and-nested-dropdowns") }} and {{ GUIDE_REF("anchor-positioning-tab-underline") }}.
+> For full implementation detail, polyfill strategies, and `popover` value reference, see {{ GUIDE_REF("declarative-dialog-popover-control") }} and {{ GUIDE_REF("position-aware-tooltips") }}. For anchor positioning applied to dropdowns, flyouts, and tab indicators, see {{ GUIDE_REF("viewport-aware-dropdowns") }} and {{ GUIDE_REF("anchor-positioning-tab-underline") }}.
 
 ## 6 Overflow tracking and layout stability
 

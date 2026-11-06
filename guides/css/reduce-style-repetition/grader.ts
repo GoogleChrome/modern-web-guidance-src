@@ -95,7 +95,23 @@ test.describe("CSS Function Grader", () => {
       cssText += (styleEl.textContent || '') + String.fromCharCode(10);
     }
     
-    const rawRules = parseCSS(cssText);
+    const topRules = parseCSS(cssText);
+
+    // Flatten @supports and @media blocks so rules nested inside them are inspected
+    function flattenRules(blocks: CSSRuleBlock[]): CSSRuleBlock[] {
+      const out: CSSRuleBlock[] = [];
+      for (const block of blocks) {
+        if (/^@(?:supports|media|layer|container)\b/i.test(block.selector)) {
+          out.push(block);
+          out.push(...flattenRules(parseCSS(block.bodyText)));
+        } else {
+          out.push(block);
+        }
+      }
+      return out;
+    }
+
+    const rawRules = flattenRules(topRules);
     
     // Find custom function names
     const functions: string[] = [];
@@ -329,6 +345,15 @@ test.describe("CSS Function Grader", () => {
 
       let totalFunctionUses = 0;
 
+      // Track non-function fallback declarations seen so far per (selector, property)
+      const fallbackSeen = new Set<string>();
+      const equivProps = (prop: string): string[] => {
+        if (prop === 'background' || prop === 'background-image' || prop === 'background-color') {
+          return ['background', 'background-image', 'background-color'];
+        }
+        return [prop];
+      };
+
       for (const rule of rawRules) {
         if (rule.selector.startsWith('@')) continue;
         const decls = parseDeclarations(rule.bodyText);
@@ -336,17 +361,23 @@ test.describe("CSS Function Grader", () => {
         for (let i = 0; i < decls.length; i++) {
           const decl = decls[i];
           const usesFn = functions.some((fnName: string) => decl.value.includes(fnName + '('));
-          if (usesFn) {
+          if (!usesFn) {
+            for (const p of equivProps(decl.property)) {
+              fallbackSeen.add(`${rule.selector}:::${p}`);
+            }
+          } else {
             totalFunctionUses++;
-            // Check if there is a declaration before this one with the same property that does NOT use any function
-            let hasFallback = false;
-            for (let j = 0; j < i; j++) {
-              const prevDecl = decls[j];
-              if (prevDecl.property === decl.property) {
-                const prevUsesFn = functions.some((fnName: string) => prevDecl.value.includes(fnName + '('));
-                if (!prevUsesFn) {
-                  hasFallback = true;
-                  break;
+            // Check if there is a declaration before this one (in the same rule or an earlier rule for the same selector) that does NOT use any function
+            let hasFallback = fallbackSeen.has(`${rule.selector}:::${decl.property}`);
+            if (!hasFallback) {
+              for (let j = 0; j < i; j++) {
+                const prevDecl = decls[j];
+                if (equivProps(decl.property).includes(prevDecl.property)) {
+                  const prevUsesFn = functions.some((fnName: string) => prevDecl.value.includes(fnName + '('));
+                  if (!prevUsesFn) {
+                    hasFallback = true;
+                    break;
+                  }
                 }
               }
             }

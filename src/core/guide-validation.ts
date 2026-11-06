@@ -1,14 +1,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 import { marked } from 'marked';
 
 import { validateMacros, stripComments, maskComments } from './macros.ts';
-import { validateFeature, resolveFeatureId } from './baseline.ts';
+import { validateFeature, resolveFeatureId, getBaselineTargetsForGrader, type BaselineTarget } from './baseline.ts';
+import { isKnownCategory, CATEGORIES } from './categories.ts';
+import { buildHeadingMap } from './headings.ts';
 import { features } from 'web-features';
 import { stripTmpPrefix } from './feature-parser.ts';
 import { rootDir, guidesDir } from './paths.ts';
 import { Agents } from '../harness/config.ts';
+import {
+  getOriginTrialsRegistry,
+  getGuideOriginTrials,
+  getGuideVolatileFeatures,
+  type OriginTrialEntry,
+  type OriginTrialMetadata,
+  type VolatileFeatureMetadata,
+} from './feature-gates.ts';
 
 const REPO_ROOT = rootDir;
 
@@ -38,13 +48,17 @@ export const DISCIPLINE_GUIDES = new Set([
   // Named orientation guides
   'browser-ui-theming',
   'color',
+  'content-first-noise-reduction',
   'cpp-on-the-web',
   'css-conditionals',
   'css-layout',
+  'form-factor-adaptation',
+  'guided-navigation',
   'motion',
+  'natural-interactions',
   'passkeys',
+  'preference-aware-ui',
   'responsive-design',
-  'selector-atrule-combinations',
   'typography',
   'visual-effects',
   'web-components',
@@ -64,48 +78,7 @@ export interface PreparedGuide {
   relativeSubdir: string;
   statusName: ProjectStatus | null;
   originTrials?: OriginTrialMetadata[];
-}
-
-export interface OriginTrialMetadata {
-  id?: string;
-  name?: string;
-  chromestatus_url?: string;
-}
-
-const ORIGIN_TRIALS_FILE = path.join(REPO_ROOT, 'features', 'origin-trials.json');
-let cachedOriginTrials: Record<string, OriginTrialMetadata> | null = null;
-
-export function getOriginTrialsRegistry(): Record<string, OriginTrialMetadata> {
-  if (!cachedOriginTrials) {
-    try {
-      const raw = fs.readFileSync(ORIGIN_TRIALS_FILE, 'utf8');
-      cachedOriginTrials = JSON.parse(raw);
-    } catch (e: unknown) {
-      if (typeof e === 'object' && e !== null && 'code' in e && (e as { code: unknown }).code === 'ENOENT') {
-        cachedOriginTrials = {};
-      } else {
-        throw new Error(`Failed to parse Origin Trials registry at ${ORIGIN_TRIALS_FILE}: ${(e as Error).message}`);
-      }
-    }
-  }
-  return cachedOriginTrials!;
-}
-
-export function getOriginTrialMetadata(featureId: string): OriginTrialMetadata | undefined {
-  const registry = getOriginTrialsRegistry();
-  const entry = registry[featureId];
-  return entry ? { ...entry, id: featureId } : undefined;
-}
-
-export function getGuideOriginTrials(featureIds: string[]): OriginTrialMetadata[] {
-  const registry = getOriginTrialsRegistry();
-  const found: OriginTrialMetadata[] = [];
-  for (const id of featureIds) {
-    if (registry[id]) {
-      found.push({ ...registry[id], id });
-    }
-  }
-  return found;
+  volatileFeatures?: VolatileFeatureMetadata[];
 }
 
 export interface GraduatedOriginTrial {
@@ -113,12 +86,8 @@ export interface GraduatedOriginTrial {
   supportedBrowsers: string[];
 }
 
-/**
- * Checks all features in the Origin Trials registry against the web-features package.
- * Returns any Origin Trial feature that now has browser support in web-features.
- */
 export function checkOriginTrialGraduations(
-  registry: Record<string, OriginTrialMetadata> = getOriginTrialsRegistry()
+  registry: Record<string, OriginTrialEntry> = getOriginTrialsRegistry(),
 ): GraduatedOriginTrial[] {
   const graduated: GraduatedOriginTrial[] = [];
   for (const featureId of Object.keys(registry)) {
@@ -143,6 +112,21 @@ export function checkOriginTrialGraduations(
   }
   return graduated;
 }
+
+export {
+  FEATURE_GATES,
+  getOriginTrialsRegistry,
+  getVolatileFeaturesRegistry,
+  getOriginTrialMetadata,
+  getGuideOriginTrials,
+  getGuideVolatileFeatures,
+  isVolatileActive,
+  type FeatureGateSpec,
+  type OriginTrialEntry,
+  type VolatileFeatureEntry,
+  type OriginTrialMetadata,
+  type VolatileFeatureMetadata,
+} from './feature-gates.ts';
 
 
 export interface GuideInventoryResult {
@@ -169,12 +153,26 @@ export type DraftState = 'stub' | 'wip' | 'blocked';
 const DRAFT_STATES: readonly DraftState[] = ['stub', 'wip', 'blocked'];
 
 /** Parses `draft` / `draft-reason`, throwing on anything else so a bad value can't publish a guide. */
-function parseDraft(data: GuideData, where: string): { draft?: DraftState; draftReason?: string } {
-  const { draft, 'draft-reason': draftReason } = data;
+export function parseDraft(data: GuideData, where: string, allowLegacy = false): { draft?: DraftState; draftReason?: string } {
+  let { draft } = data;
+  const { 'draft-reason': draftReason } = data;
+  
   if (draft === undefined) return {};
+  if (allowLegacy) {
+    if (draft === true) draft = 'wip';
+    if (draft === false) return {};
+  }
+  
   const state = DRAFT_STATES.find(s => s === draft);
-  if (!state) throw new Error(`${where}: draft must be one of ${DRAFT_STATES.join(', ')} (got ${JSON.stringify(draft)}). Omit it to publish.`);
-  if (state === 'blocked' && !draftReason?.trim()) throw new Error(`${where}: draft: blocked needs a draft-reason.`);
+  if (!state) {
+    if (allowLegacy) return {};
+    throw new Error(`${where}: draft must be one of ${DRAFT_STATES.join(', ')} (got ${JSON.stringify(draft)}). Omit it to publish.`);
+  }
+  
+  if (state === 'blocked' && !draftReason?.trim()) {
+    if (allowLegacy) return { draft: state, draftReason: 'legacy missing reason' };
+    throw new Error(`${where}: draft: blocked needs a draft-reason.`);
+  }
   return { draft: state, draftReason };
 }
 
@@ -190,36 +188,105 @@ interface ValidationResult {
 }
 
 /**
- * Determines the project status name for a use case based on its completeness.
- * Returns null when the use case is complete.
- * @param guidance The guide body, or a precomputed has-guidance flag.
+ * Evaluates a guide's project status from raw `guide.md` content and the set of relative
+ * file paths present in the guide directory (e.g. from a git tree).
  */
-export function getStatusName(
-  guidance: string | boolean,
-  hasGrader: boolean,
-  hasTask: boolean,
-  isDraft: boolean = false,
-  hasExpectations: boolean = true
-): ProjectStatus | null {
-  const hasGuidance = typeof guidance === 'string' ? guidance.trim().length > 0 : guidance;
-  if (!hasGuidance || isDraft || !hasExpectations) {
-    return ProjectStatus.NeedsGuidance;
-  }
-  if (!hasGrader || !hasTask) {
-    return ProjectStatus.NeedsEvals;
-  }
-  return null;
+export interface GuideMetadata {
+  hasGuide: boolean;
+  isStub: boolean;
+  draft?: DraftState;
+  draftReason?: string;
+  featureIds: string[];
+  title?: string;
 }
 
-/** The project status of an inventoried guide; see getStatusName. */
-export function getGuideStatus(inv: GuideInventory): ProjectStatus | null {
-  return getStatusName(
-    inv.hasGuide,
-    inv.hasGrader,
-    inv.hasTask,
-    Boolean(inv.draft),
-    inv.hasExpectations && !inv.expectationsEmpty
-  );
+export function parseGuideMetadata(
+  guideContent: string | null | undefined,
+  filePath: string = GUIDE_FILE,
+  allowLegacyDraft = false
+): GuideMetadata {
+  const { data = {}, content = '' } = guideContent ? matter(guideContent) : {};
+  const hasFrontmatter = Object.keys(data).length > 0 || (guideContent || '').startsWith('---');
+  const hasContent = stripAllComments(content).trim().length > 0;
+  
+  const { draft, draftReason } = parseDraft(data as GuideData, filePath, allowLegacyDraft);
+  
+  const isStub = hasFrontmatter && (!hasContent || isDraftStub(draft));
+  const hasGuide = hasContent && !isDraftStub(draft);
+  const featureIds = Array.isArray(data['web-feature-ids']) ? data['web-feature-ids'] : [];
+
+  const title = (typeof data.title === 'string' && data.title.trim()) || extractH1Heading(content);
+
+  return { hasGuide, isStub, draft, draftReason, featureIds, title };
+}
+
+export function detectEvals(filePaths: Iterable<string>): { hasGrader: boolean; hasTask: boolean } {
+  const relativeFiles = new Set(filePaths);
+  const supportedApps = new Set<string>(SUPPORTED_BASE_APPS);
+  const targetApps = new Set<string>();
+  let hasTasksDir = false;
+  for (const file of relativeFiles) {
+    if (file.startsWith('tasks/')) hasTasksDir = true;
+    const app = /^targets\/([^/]+)\//.exec(file)?.[1];
+    if (app && supportedApps.has(app)) targetApps.add(app);
+  }
+  if (targetApps.size > 0 && !hasTasksDir) {
+    const apps = Array.from(targetApps);
+    return {
+      hasGrader: apps.every(app => relativeFiles.has(`${TARGETS_DIR}/${app}/${GRADER_FILE}`)),
+      hasTask: apps.every(app => relativeFiles.has(`${TARGETS_DIR}/${app}/${TASK_FILE}`)),
+    };
+  }
+  return {
+    hasGrader: relativeFiles.has(GRADER_FILE),
+    hasTask: relativeFiles.has(`tasks/${TASK_FILE}`),
+  };
+}
+
+export function isEvalFile(relPath: string): boolean {
+  return relPath === GRADER_FILE || relPath.startsWith('tasks/') || relPath.startsWith(`${TARGETS_DIR}/`);
+}
+
+/**
+ * Evaluates whether a pending change to a guide supplies work for its current pipeline stage
+ * (`Needs guidance` or `Needs evals`), comparing the guide's inventory on `main` against its
+ * state after the pending change.
+ */
+export function getPendingGuideStage(
+  inv: GuideInventory | undefined,
+  touchedRelFiles: readonly string[],
+  guideMetaAfter?: Pick<GuideMetadata, 'hasGuide' | 'draft'>
+): ProjectStatus | null {
+  const status = inv ? classifyGuide(inv) : 'stub';
+  if (status === 'complete') return null;
+
+  if (status === 'needs-calibration' || status === 'needs-test') {
+    return touchedRelFiles.some(isEvalFile) ? ProjectStatus.NeedsEvals : null;
+  }
+
+  const hasGuideBefore = inv?.hasGuide ?? false;
+  const draftBefore = inv?.draft;
+  const hasExpectationsBefore = Boolean(inv?.hasExpectations && !inv?.expectationsEmpty);
+
+  let hasGuideAfter = hasGuideBefore;
+  let draftAfter = draftBefore;
+  if (guideMetaAfter) {
+    hasGuideAfter = guideMetaAfter.hasGuide;
+    draftAfter = guideMetaAfter.draft;
+  } else if (touchedRelFiles.includes(GUIDE_FILE)) {
+    hasGuideAfter = true;
+    if (draftBefore === 'wip') draftAfter = undefined;
+  }
+  const hasExpectationsAfter = hasExpectationsBefore || touchedRelFiles.includes(EXPECTATIONS_FILE);
+
+  const writesGuide = !hasGuideBefore && hasGuideAfter;
+  const unblocksGuide = draftBefore === 'blocked' && draftAfter !== 'blocked';
+  const advancesWipGuide = draftBefore === 'wip' && touchedRelFiles.includes(GUIDE_FILE) && hasGuideAfter;
+  const addsMissingExpectations = !hasExpectationsBefore && hasExpectationsAfter && hasGuideAfter;
+
+  return writesGuide || unblocksGuide || advancesWipGuide || addsMissingExpectations
+    ? ProjectStatus.NeedsGuidance
+    : null;
 }
 
 /**
@@ -274,8 +341,16 @@ export function validateGuide(filePath: string): ValidationResult {
   }
 
   const maskedBody = maskComments(body);
-  errors.push(...validateMacros(maskedBody, relativePath));
+  const isPublished = isGuidePublished(stripAllComments(body).trim().length > 0, data.draft);
+  errors.push(...validateCategory(filePath, relativePath));
+  errors.push(...validateMacros(maskedBody, relativePath, isPublished ? { target: 'devsite' } : {}));
   errors.push(...validateHtmlTags(maskedBody, relativePath));
+  errors.push(...validateHeadingHtmlTags(maskedBody, relativePath));
+  errors.push(...validateSecureSrc(maskedBody, relativePath));
+  errors.push(...validateCodeFences(body, relativePath));
+  errors.push(...validateCallouts(maskedBody, relativePath));
+  errors.push(...validateAnchorLinks(maskedBody, relativePath));
+  errors.push(...validatePendingGuideRefs(body, relativePath));
   errors.push(...validateGuideTitle(maskedBody, relativePath, data, { requireTitle: true }));
   errors.push(...validateBaselineClaims(maskedBody, relativePath, data));
 
@@ -383,11 +458,13 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
 
     const isIncomplete = !hasGuide && !inv.isStub;
     const featureIds = isIncomplete ? inv.featureIds : (guideData['web-feature-ids'] || []) as string[];
-    const hasExpectations = inv.hasExpectations && !inv.expectationsEmpty;
-    const isContentComplete = guideBody.trim().length > 0 && !inv.draft && hasExpectations;
-    const statusName = !isIncomplete && guideErrors.length === 0 && !isContentComplete
-      ? ProjectStatus.NeedsGuidance
-      : null;
+    const status = classifyGuide({ ...inv, hasGuide: guideBody.trim().length > 0 && !isDraftStub(inv.draft) });
+    const statusName =
+      !isIncomplete &&
+      guideErrors.length === 0 &&
+      (status === 'stub' || status === 'incomplete' || status === 'needs-expectations')
+        ? ProjectStatus.NeedsGuidance
+        : null;
     const isActive = isIncomplete || guideErrors.length > 0 || statusName !== null;
 
     for (const id of featureIds) {
@@ -410,6 +487,7 @@ export function processGuideInventory(guides: GuideInventory[]): GuideInventoryR
       relativeSubdir,
       statusName,
       originTrials: getGuideOriginTrials(featureIds),
+      volatileFeatures: getGuideVolatileFeatures(featureIds),
     });
   }
 
@@ -483,6 +561,7 @@ export interface TargetInventory {
 export interface GuideInventory {
   dir: string;
   name: string;
+  title?: string;
   category: string;
   hasGuide: boolean;
   isStub: boolean;
@@ -512,6 +591,15 @@ export interface TaskInfo {
   baseApp: string;
   prompt: string;
   guideDir: string;
+  baselineTarget?: BaselineTarget;
+}
+
+export function resolveTaskGraderPath(taskInfo: Pick<TaskInfo, 'guideDir' | 'baseApp'>, taskName: string): string {
+  const targetGraderPath = path.join(taskInfo.guideDir, TARGETS_DIR, taskName, GRADER_FILE);
+  if (fs.existsSync(targetGraderPath)) return targetGraderPath;
+  const baseAppGraderPath = path.join(taskInfo.guideDir, TARGETS_DIR, taskInfo.baseApp, GRADER_FILE);
+  if (fs.existsSync(baseAppGraderPath)) return baseAppGraderPath;
+  return path.join(taskInfo.guideDir, GRADER_FILE);
 }
 
 /**
@@ -541,6 +629,7 @@ export function getTaskMap(): Map<string, TaskInfo> {
         baseApp: data?.base_app || 'daily-grind',
         prompt: prompt,
         guideDir: guideDir,
+        baselineTarget: 'widely',
       };
 
       taskMap.set(`${guideName}/${taskName}`, info);
@@ -566,9 +655,20 @@ export function getTaskMap(): Map<string, TaskInfo> {
         baseApp: baseAppName,
         prompt: prompt,
         guideDir: guideDir,
+        baselineTarget: 'widely',
       };
 
       taskMap.set(`${guideName}/${baseAppName}`, info);
+
+      const graderPath = path.join(targetsDir, baseAppName, GRADER_FILE);
+      for (const target of getBaselineTargetsForGrader(graderPath)) {
+        taskMap.set(`${guideName}/${baseAppName}-${target}`, {
+          baseApp: baseAppName,
+          prompt: prompt,
+          guideDir: guideDir,
+          baselineTarget: target,
+        });
+      }
     }
   }
 
@@ -604,6 +704,14 @@ export function stripAllComments(content: string): string {
   return stripComments(content).replace(/<!--[\s\S]*?-->/g, '');
 }
 
+export function isGuidePublished(hasContent: boolean, draft: unknown): boolean {
+  return Boolean(hasContent && !isDraftStub(draft) && !draft);
+}
+
+export function stripLeadingH1(markdown: string): string {
+  return markdown.trim().replace(/^#\s+[^\n]*\n?/, "").trim();
+}
+
 export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean }): GuideInventory {
   const name = path.basename(dir);
   const category = path.basename(path.dirname(dir));
@@ -613,15 +721,13 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
 
   const guideFilePath = path.join(dir, GUIDE_FILE);
   const guideContent = readFileSafe(guideFilePath);
-
-  const { data = {}, content = '' } = guideContent ? matter(guideContent) : {};
-  const hasFrontmatter = Object.keys(data).length > 0 || guideContent.startsWith('---');
-  const hasContent = stripAllComments(content).trim().length > 0;
-
-  const { draft, draftReason } = parseDraft(data, guideFilePath);
-  const isStub = hasFrontmatter && (!hasContent || isDraftStub(draft));
-  const hasGuide = hasContent && !isDraftStub(draft);
-  const isPublished = hasGuide && !draft;
+  const meta = parseGuideMetadata(guideContent, guideFilePath);
+  const isStub = meta.isStub;
+  const hasGuide = meta.hasGuide;
+  const isPublished = hasGuide && !meta.draft;
+  const draft = meta.draft;
+  const draftReason = meta.draftReason;
+  const featureIds = meta.featureIds;
 
   const targetsDir = path.join(dir, TARGETS_DIR);
   const hasTargets = fs.existsSync(targetsDir) && fs.statSync(targetsDir).isDirectory();
@@ -676,17 +782,18 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   return {
     dir,
     name,
+    title: meta.title,
     category,
     hasGuide,
     isStub,
     hasDemo,
     hasExpectations,
-    expectationsEmpty: hasExpectations && expectationsContent.length === 0,
+    expectationsEmpty: hasExpectations && expectationsContent.trim().length === 0,
     hasNegativeDemo,
     hasGrader,
     hasTask,
     isDisciplineGuide: isDisciplineGuide(name, category),
-    featureIds: data['web-feature-ids'] || [],
+    featureIds,
     draft,
     draftReason,
     isPublished,
@@ -694,29 +801,26 @@ export function inventoryGuide(dir: string, options?: { useTargetEvals?: boolean
   };
 }
 
-export type GuideStatus = 'eval-ready' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
+export type GuideStatus = 'complete' | 'needs-test' | 'needs-calibration' | 'needs-expectations' | 'stub' | 'incomplete';
 
-export function classifyGuide(inv: GuideInventory): GuideStatus {
+export function classifyGuide(
+  inv: Pick<GuideInventory, 'hasGuide'> & Partial<Omit<GuideInventory, 'hasGuide'>>
+): GuideStatus {
   if (inv.isStub) return 'stub';
-  if (!inv.hasGuide) return 'incomplete';
+  if (!inv.hasGuide || inv.draft) return 'incomplete';
   if (!inv.hasExpectations || inv.expectationsEmpty) return 'needs-expectations';
 
+  // Gen 2 guides store per-app eval artifacts under targets/<base_app>/; require all targets to be complete.
   if (inv.targets && inv.targets.length > 0) {
-    const allHaveSolutions = inv.targets.every(t => t.hasSolution);
-    const allHaveZeroPassrate = inv.targets.every(t => t.hasZeroPassrate);
-    const allHaveGraders = inv.targets.every(t => t.hasGrader);
-    const allHaveTasks = inv.targets.every(t => t.hasTask);
-
-    if (!allHaveSolutions) return 'incomplete';
-    if (!allHaveZeroPassrate || !allHaveGraders) return 'needs-calibration';
-    if (!allHaveTasks) return 'needs-test';
-    return 'eval-ready';
-  } else {
-    if (!inv.hasDemo) return 'incomplete';
-    if (!inv.hasNegativeDemo || !inv.hasGrader) return 'needs-calibration';
-    if (!inv.hasTask) return 'needs-test';
-    return 'eval-ready';
+    if (!inv.targets.every(t => t.hasSolution && t.hasZeroPassrate && t.hasGrader)) return 'needs-calibration';
+    if (!inv.targets.every(t => t.hasTask)) return 'needs-test';
+    return 'complete';
   }
+
+  // Gen 1 guides store root grader.ts and tasks/task.md (or pre-aggregated booleans from detectEvals).
+  if (!inv.hasGrader) return 'needs-calibration';
+  if (!inv.hasTask) return 'needs-test';
+  return 'complete';
 }
 
 export function scanAllGuides(scanDir = guidesDir): GuideInventory[] {
@@ -903,6 +1007,64 @@ export function validateHeadings(body: string, relativePath: string, data?: Guid
   return errors;
 }
 
+const PENDING_GUIDE_REF_PATTERN = /\{#\s*PENDING_GUIDE_REF:([\s\S]*?)#\}/g;
+const GUIDE_REF_SLUG_PATTERN = /GUIDE_REF\(\s*["']([^"']+)["']\s*\)/g;
+
+/**
+ * A `{# PENDING_GUIDE_REF: … {{ GUIDE_REF("slug") }} … #}` comment parks a link to a guide
+ * that isn't published yet. Once the target is published, the wrapper must be removed so
+ * the link goes live; a typo'd or missing slug is also an error.
+ */
+export function validatePendingGuideRefs(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const guides = getGuidesMap();
+  for (const [, inner] of body.matchAll(PENDING_GUIDE_REF_PATTERN)) {
+    const slugs = [...inner.matchAll(GUIDE_REF_SLUG_PATTERN)].map(m => m[1]);
+    if (slugs.length === 0) {
+      errors.push(`PENDING_GUIDE_REF comment in ${relativePath} contains no {{ GUIDE_REF("…") }}.`);
+    }
+    for (const slug of slugs) {
+      const target = guides.get(slug);
+      if (!target) {
+        errors.push(`PENDING_GUIDE_REF in ${relativePath} references unknown guide "${slug}".`);
+      } else if (target.isPublished) {
+        errors.push(`"${slug}" is now published. In ${relativePath}, remove the {# PENDING_GUIDE_REF: … #} wrapper to restore the link.`);
+      }
+    }
+  }
+  return errors;
+}
+
+export const GITHUB_ALERT_TYPES = ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'] as const;
+export type GithubAlertType = typeof GITHUB_ALERT_TYPES[number];
+
+export function isGithubAlertType(type: string): type is GithubAlertType {
+  return (GITHUB_ALERT_TYPES as readonly string[]).includes(type);
+}
+
+export const ALERT_MARKER_PATTERN = /^> ?\[!(\w+)\]/;
+export const BOLD_CALLOUT_PATTERN = new RegExp(`^> ?\\*\\*(${GITHUB_ALERT_TYPES.join('|')})(?::\\*\\*|\\*\\*:)`, 'i');
+
+/**
+ * Callouts must use GitHub alert syntax (`> [!NOTE]`) with a known type, so the
+ * static-site build can map them to DevSite notices.
+ */
+export function validateCallouts(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  marked.walkTokens(marked.lexer(body), token => {
+    if (token.type !== 'blockquote') return;
+    const alertType = token.raw.match(ALERT_MARKER_PATTERN)?.[1];
+    if (alertType && !isGithubAlertType(alertType.toUpperCase())) {
+      errors.push(`Unsupported alert type "[!${alertType}]" in ${relativePath}. Use one of: ${GITHUB_ALERT_TYPES.join(', ')}.`);
+    }
+    const boldLabel = token.raw.match(BOLD_CALLOUT_PATTERN)?.[1];
+    if (boldLabel) {
+      errors.push(`Bold callout "> **${boldLabel}:**" in ${relativePath}. Use GitHub alert syntax instead: "> [!${boldLabel.toUpperCase()}]".`);
+    }
+  });
+  return errors;
+}
+
 /**
  * Validates that a non-stub guide has either a frontmatter title or an explicit H1 heading,
  * and that any H1 heading is not vague.
@@ -997,6 +1159,108 @@ export function validateBaselineClaims(body: string, relativePath: string, data?
     }
   });
 
+  return errors;
+}
+
+/**
+ * Validates that a guide located inside guides/ resides in a recognized category directory.
+ */
+export function validateCategory(filePath: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const relToGuides = path.relative(guidesDir, filePath);
+  if (!relToGuides.startsWith('..') && !path.isAbsolute(relToGuides)) {
+    const parts = relToGuides.split(path.sep);
+    if (parts.length >= 2) {
+      const category = parts[0];
+      if (!isKnownCategory(category)) {
+        errors.push(`Unknown category "${category}" for guide ${relativePath}. Registered categories: ${CATEGORIES.map(c => c.slug).join(', ')}.`);
+      }
+    }
+  }
+  return errors;
+}
+
+/**
+ * Validates that headings do not contain unescaped HTML tags (e.g. `## Using <dialog>`).
+ * Tags must be wrapped in backticks to prevent DevSite TOC / HTML rendering corruption.
+ */
+export function validateHeadingHtmlTags(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const tokens = marked.lexer(body);
+  marked.walkTokens(tokens, token => {
+    if (token.type === 'heading') {
+      const textWithoutCode = token.raw.replace(/`[^`]*`/g, '');
+      const match = textWithoutCode.match(/<([a-zA-Z0-9:-]+)(?:\s+[^>]*)?\/?>/);
+      if (match) {
+        errors.push(`Unescaped HTML tag <${match[1]}> in heading "${token.text}" in ${relativePath}. Wrap tag names in backticks.`);
+      }
+    }
+  });
+  return errors;
+}
+
+/**
+ * Validates that `src="..."` attributes do not use insecure HTTP URLs outside of code blocks.
+ */
+export function validateSecureSrc(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const textWithoutCode = body
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/~~~[\s\S]*?~~~/g, '')
+    .replace(/`[^`]*`/g, '');
+  const httpMatches = textWithoutCode.match(/src=["']http:\/\/[^"']+/g);
+  if (httpMatches) {
+    for (const m of httpMatches) {
+      errors.push(`Insecure HTTP url in ${m} in ${relativePath}. Use HTTPS instead.`);
+    }
+  }
+  return errors;
+}
+
+/**
+ * Validates code fence indentation and ensures all code fences are properly closed.
+ */
+export function validateCodeFences(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const lines = body.split('\n');
+  let openFence: { indent: string; char: string; length: number; line: number } | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const match = line.match(/^([ \t]*)(`{3,}|~{3,})/);
+    if (!openFence) {
+      if (match) {
+        openFence = { indent: match[1], char: match[2][0], length: match[2].length, line: i + 1 };
+      }
+    } else {
+      const closeMatch = line.match(/^([ \t]*)(`{3,}|~{3,})[ \t]*$/);
+      if (closeMatch && closeMatch[2][0] === openFence.char && closeMatch[2].length >= openFence.length) {
+        if (closeMatch[1] !== openFence.indent) {
+          errors.push(`Closing code fence indentation (${closeMatch[1].length} spaces on line ${i + 1}) does not match opening fence (${openFence.indent.length} spaces on line ${openFence.line}) in ${relativePath}.`);
+        }
+        openFence = null;
+      }
+    }
+  }
+  if (openFence) {
+    errors.push(`Unclosed code fence opened on line ${openFence.line} in ${relativePath}.`);
+  }
+  return errors;
+}
+
+/**
+ * Validates that all internal page `#anchor` links resolve to headings present on the page.
+ */
+export function validateAnchorLinks(body: string, relativePath: string): string[] {
+  const errors: string[] = [];
+  const { headingMap } = buildHeadingMap(body);
+  const anchorMatches = body.matchAll(/\[([^\]]+)\]\(#([^)]+)\)/g);
+  for (const match of anchorMatches) {
+    const fragment = match[2];
+    const resolved = headingMap.get(fragment) ?? headingMap.get(fragment.replace(/-/g, '_'));
+    if (!resolved) {
+      errors.push(`Unresolved anchor "#${fragment}" in ${relativePath}. No matching heading found on this page.`);
+    }
+  }
   return errors;
 }
 

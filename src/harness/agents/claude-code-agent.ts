@@ -2,13 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import config, { Agents } from '../config.ts';
-import { cleanupIsolatedHome, parseAgentArgs, watchLogFile, runCliAgentCommand, parseJsonlFile, copyFileIfExists, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
-import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
+import { cleanupIsolatedHome, parseAgentArgs, runCliAgentCommand, parseJsonlFile, copyFileIfExists, setupIsolatedWorkDir, type GuideUsage } from '../lib/agent-shared.ts';
 import { generateClaudeTrajectoryHtml } from '../lib/claude-trajectory-viewer.ts';
 import {
   type StandardizedStep,
   type SubagentMetadata,
   type TrajectorySummary,
+  extractRetrievedGuidesFromCommand,
   extractSubagentIdFromFilename,
   extractTimestamp,
   mapToolType,
@@ -134,7 +134,7 @@ function exportClaudeCodeTrajectories(workDir: string, targetDir: string): void 
  */
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('claude-code-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.CLAUDE_CODE, templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.CLAUDE_CODE, templateDir, runType);
 
   if (!workDir || !fs.existsSync(workDir)) {
     throw new Error(`Failed to initialize working directory: ${workDir}`);
@@ -147,12 +147,7 @@ async function run() {
 
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.MODERN_WEB_LOG_DIR = targetDir;
-    let stopWatchingMcpLog = () => { };
-
     try {
-      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
-
       await runCliAgentCommand(
         command,
         commandArgs,
@@ -162,7 +157,6 @@ async function run() {
         runType
       );
     } finally {
-      stopWatchingMcpLog();
       exportClaudeCodeTrajectories(workDir, targetDir);
       await generateNormalizedTrajectory(targetDir, Agents.CLAUDE_CODE, userPrompt);
     }
@@ -247,13 +241,8 @@ export function parseClaudeTrajectory(logData: any[], subagentsMap: Record<strin
               toolsUsed.add(tool.input.name);
             } else if (toolNameLower === 'bash' && tool.input?.command) {
               const command = tool.input.command;
-              if (command.includes('modern-web-guidance') && command.includes('retrieve')) {
-                const match = command.match(/(?:--)?retrieve\s+["']?([^"'\s]+)["']?/);
-                if (match) {
-                  for (const g of match[1].split(',').map((s: string) => s.trim())) {
-                    retrievedGuides.add(g);
-                  }
-                }
+              for (const g of extractRetrievedGuidesFromCommand(command)) {
+                retrievedGuides.add(g);
               }
             } else if (toolNameLower === 'read' && tool.input?.file_path) {
               const filePath = tool.input.file_path;

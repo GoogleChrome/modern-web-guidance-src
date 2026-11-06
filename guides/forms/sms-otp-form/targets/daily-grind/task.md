@@ -1,1 +1,1 @@
-- Implement a form on the page to verify user phone numbers and one-time passcodes delivered over SMS with automatic code extraction and accessible form input.
+- Add an SMS one-time passcode verification form to the Daily Grind homepage for customers signing into Rewards or placing an online order, supporting automatic code extraction from incoming text messages and accessible form input.

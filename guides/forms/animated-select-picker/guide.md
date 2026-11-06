@@ -98,13 +98,14 @@ The following example demonstrates a custom select styled with standard page ani
  * Uses top-layer animations with `allow-discrete` visibility hooks
  */
 .animated-select::picker(select) {
+  /* Set a text color with the background so options stay readable on pages with a dark color scheme */
   background: white;
+  color: black;
   border-radius: 12px;
   box-shadow: 0 10px 25px -3px rgba(0,0,0,0.1);
   padding: 0.5rem;
   margin-top: 0.25rem;
   width: anchor-size(width);
-  overflow: hidden;
 
   /* The crucial transition setting for popover animations */
   transition:
@@ -142,6 +143,7 @@ The following example demonstrates a custom select styled with standard page ani
 .animated-select option:checked {
   font-weight: 700;
   background-color: #f1f5f9;
+  color: black;
 }
 
 /* Ensure copy-paste safety for users with motion sensitivities */
@@ -157,6 +159,7 @@ The following example demonstrates a custom select styled with standard page ani
 
 - **DO** use `@starting-style` when you need animations to trigger exactly when an element transitions from `display: none` to visible.
 - **DO NOT** use ad-hoc scroll locking. Top-layer elements managed by ‘base-select’ should allow natural backdrop dismiss behaviors.
+- **DO NOT** set `overflow: hidden` on `::picker(select)`. The picker must stay scrollable so that options that don't fit in the available space, for example at high zoom or in a short viewport, can still be reached.
 - **DO** verify reduced motion preferences. Always wrap animation constraints in a `prefers-reduced-motion` media query to ensure accessible environments for those affected by motion sickness.
 {{ FEATURE("customizable-select", "usage") }}
 

@@ -1,0 +1,13 @@
+- The card root is an `<article>`; a single link may wrap it only if the card contains no other interactive elements.
+- A card's regions (media, heading or header, content, footer) are direct children of the card. A region with a single element is that element itself, not wrapped, and a wrapper appears only around multiple elements.
+- A card's descendants adapt with `@container` rules, and the size container is the card itself, not the grid or list parent.
+- A card with media stacks its media above its text content in a single column when its container is narrow, regardless of viewport width.
+- A card with media places its media in a side column beside its text content when its container is wide.
+- A card without media renders in a single-column layout at both narrow and wide container widths, with no empty media column; the side-column rules apply only to cards that contain media.
+- When card images or video fill a fixed-ratio area, `aspect-ratio` and `object-fit` are set on the media element itself; otherwise, media preserves its intrinsic ratio.
+- Informative card images have a non-empty `alt` attribute.
+- When a content card has a primary destination and secondary actions, its heading contains the primary `<a>` link, and secondary actions remain separate native controls outside the link. No two links in the card share the same `href`, and at most one link in the card is a stretched link.
+- Choice cards use native radio buttons or checkboxes with associated labels; dropdown choices use a native `<select>` and `<option>` elements.
+- Hovering, focusing, or selecting a card does not change its layout box (no change to `border-width`, `padding`, `font-weight`, or size).
+- Focusing a control inside a card shows a visible focus indicator on that control; only a stretched primary link delegates its indicator to the card.
+- The visual order of card regions matches their DOM reading order across container sizes.

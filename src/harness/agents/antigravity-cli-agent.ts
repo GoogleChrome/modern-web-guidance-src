@@ -6,13 +6,11 @@ import config, { Agents } from '../config.ts';
 import {
   cleanupIsolatedHome,
   parseAgentArgs,
-  watchLogFile,
   exportTrajectories,
   runCliAgentCommand,
   setupIsolatedWorkDir,
   isEnoent
 } from '../lib/agent-shared.ts';
-import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
 import {
   type TrajectorySummary,
   finalizeTrajectorySummary,
@@ -112,7 +110,7 @@ export async function parseAntigravityTrajectory(dirPath: string): Promise<Traje
 
 async function run() {
   const { userPrompt, runType, targetDir, templateDir } = parseAgentArgs('antigravity-cli-agent.ts');
-  const workDir = setupIsolatedWorkDir(Agents.ANTIGRAVITY_CLI, templateDir, runType, targetDir);
+  const workDir = setupIsolatedWorkDir(Agents.ANTIGRAVITY_CLI, templateDir, runType);
 
   if (!workDir) {
     throw new Error('Failed to initialize working directory');
@@ -124,14 +122,9 @@ async function run() {
     const { command, commandArgs } = getAntigravityCliCommandAndArgs(userPrompt);
     console.log(`Executing: ${command} ${commandArgs.join(' ')}`);
 
-    process.env.MODERN_WEB_LOG_DIR = targetDir;
-    let stopWatchingMcpLog = () => { };
-
     try {
-      stopWatchingMcpLog = watchLogFile(path.join(targetDir, MODERN_WEB_LOG_FILE));
       await runCliAgentCommand(command, commandArgs, workDir, targetDir, 'Antigravity CLI', runType);
     } finally {
-      stopWatchingMcpLog();
       exportAntigravityTrajectories(workDir, targetDir);
       await generateNormalizedTrajectory(targetDir, Agents.ANTIGRAVITY_CLI, userPrompt);
     }

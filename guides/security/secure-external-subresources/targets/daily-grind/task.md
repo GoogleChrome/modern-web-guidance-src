@@ -1,0 +1,1 @@
+- Update The Daily Grind homepage in `index.html` to load third-party scripts, stylesheets, fonts, and hero/seasonal card images while having the browser verify their cryptographic integrity and control whether requests send credentials or referrer headers.

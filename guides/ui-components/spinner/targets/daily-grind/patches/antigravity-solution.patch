@@ -1,0 +1,249 @@
+diff --git a/index.html b/index.html
+index 66c9173..4fcd34e 100644
+--- a/index.html
++++ b/index.html
+@@ -121,7 +121,10 @@
+     }
+ 
+     .btn {
+-      display: inline-block;
++      display: inline-flex;
++      align-items: center;
++      justify-content: center;
++      gap: 10px;
+       background: var(--primary);
+       color: white;
+       padding: 10px 20px;
+@@ -129,6 +132,7 @@
+       border-radius: 5px;
+       margin-top: 15px;
+       transition: background 0.3s;
++      cursor: pointer;
+     }
+ 
+     .btn:hover {
+@@ -152,6 +156,131 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    /* Loading Spinner */
++    @property --arc-start {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 0deg;
++    }
++    @property --arc-end {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 0deg;
++    }
++    /* Use a custom property to conditionally include the dash animation */
++    @property --progress-dash-animation {
++      syntax: "*";
++      inherits: false;
++      initial-value: , progress-dash 3s ease-in-out infinite;
++    }
++
++    /* Hide native bars */
++    progress.loading-spinner:indeterminate::-webkit-progress-bar {
++      display: none;
++      background: none;
++    }
++    progress.loading-spinner:indeterminate::-webkit-progress-value {
++      display: none;
++      background: none;
++    }
++    progress.loading-spinner:indeterminate::-moz-progress-bar {
++      display: none;
++      background: none;
++    }
++    progress.loading-spinner:indeterminate::slider-fill {
++      display: none;
++      background: none;
++    }
++
++    progress.loading-spinner:indeterminate {
++      --_from: calc(90deg + var(--arc-start, 0deg));
++      --_to: calc(90deg + var(--arc-end, 158deg));
++      --size: 40px;
++      --thickness: 2px;
++      --spinner-color: #3b82f6;
++      --track-color: #e2e5e7;
++      --spinner-duration: 1.5s;
++      --_used-spinner-duration: var(--spinner-duration);
++      --spinner-timing: linear;
++
++      position: relative;
++      width: var(--size);
++      height: var(--size);
++      border-radius: 50%;
++      appearance: none;
++
++      /* Create the fading trail with dynamic angles */
++      background: conic-gradient(
++          from var(--_from),
++          var(--spinner-color) calc(var(--_to) - var(--_from)),
++          transparent 0
++        )
++        var(--track-color);
++
++      @supports (background-clip: border-area) {
++        background-clip: border-area;
++        border: var(--thickness) solid transparent;
++        background-origin: border-box;
++      }
++
++      /* Fallback: use mask-image to create the ring */
++      @supports not (background-clip: border-area) {
++        --clip-boundary: calc(100% - var(--thickness));
++        mask-image: radial-gradient(
++          farthest-side,
++          transparent var(--clip-boundary),
++          black var(--clip-boundary)
++        );
++        border: 0;
++      }
++
++      /* The dash animation is only included if @property is supported */
++      animation:
++        progress-spin var(--_used-spinner-duration) linear infinite
++        var(--progress-dash-animation, );
++    }
++
++    @keyframes progress-spin {
++      to {
++        rotate: 1turn;
++      }
++    }
++
++    @keyframes progress-dash {
++      from {
++        --arc-start: 0deg;
++        --arc-end: 3deg;
++      }
++      50% {
++        --arc-start: 100deg;
++        --arc-end: 358deg;
++      }
++      to {
++        --arc-start: 360deg;
++        --arc-end: 363deg;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .loading-spinner,
++      progress.loading-spinner:indeterminate {
++        /* Slow down the animation significantly rather than stopping it entirely,
++           so the user still knows that the process is active. */
++        --_used-spinner-duration: 6s;
++      }
++    }
++
++    .loading-spinner[hidden] {
++      display: none !important;
++    }
++
++    .btn progress.loading-spinner:indeterminate {
++      --size: 20px;
++      --thickness: 2px;
++      --spinner-color: var(--accent);
++      --track-color: rgba(255, 255, 255, 0.25);
++    }
+   </style>
+ </head>
+ 
+@@ -171,27 +300,39 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" id="order-now-btn">
++      <span class="btn-text">Order Now</span>
++      <progress aria-label="Loading" class="loading-spinner" hidden></progress>
++    </a>
+   </header>
+ 
+   <main class="container">
+-    <section>
++    <section id="seasonal-favorites" aria-live="polite">
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn drink-details-btn">
++            <span class="btn-text">View Details</span>
++            <progress aria-label="Loading" class="loading-spinner" hidden></progress>
++          </a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn drink-details-btn">
++            <span class="btn-text">View Details</span>
++            <progress aria-label="Loading" class="loading-spinner" hidden></progress>
++          </a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn drink-details-btn">
++            <span class="btn-text">View Details</span>
++            <progress aria-label="Loading" class="loading-spinner" hidden></progress>
++          </a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +348,47 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    document.addEventListener('DOMContentLoaded', () => {
++      const orderBtn = document.getElementById('order-now-btn');
++      if (orderBtn) {
++        orderBtn.addEventListener('click', (e) => {
++          e.preventDefault();
++          if (orderBtn.getAttribute('aria-busy') === 'true') return;
++          orderBtn.setAttribute('aria-busy', 'true');
++          const spinner = orderBtn.querySelector('progress.loading-spinner');
++          if (spinner) {
++            spinner.hidden = false;
++          }
++          const text = orderBtn.querySelector('.btn-text');
++          if (text) {
++            text.textContent = 'Starting Order...';
++          }
++        });
++      }
++
++      const detailBtns = document.querySelectorAll('.drink-details-btn');
++      detailBtns.forEach((btn) => {
++        btn.addEventListener('click', (e) => {
++          e.preventDefault();
++          if (btn.getAttribute('aria-busy') === 'true') return;
++          btn.setAttribute('aria-busy', 'true');
++          const card = btn.closest('.card');
++          if (card) {
++            card.setAttribute('aria-busy', 'true');
++          }
++          const spinner = btn.querySelector('progress.loading-spinner');
++          if (spinner) {
++            spinner.hidden = false;
++          }
++          const text = btn.querySelector('.btn-text');
++          if (text) {
++            text.textContent = 'Loading...';
++          }
++        });
++      });
++    });
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,1 @@
+- Update `index.html` on The Daily Grind site to add a loyalty rewards section in the main container alongside Seasonal Favorites, featuring a circular progress ring that visually tracks how close a customer is to their next free drink, displays the current progress details in the center of the ring, and uses styling that matches our coffee shop's existing brand palette.

@@ -1,4 +1,4 @@
 ---
 base_app: daily-grind
 ---
-- Build a comprehensive, accessible, and secure multi-step registration form for our rewards program at the bottom of the page, AND audit and fix any existing accessibility or security issues in the page's current forms or structure.
+- Build an accessible, secure, and user-friendly multi-step registration form for the Daily Grind rewards program above the footer, following modern web form best practices for structure, labeling, input types, autofill, validation, and submission security.

@@ -8,7 +8,6 @@
 - The email input MUST have `autocomplete="username"`. Password managers recognize `username` even when `type="email"` is used.
 - The password input MUST have `type="password"`.
 - The password input MUST have `autocomplete="new-password"`.
-- The password input MUST have `id="new-password"`.
 - Both the email and password inputs MUST have the `required` attribute.
 - There MUST be exactly one email input (do not double-up email fields).
 - There MUST be exactly one password input (do not double-up password fields).

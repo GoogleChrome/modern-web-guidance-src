@@ -172,7 +172,7 @@ test('run.mjs: fails permanently after maximum attempts', () => {
     fs.writeFileSync(graderPath, '// mock grader');
 
     const agentScript = writeMockAgentScript(tempDir);
-    setMockAgentState(tempDir, 5, 42); // 5 failures (exceeds maxAttempts=3), exits with 42
+    setMockAgentState(tempDir, 5, 42); // 5 failures (exceeds maxAttempts=2), exits with 42
 
     generateTransientPackage(
       tempDir,
@@ -199,7 +199,7 @@ test('run.mjs: fails permanently after maximum attempts', () => {
     // Check state
     const state = getMockAgentState(tempDir);
     assert.ok(state, 'State file should exist');
-    assert.strictEqual(state.attempts, 3, 'Should have attempted exactly 3 times (1 initial + 2 retries)');
+    assert.strictEqual(state.attempts, 2, 'Should have attempted exactly 2 times (1 initial + 1 retry)');
 
     // Check generation_failed.json exists and has correct info
     const failureFile = path.join(tempDir, 'generation_failed.json');
@@ -262,7 +262,7 @@ if (homes.length === 1) process.kill(process.pid, 'SIGKILL');
   }
 });
 
-test('run.mjs: records TIMEOUT (10m) in generation_failed.json when all attempts time out without wrapper writing it', () => {
+test('run.mjs: records TIMEOUT (15m) in generation_failed.json when all attempts time out without wrapper writing it', () => {
   const tempDir = createTempDir();
   try {
     const graderPath = path.join(tempDir, 'grader.ts');
@@ -281,13 +281,13 @@ test('run.mjs: records TIMEOUT (10m) in generation_failed.json when all attempts
     generateTransientPackage(tempDir, agentScript, 'dummy prompt', 'guided', tempDir, 'test-task', 'test-guide', graderPath);
     patchRunnerDelay(tempDir);
     const runMjsPath = path.join(tempDir, 'run.mjs');
-    fs.writeFileSync(runMjsPath, fs.readFileSync(runMjsPath, 'utf8').replace('timeout: 600000', 'timeout: 200'));
+    fs.writeFileSync(runMjsPath, fs.readFileSync(runMjsPath, 'utf8').replace('timeout: 900000', 'timeout: 200'));
 
     const runResult = spawnSync(process.execPath, ['run.mjs'], { cwd: tempDir, encoding: 'utf8' });
     assert.notStrictEqual(runResult.status, 0, 'Timed-out run.mjs should not exit 0');
 
     const failureData = JSON.parse(fs.readFileSync(path.join(tempDir, 'generation_failed.json'), 'utf8'));
-    assert.strictEqual(failureData.exitCode, 'TIMEOUT (10m)');
+    assert.strictEqual(failureData.exitCode, 'TIMEOUT (15m)');
     assert.match(failureData.stderr, /timed out/i);
   } finally {
     removeTempDir(tempDir);

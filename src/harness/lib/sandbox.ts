@@ -113,13 +113,13 @@ export function defaultExtraHiddenPaths(platform: NodeJS.Platform = process.plat
 
 /**
  * Builds the sandbox policy for an agent run.
- * @param targetDir The per-run results directory (holds the npx shim and modern-web.log)
+ * @param workDir The agent's working directory or isolated home directory
  * @param runType The run type; the skills-cli dist is only exposed for guided runs
  * @param repoRoot Repository root to hide (defaults to this repo)
  * @param extraHidden Directories outside the repo to hide (defaults to {@link defaultExtraHiddenPaths})
  */
 export function buildSandboxPolicy(
-  targetDir: string,
+  homeOrWorkDir: string,
   runType: string,
   repoRoot: string = rootDir,
   extraHidden: string[] = defaultExtraHiddenPaths()
@@ -139,7 +139,7 @@ export function buildSandboxPolicy(
     // Agent CLI binaries (claude/codex/gemini) and their pnpm-linked dependencies.
     path.join(repoRoot, 'node_modules'),
   ];
-  const writablePaths = [targetDir];
+  const writablePaths: string[] = [];
   if (runType === 'guided') {
     // The npx shim redirects `npx modern-web-guidance@latest` to this local build.
     const skillsCliDir = path.join(repoRoot, 'dist', 'skills-cli');
@@ -148,9 +148,12 @@ export function buildSandboxPolicy(
 
   // When /tmp is mounted as a fresh tmpfs, re-bind the agent's isolated HOME inside /tmp.
   const tmpRoot = realpathOrSelf('/tmp');
-  const home = process.env.HOME && fs.existsSync(process.env.HOME) ? realpathOrSelf(process.env.HOME) : undefined;
-  if (home && extraHiddenPaths.includes(tmpRoot) && home.startsWith(tmpRoot + path.sep)) {
-    writablePaths.push(home);
+  const candidate = [homeOrWorkDir, process.env.HOME]
+    .filter((p): p is string => typeof p === 'string' && fs.existsSync(p))
+    .map(realpathOrSelf)
+    .find(p => p !== hiddenDir && !p.startsWith(hiddenDir + path.sep) && p.startsWith(tmpRoot + path.sep));
+  if (candidate && extraHiddenPaths.includes(tmpRoot)) {
+    writablePaths.push(candidate);
   }
 
   const isInside = (p: string) =>
@@ -160,18 +163,11 @@ export function buildSandboxPolicy(
   const resolveExisting = (paths: string[]) =>
     [...new Set(paths.filter(p => fs.existsSync(p)).map(realpathOrSelf).filter(isInside))];
 
-  // Mask harness runner/grader scripts inside targetDir so the agent cannot read grade.mjs or run.mjs.
-  const hiddenFiles = ['grade.mjs', 'run.mjs']
-    .map(name => path.join(targetDir, name))
-    .filter(p => fs.existsSync(p))
-    .map(realpathOrSelf);
-
   return {
     hiddenDir,
     readOnlyPaths: resolveExisting(readOnlyPaths),
     writablePaths: resolveExisting(writablePaths),
     extraHiddenPaths,
-    hiddenFiles,
   };
 }
 
@@ -251,7 +247,7 @@ function appendRunDirMounts(args: string[], runDir: string = '/run'): void {
 }
 
 export function buildBwrapArgs(command: string, commandArgs: string[], policy: SandboxPolicy, runDir: string = '/run'): string[] {
-  const args = ['--dev-bind', '/', '/', '--unshare-pid', '--proc', '/proc', '--die-with-parent', '--tmpfs', policy.hiddenDir];
+  const args = ['--dev-bind', '/', '/', '--unshare-pid', '--proc', '/proc', '--die-with-parent', '--perms', '0555', '--tmpfs', policy.hiddenDir];
   for (const p of policy.extraHiddenPaths ?? []) args.push('--tmpfs', p);
   for (const p of policy.readOnlyPaths) args.push('--ro-bind', p, p);
   for (const p of policy.writablePaths) args.push('--bind', p, p);
