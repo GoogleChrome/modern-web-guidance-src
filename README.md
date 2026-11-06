@@ -557,6 +557,9 @@ We developed a robust eval harness to ensure that the content is **empirically p
 <!-- INJECT_EVAL_RESULTS_START -->
 | Date | Agent + Model | Tasks / Assertions | Unguided → Guided (Uplift) |
 | :--- | :--- | :---: | :---: |
+| Nov 6 | codex_cli (gpt-6.1-sol) | 212 / 1773 | 53% → 86% (**+33pp**) |
+| Nov 6 | claude_code (opus-5-5) | 212 / 1773 | 56% → 90% (**+34pp**) |
+| Nov 6 | antigravity_cli (gemini-4-argon) | 212 / 1722 | 60% → 96% (**+36pp**) |
 | Nov 4 | codex_cli (gpt-6.1-sol) | 209 / 1743 | 52% → 85% (**+33pp**) |
 | Nov 4 | claude_code (opus-5-5) | 209 / 1743 | 57% → 90% (**+33pp**) |
 | Nov 4 | antigravity_cli (gemini-4-argon) | 207 / 1722 | 60% → 96% (**+36pp**) |
@@ -564,9 +567,6 @@ We developed a robust eval harness to ensure that the content is **empirically p
 | Nov 2 | claude_code (opus-5-5) | 205 / 1729 | 58% → 90% (**+32pp**) |
 | Nov 1 | antigravity_cli (gemini-4-argon) | 205 / 1705 | 61% → 96% (**+35pp**) |
 | Oct 30 | codex_cli (gpt-6.1-sol) | 204 / 1721 | 55% → 84% (**+29pp**) |
-| Oct 30 | claude_code (opus-5-5) | 204 / 1721 | 58% → 91% (**+33pp**) |
-| Oct 30 | antigravity_cli (gemini-4-argon) | 204 / 1637 | 61% → 96% (**+35pp**) |
-| Oct 28 | codex_cli (gpt-6.1-sol) | 198 / 1675 | 56% → 85% (**+29pp**) |
 <!-- INJECT_EVAL_RESULTS_END -->
 
 
