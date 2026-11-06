@@ -6,6 +6,7 @@ web-feature-ids:
   - popover
   - popover-hint
   - anchor-positioning
+  - invoker-commands
 ---
 
 # Tooltips
