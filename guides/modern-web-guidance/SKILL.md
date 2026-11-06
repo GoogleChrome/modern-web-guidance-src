@@ -64,9 +64,10 @@ npx -y modern-web-guidance@latest legacy-scan <path> --json
 ```
 
 1. Scan: Run `legacy-scan <path> --json` to detect legacy web platform patterns across the project or directory.
-2. Verify: Check each finding against its `keepWhen` / `dropWhen` rubric; drop false positives (fallbacks, vendor code, lookalikes).
+2. Verify: Check each finding against its `keepWhen` / `dropWhen` rubric; drop false positives (fallbacks, cross-file helpers, vendor code, lookalikes).
 3. Report: Summarize verified findings (and the modernization plan, if editing) for the user, noting that `legacy-scan` only checks the subset of guides (~20% of the catalog) that have deterministic legacy rules.
-4. Modernize (when the user asked to modernize rather than only audit/report): Retrieve each finding's guide (`retrieve "<guide-id>"` via Step 2), apply the replacement, and re-run `legacy-scan <path>` on the modified files to confirm resolution.
+4. Modernize (when the user asked to modernize rather than only audit/report): Retrieve each finding's guide (`retrieve "<guide-id>"` via Step 2), apply the replacement (keeping existing libraries as fallbacks where the guide requires one), and re-run `legacy-scan <path>` on the modified files to confirm resolution.
+   - Dropped findings and kept fallbacks still match static scans; do not edit safe code or inspect `legacy-scan.mjs` to force 0 findings.
 
 ## Using npx / pnpx
 
