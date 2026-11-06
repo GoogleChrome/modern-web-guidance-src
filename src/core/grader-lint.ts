@@ -253,7 +253,10 @@ export function checkGraderAst(filePath: string, sourceFile: SourceFile): Grader
   return violations;
 }
 
+const NO_LIB_COMPILER_OPTIONS = { noLib: true, noResolve: true };
+
 const defaultInMemoryProject = new Project({
+  compilerOptions: NO_LIB_COMPILER_OPTIONS,
   skipAddingFilesFromTsConfig: true,
   useInMemoryFileSystem: true,
 });
@@ -273,8 +276,11 @@ export function checkGraderSource(
 
 export function checkGraderFile(
   filePath: string,
-  project: Project = new Project({ skipAddingFilesFromTsConfig: true })
+  project?: Project
 ): GraderLintViolation[] {
+  if (!project) {
+    return checkGraderSource(filePath, fs.readFileSync(filePath, 'utf8'));
+  }
   const sf = project.getSourceFile(filePath) ?? project.addSourceFileAtPath(filePath);
   return checkGraderAst(filePath, sf);
 }
@@ -298,11 +304,10 @@ export function findGraderFiles(repoRootDir: string = rootDir): string[] {
 export function checkAllGraders(options?: { repoRoot?: string; project?: Project }): Map<string, GraderLintViolation[]> {
   const baseDir = options?.repoRoot ?? rootDir;
   const graderFiles = findGraderFiles(baseDir);
-  const p = options?.project ?? new Project({ skipAddingFilesFromTsConfig: true });
   const resultMap = new Map<string, GraderLintViolation[]>();
 
   for (const file of graderFiles) {
-    const violations = checkGraderFile(file, p);
+    const violations = checkGraderFile(file, options?.project);
     if (violations.length > 0) {
       const relPath = path.relative(baseDir, file);
       resultMap.set(relPath, violations);

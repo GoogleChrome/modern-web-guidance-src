@@ -1,0 +1,1 @@
+- Update index.html to add copy buttons to the Seasonal Favorites .card items that copy the text from their associated page elements (such as each drink's description) to the clipboard.

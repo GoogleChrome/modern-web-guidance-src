@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { matchJsRule } from '../scanners/js-scanner.ts';
 import {
-  lightDismissADialogJsMatcher
-} from './light-dismiss-a-dialog.ts';
-void test('light-dismiss-a-dialog: positive brownfield matches', async (t) => {
+  dialogJsMatcher
+} from './dialog.ts';
+void test('dialog: positive brownfield matches', async (t) => {
   await t.test('flags event.target === dialog backdrop click check', () => {
     const code = `
       dialog.addEventListener('click', (event) => {
@@ -13,7 +13,7 @@ void test('light-dismiss-a-dialog: positive brownfield matches', async (t) => {
         }
       });
     `;
-    const matches = matchJsRule(lightDismissADialogJsMatcher, 'modal.js', code);
+    const matches = matchJsRule(dialogJsMatcher, 'modal.js', code);
     assert.equal(matches.length, 1);
     assert.equal(matches[0]?.line, 2);
     assert.match(matches[0]?.message ?? '', /closedby="any"/);
@@ -26,7 +26,7 @@ void test('light-dismiss-a-dialog: positive brownfield matches', async (t) => {
         dialog.close();
       });
     `;
-    const matches = matchJsRule(lightDismissADialogJsMatcher, 'early-return.js', code);
+    const matches = matchJsRule(dialogJsMatcher, 'early-return.js', code);
     assert.equal(matches.length, 1);
   });
 
@@ -38,7 +38,7 @@ void test('light-dismiss-a-dialog: positive brownfield matches', async (t) => {
         }
       });
     `;
-    const matches = matchJsRule(lightDismissADialogJsMatcher, 'tagname.js', code);
+    const matches = matchJsRule(dialogJsMatcher, 'tagname.js', code);
     assert.equal(matches.length, 1);
   });
 
@@ -52,7 +52,7 @@ void test('light-dismiss-a-dialog: positive brownfield matches', async (t) => {
         }
       });
     `;
-    const matches = matchJsRule(lightDismissADialogJsMatcher, 'coords.js', code);
+    const matches = matchJsRule(dialogJsMatcher, 'coords.js', code);
     assert.equal(matches.length, 1);
   });
 
@@ -64,7 +64,7 @@ void test('light-dismiss-a-dialog: positive brownfield matches', async (t) => {
         }
       };
     `;
-    const matches = matchJsRule(lightDismissADialogJsMatcher, 'onclick.js', code);
+    const matches = matchJsRule(dialogJsMatcher, 'onclick.js', code);
     assert.equal(matches.length, 1);
   });
 
@@ -76,7 +76,7 @@ void test('light-dismiss-a-dialog: positive brownfield matches', async (t) => {
         }
       });
     `;
-    const matches = matchJsRule(lightDismissADialogJsMatcher, 'contains.js', code);
+    const matches = matchJsRule(dialogJsMatcher, 'contains.js', code);
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /closedby="any"/);
   });
@@ -89,7 +89,7 @@ void test('light-dismiss-a-dialog: positive brownfield matches', async (t) => {
         }
       });
     `;
-    const matches = matchJsRule(lightDismissADialogJsMatcher, 'closest-negated.js', code);
+    const matches = matchJsRule(dialogJsMatcher, 'closest-negated.js', code);
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /closedby="any"/);
   });
@@ -102,13 +102,13 @@ void test('light-dismiss-a-dialog: positive brownfield matches', async (t) => {
         }
       });
     `;
-    const matches = matchJsRule(lightDismissADialogJsMatcher, 'modal-backdrop.js', code);
+    const matches = matchJsRule(dialogJsMatcher, 'modal-backdrop.js', code);
     assert.equal(matches.length, 1);
     assert.match(matches[0]?.message ?? '', /closedby="any"/);
   });
 });
 
-void test('light-dismiss-a-dialog: negative / exempt cases', async (t) => {
+void test('dialog: negative / exempt cases', async (t) => {
   await t.test('exempts when guarded by closedBy in HTMLDialogElement.prototype', () => {
     const code = `
       if (!('closedBy' in HTMLDialogElement.prototype)) {
@@ -119,7 +119,7 @@ void test('light-dismiss-a-dialog: negative / exempt cases', async (t) => {
         });
       }
     `;
-    const matches = matchJsRule(lightDismissADialogJsMatcher, 'guarded.js', code);
+    const matches = matchJsRule(dialogJsMatcher, 'guarded.js', code);
     assert.equal(matches.length, 0);
   });
 
@@ -129,7 +129,7 @@ void test('light-dismiss-a-dialog: negative / exempt cases', async (t) => {
         dialog.close();
       });
     `;
-    const matches = matchJsRule(lightDismissADialogJsMatcher, 'button.js', code);
+    const matches = matchJsRule(dialogJsMatcher, 'button.js', code);
     assert.equal(matches.length, 0);
   });
 
@@ -139,7 +139,7 @@ void test('light-dismiss-a-dialog: negative / exempt cases', async (t) => {
         cleanupModal();
       });
     `;
-    const matches = matchJsRule(lightDismissADialogJsMatcher, 'close-event.js', code);
+    const matches = matchJsRule(dialogJsMatcher, 'close-event.js', code);
     assert.equal(matches.length, 0);
   });
 
@@ -150,7 +150,7 @@ void test('light-dismiss-a-dialog: negative / exempt cases', async (t) => {
         if (dialog) dialog.close();
       });
     `;
-    const matches = matchJsRule(lightDismissADialogJsMatcher, 'close-btn.js', code);
+    const matches = matchJsRule(dialogJsMatcher, 'close-btn.js', code);
     assert.equal(matches.length, 0);
   });
 
@@ -162,7 +162,7 @@ void test('light-dismiss-a-dialog: negative / exempt cases', async (t) => {
         }
       });
     `;
-    const matches = matchJsRule(lightDismissADialogJsMatcher, 'inside-click.js', code);
+    const matches = matchJsRule(dialogJsMatcher, 'inside-click.js', code);
     assert.equal(matches.length, 0);
   });
 });

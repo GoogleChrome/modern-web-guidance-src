@@ -1,75 +1,16 @@
-import * as fs from 'fs';
-import { parseHTML } from 'linkedom';
 import { SyntaxKind, Node, type Project } from 'ts-morph';
-import { tokenize, CSSStyleRule } from 'cssomnom';
 import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getJsProject,
   getHtmlDocuments,
+  getRules,
 } from '../../../../test-fixture.ts';
+import { CSSStyleRule } from 'cssomnom';
 
 // @ts-ignore - import.meta is available in ESM runner
 const targetFiles: string[] = getTargetFiles(import.meta.url);
-
-function getTargetCssText(files: string[]): string {
-  const cssBlocks: string[] = [];
-  for (const file of files) {
-    if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
-    const content = fs.readFileSync(file, 'utf8');
-    if (file.endsWith('.css')) {
-      cssBlocks.push(content);
-    } else if (/\.(html|htm|astro)$/i.test(file)) {
-      try {
-        const { document } = parseHTML(content);
-        document.querySelectorAll('style').forEach((style: any) => {
-          if (style.textContent) cssBlocks.push(style.textContent);
-        });
-      } catch {
-        const styleMatches = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
-        if (styleMatches) {
-          for (const match of styleMatches) {
-            cssBlocks.push(match.replace(/^<style[^>]*>/i, '').replace(/<\/style>$/i, ''));
-          }
-        }
-      }
-    }
-  }
-  return cssBlocks.join('\n');
-}
-
-function hasPseudoClassRule(cssText: string, pseudoClassName: string): boolean {
-  if (!cssText.trim()) return false;
-  const tokens = tokenize(cssText);
-  for (let i = 0; i < tokens.length - 1; i++) {
-    if (tokens[i].type === 'colon' && tokens[i + 1].type === 'ident' && tokens[i + 1].value === pseudoClassName) {
-      let openBraceIdx = -1;
-      for (let j = i + 2; j < tokens.length; j++) {
-        if (tokens[j].type === '{') {
-          openBraceIdx = j;
-          break;
-        }
-        if (tokens[j].type === '}' || tokens[j].type === 'semicolon') {
-          break;
-        }
-      }
-      if (openBraceIdx !== -1) {
-        let hasDecl = false;
-        for (let k = openBraceIdx + 1; k < tokens.length; k++) {
-          if (tokens[k].type === '}') break;
-          if (tokens[k].type !== 'whitespace' && tokens[k].type !== 'comment') {
-            hasDecl = true;
-            break;
-          }
-        }
-        if (hasDecl) return true;
-      }
-    }
-  }
-  return false;
-}
 
 function getSubmitListenerNodes(project: Project): Node[] {
   const listeners: Node[] = [];
@@ -219,22 +160,16 @@ test.describe('daily-grind Target Grader', () => {
   });
 
   test('The :tool-form-active pseudo-class is used to provide visual feedback', () => {
-    const cssText = getTargetCssText(targetFiles);
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const hasStyleRule = Array.from(stylesheet.cssRules).some(
-      (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText.includes(':tool-form-active') && r.style.length > 0
+    const hasRule = getRules(targetFiles, CSSStyleRule).some(
+      (r) => r.selectorText.includes(':tool-form-active') && r.style.length > 0
     );
-    const hasRule = hasStyleRule || hasPseudoClassRule(cssText, 'tool-form-active');
     expect(hasRule).toBe(true);
   });
 
   test('The :tool-submit-active pseudo-class is used to provide visual feedback', () => {
-    const cssText = getTargetCssText(targetFiles);
-    const stylesheet = getCssStyleSheet(targetFiles);
-    const hasStyleRule = Array.from(stylesheet.cssRules).some(
-      (r): r is CSSStyleRule => r instanceof CSSStyleRule && r.selectorText.includes(':tool-submit-active') && r.style.length > 0
+    const hasRule = getRules(targetFiles, CSSStyleRule).some(
+      (r) => r.selectorText.includes(':tool-submit-active') && r.style.length > 0
     );
-    const hasRule = hasStyleRule || hasPseudoClassRule(cssText, 'tool-submit-active');
     expect(hasRule).toBe(true);
   });
 
