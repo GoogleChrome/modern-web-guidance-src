@@ -10,8 +10,6 @@ web-feature-ids:
   - mutationobserver
   - resize-observer
   - web-animations
-  - forced-colors
-  - masks
   - prefers-reduced-motion
 ---
 
