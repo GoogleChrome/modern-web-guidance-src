@@ -1,0 +1,84 @@
+diff --git a/index.html b/index.html
+index 66c9173..9fdb121 100644
+--- a/index.html
++++ b/index.html
+@@ -49,6 +49,7 @@
+     nav ul {
+       display: flex;
+       list-style: none;
++      position: relative;
+     }
+ 
+     nav ul li {
+@@ -72,6 +73,36 @@
+       border-radius: 4px;
+     }
+ 
++    /* Anchor positioning: make active li the named anchor */
++    nav ul li.active {
++      anchor-name: --active-nav;
++    }
++
++    /* Animated underline via pseudo-element on the list container */
++    nav ul::before {
++      content: '';
++      position: absolute;
++      position-anchor: --active-nav;
++      inset-block-start: calc(anchor(bottom) + .1lh);
++      inset-inline-start: anchor(left);
++      inset-inline-end: anchor(right);
++      block-size: .25lh;
++      background: var(--accent);
++    }
++
++    @media (prefers-reduced-motion: no-preference) {
++      nav ul::before {
++        transition: inset .2s;
++      }
++    }
++
++    /* Fallback: static border-bottom when anchor positioning is unsupported */
++    @supports not (position-anchor: auto) {
++      nav ul li.active {
++        border-bottom: .25lh var(--accent) solid;
++      }
++    }
++
+     /* Hero Section */
+     .hero {
+       height: 60vh;
+@@ -157,10 +188,10 @@
+ 
+ <body>
+ 
+-  <nav>
++  <nav aria-label="Primary">
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+-      <li><a href="/menu">Menu</a></li>
++      <li class="active"><a href="/menu" aria-current="page">Menu</a></li>
+       <li><a href="/locations">Locations</a></li>
+       <li><a href="/rewards">Rewards</a></li>
+       <li><a href="/account">My Account</a></li>
+@@ -197,6 +228,21 @@
+     </section>
+   </main>
+ 
++  <script>
++    const navItems = document.querySelectorAll('nav ul li:not(:has(.logout-link))');
++    navItems.forEach(item => {
++      item.querySelector('a').addEventListener('click', e => {
++        e.preventDefault();
++        navItems.forEach(li => {
++          li.classList.remove('active');
++          li.querySelector('a').removeAttribute('aria-current');
++        });
++        item.classList.add('active');
++        item.querySelector('a').setAttribute('aria-current', 'page');
++      });
++    });
++  </script>
++
+   <footer>
+     <div class="footer-links">
+       <a href="/about">Our Story</a> |

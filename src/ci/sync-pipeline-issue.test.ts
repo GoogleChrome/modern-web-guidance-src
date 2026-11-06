@@ -6,15 +6,13 @@ import { type GuideInventory } from '../core/guide-validation.ts';
 import { rootDir } from '../core/paths.ts';
 import {
   buildPipelineReportData,
-  buildUseCaseIssueIndex,
-  classifyPr,
+  computeScaleMax,
   fetchWeeklyProgressHistory,
   filterCatchAllReviewers,
   countGen2Evals,
   findStaleEvals,
   formatReviewDecision,
   formatShortDate,
-  matchUseCaseIssue,
   parseEvalReportFromPrBody,
   PIPELINE_SCALE_MAX,
   renderPipelineIssueBody,
@@ -35,6 +33,8 @@ function makeGuide(overrides: Partial<GuideInventory> = {}): GuideInventory {
   const category = overrides.category ?? 'ui-components';
   const name = overrides.name ?? 'sample-guide';
   const dir = path.join(rootDir, 'guides', category, name);
+  const hasGrader = overrides.hasGrader ?? true;
+  const hasTask = overrides.hasTask ?? true;
   return {
     name,
     category,
@@ -44,10 +44,10 @@ function makeGuide(overrides: Partial<GuideInventory> = {}): GuideInventory {
     isPublished: true,
     hasDemo: true,
     hasNegativeDemo: false,
-    hasTask: true,
+    hasTask,
     hasExpectations: true,
     expectationsEmpty: false,
-    hasGrader: true,
+    hasGrader,
     isDisciplineGuide: false,
     targets: [
       {
@@ -55,16 +55,16 @@ function makeGuide(overrides: Partial<GuideInventory> = {}): GuideInventory {
         dir: path.join(dir, 'targets', 'daily-grind'),
         hasSolution: true,
         hasZeroPassrate: true,
-        hasGrader: true,
-        hasTask: true,
+        hasGrader,
+        hasTask,
       },
       {
         name: 'devtools-times',
         dir: path.join(dir, 'targets', 'devtools-times'),
         hasSolution: true,
         hasZeroPassrate: true,
-        hasGrader: true,
-        hasTask: true,
+        hasGrader,
+        hasTask,
       },
     ],
     featureIds: ['popover'],
@@ -127,6 +127,23 @@ describe('fetchWeeklyProgressHistory & baseline', () => {
   });
 });
 
+describe('computeScaleMax', () => {
+  it('returns PIPELINE_SCALE_MAX (200) for values at or below default scale', () => {
+    assert.equal(computeScaleMax(0), 200);
+    assert.equal(computeScaleMax(129), 200);
+    assert.equal(computeScaleMax(194), 200);
+    assert.equal(computeScaleMax(200), 200);
+  });
+
+  it('dynamically expands in increments of 50 once values exceed 200', () => {
+    assert.equal(computeScaleMax(201), 250);
+    assert.equal(computeScaleMax(213), 250);
+    assert.equal(computeScaleMax(250), 250);
+    assert.equal(computeScaleMax(251), 300);
+    assert.equal(computeScaleMax(310), 350);
+  });
+});
+
 describe('renderTwoRowProgressBar', () => {
   it('renders exact 73-column bars for Guides and Evals rows with header, ruler, and legend', () => {
     const res = renderTwoRowProgressBar({
@@ -157,7 +174,7 @@ describe('renderTwoRowProgressBar', () => {
     assert.match(res.text, /█ landed on main {3}░ open PR {3}· not yet$/);
   });
 
-  it('safely clamps when counts are below baseline or over scale', () => {
+  it('safely clamps when counts are below baseline or over explicit scaleMax', () => {
     const below = renderTwoRowProgressBar({
       complete: 120,
       openEvalGuides: 5,
@@ -182,6 +199,7 @@ describe('renderTwoRowProgressBar', () => {
       openGuideGuides: 5,
       baseline: 127,
       staleEvalsCount: 0,
+      scaleMax: 200,
     });
     assert.equal(
       over.guidesRow,
@@ -192,6 +210,36 @@ describe('renderTwoRowProgressBar', () => {
       'Evals     ' + '█'.repeat(73) + '  205 +10 PRs'
     );
   });
+
+  it('dynamically expands scale past 200 when counts exceed default scale', () => {
+    const expanded = renderTwoRowProgressBar({
+      complete: 182,
+      openEvalGuides: 10,
+      contentLanded: 192,
+      openGuideGuides: 21,
+      baseline: 129,
+      staleEvalsCount: 9,
+    });
+    // Needed max is 192 + 21 = 213, expanding scaleMax to 250.
+    // barWidth = 250 - 129 = 121 columns.
+    // Guides: (192 - 129) = 63 '█', 21 '░', (121 - 63 - 21) = 37 '·' = 121
+    // Evals:  (182 - 129) = 53 '█', 10 '░', (121 - 53 - 10) = 58 '·' = 121
+    assert.equal(
+      expanded.guidesRow,
+      'Guides    ' + '█'.repeat(63) + '░'.repeat(21) + '·'.repeat(37) + '  192 +21 PRs'
+    );
+    assert.equal(
+      expanded.evalsRow,
+      'Evals     ' + '█'.repeat(53) + '░'.repeat(10) + '·'.repeat(58) + '  182 (9 stale) +10 PRs'
+    );
+    const [ticks, nums] = expanded.rulerLine.split('\n');
+    assert.deepEqual(
+      [...ticks].flatMap((c, i) => (c === '┬' ? [i] : [])),
+      [10, 30, 80, 130]
+    );
+    assert.equal(nums.trim().split(/\s+/).join(' '), '129 150 200 250');
+    assert.equal(nums.lastIndexOf('250') + 2, 10 + (250 - 129 - 1));
+  });
 });
 
 describe('renderProgressChart', () => {
@@ -201,13 +249,22 @@ describe('renderProgressChart', () => {
       { date: '2026-10-14', label: 'Oct 14', complete: 140, contentLanded: 168 },
     ];
     const chart = renderProgressChart(points);
-    assert.match(chart, /config:\s+xyChart:\s+height: 200/);
+    assert.match(chart, /config:\s+xyChart:\s+width: 800\s+height: 200\s+xAxis:\s+labelFontSize: 10/);
     assert.match(chart, /plotColorPalette: "#FBBC04, #4285F4"/);
     assert.match(chart, /xychart-beta/);
     assert.match(chart, /x-axis \["Jul 22", "Oct 14"\]/);
     assert.match(chart, /y-axis "Guides" 100 --> 200/);
     assert.match(chart, /bar "Guides landed" \[127, 168\]/);
     assert.match(chart, /bar "Evals landed" \[127, 140\]/);
+  });
+
+  it('dynamically expands y-axis scale past 200 when points exceed 200', () => {
+    const points: WeeklyProgressPoint[] = [
+      { date: '2026-07-22', label: 'Jul 22', complete: 127, contentLanded: 127 },
+      { date: '2026-10-14', label: 'Oct 14', complete: 190, contentLanded: 215 },
+    ];
+    const chart = renderProgressChart(points);
+    assert.match(chart, /y-axis "Guides" 100 --> 250/);
   });
 });
 
@@ -235,10 +292,9 @@ describe('formatReviewDecision', () => {
 });
 
 describe('findStaleEvals', () => {
-  it('flags complete guides with substantive expectations updates after evals and unions open issues', () => {
+  it('flags complete guides with substantive expectations updates after evals', () => {
     const g1 = makeGuide({ category: 'forms', name: 'forms' });
     const g2 = makeGuide({ category: 'css', name: 'trivial-presence-only' });
-    const g3 = makeGuide({ category: 'security', name: 'issue-flagged' });
 
     const history = new Map<string, GitFileHistory>([
       [
@@ -269,38 +325,13 @@ describe('findStaleEvals', () => {
       ],
     ]);
 
-    const openIssues: IssueSummary[] = [
-      {
-        number: 1685,
-        title: 'Expectations changed for the forms guide',
-        body: '',
-        assignees: [],
-        labels: ['expectations-changed'],
-      },
-      {
-        number: 1690,
-        title: 'Expectations changed for the issue-flagged guide',
-        body: '',
-        assignees: [],
-        labels: ['expectations-changed'],
-      },
-    ];
-
-    const stale = findStaleEvals([g1, g2, g3], history, openIssues);
+    const stale = findStaleEvals([g1, g2], history);
     assert.deepEqual(stale, [
       {
         slug: 'forms/forms',
         expDate: 'Oct 4',
         expPr: 1676,
         evalDate: 'May 18',
-        issueNumber: 1685,
-      },
-      {
-        slug: 'security/issue-flagged',
-        expDate: 'recently',
-        expPr: null,
-        evalDate: 'earlier',
-        issueNumber: 1690,
       },
     ]);
   });
@@ -406,7 +437,6 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
       openPrs,
       openUseCaseIssues,
       openFeatureIssues: [],
-      openExpectationsChangedIssues: [],
       gitHistory: new Map(),
     });
 
@@ -451,9 +481,24 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
       assignees: ['LeaVerou'],
       labels: ['new-use-case'],
     };
-    const index = buildUseCaseIssueIndex([issue], []);
-    const matched = matchUseCaseIssue('ui-atoms/custom-list-markers', 'custom-list-markers', index, []);
-    assert.equal(matched?.number, 1742);
+    const stub = makeGuide({
+      category: 'ui-atoms',
+      name: 'custom-list-markers',
+      isStub: true,
+      hasGuide: false,
+      hasGrader: false,
+      hasTask: false,
+    });
+    const report = buildPipelineReportData({
+      readySinceBySlug: readySince(),
+      guides: [stub],
+      openPrs: [],
+      openUseCaseIssues: [issue],
+      openFeatureIssues: [],
+      gitHistory: new Map(),
+      weeklyProgressPoints: [{ date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 }],
+    });
+    assert.equal(report.needsGuidanceIssues[0]?.issueNumber, 1742);
     assert.equal(formatShortDate('2026-10-04'), 'Oct 4');
     assert.deepEqual(filterCatchAllReviewers(['paulirish', 'micahjo7', 'LeaVerou'], 'guidance'), ['LeaVerou']);
     assert.deepEqual(filterCatchAllReviewers(['TravenReese', 'micahjo7', 'paulirish'], 'guidance'), ['TravenReese']);
@@ -488,8 +533,8 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
           dir: '/tmp/guides/forms/incomplete-with-targets/targets/daily-grind',
           hasSolution: true,
           hasZeroPassrate: true,
-          hasGrader: true,
-          hasTask: true,
+          hasGrader: false,
+          hasTask: false,
         },
       ],
     });
@@ -500,60 +545,101 @@ describe('buildPipelineReportData & renderPipelineIssueBody', () => {
   });
 });
 
-describe('classifyPr', () => {
-  it('classifies PRs adding or modifying guide.md as guide PRs even if touching eval files', () => {
-    assert.equal(
-      classifyPr({
-        headRefName: 'gd-dev/new-feature',
-        title: 'grader updates: new-feature',
-        files: [
-          'guides/html/new-feature/guide.md',
-          'guides/html/new-feature/targets/daily-grind/grader.ts',
-        ],
-      }),
-      'guide'
-    );
+describe('Per-guide PR stage attribution', () => {
+  it('keeps eval PRs on NeedsEvals guides in Stage 3 even when also touching guide.md', () => {
+    const needsEval = makeGuide({
+      category: 'html',
+      name: 'styling-web-components',
+      hasGrader: false,
+      hasTask: false,
+    });
+    const report = buildPipelineReportData({
+      readySinceBySlug: readySince('html/styling-web-components'),
+      guides: [needsEval],
+      openPrs: [
+        {
+          number: 2046,
+          title: 'grader updates: styling-web-components',
+          body: '',
+          isDraft: false,
+          headRefName: 'gd-dev/styling-web-components',
+          author: 'micahjo7',
+          reviewers: [],
+          labels: [],
+          files: [
+            'guides/html/styling-web-components/guide.md',
+            'guides/html/styling-web-components/targets/daily-grind/grader.ts',
+          ],
+        },
+      ],
+      openUseCaseIssues: [],
+      openFeatureIssues: [],
+      gitHistory: new Map(),
+      weeklyProgressPoints: [{ date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 }],
+    });
+
+    assert.equal(report.openEvalPrs.length, 1);
+    assert.equal(report.openEvalPrs[0].slug, 'html/styling-web-components');
+    assert.equal(report.needsGuidancePrs.length, 0);
   });
 
-  it('classifies PRs touching only targets/ or grader files as eval PRs', () => {
-    assert.equal(
-      classifyPr({
-        headRefName: 'fix/patch-evals',
-        title: 'update daily-grind tests',
-        files: ['guides/forms/forms/targets/daily-grind/grader.ts'],
-      }),
-      'eval'
-    );
-  });
+  it('ignores frontmatter-only edits on stubs or blocked guides and keeps Stage 1 feature issues out of Stage 2', () => {
+    const blockedGuide = makeGuide({
+      category: 'forms',
+      name: 'button-group',
+      draft: 'blocked',
+      draftReason: 'blocked on #1275',
+      hasGrader: false,
+      hasTask: false,
+    });
+    const stubGuide = makeGuide({
+      category: 'media',
+      name: 'autoplay',
+      hasGuide: false,
+      isStub: true,
+      hasDemo: false,
+      hasExpectations: false,
+      hasGrader: false,
+      hasTask: false,
+      featureIds: ['autoplay'],
+    });
+    const report = buildPipelineReportData({
+      readySinceBySlug: readySince(),
+      guides: [blockedGuide, stubGuide],
+      openPrs: [
+        {
+          number: 2109,
+          title: 'Migrate draft frontmatter',
+          body: '',
+          isDraft: false,
+          headRefName: 'chore/draft-frontmatter',
+          author: 'dev',
+          reviewers: [],
+          labels: [],
+          files: ['guides/forms/button-group/guide.md', 'guides/media/autoplay/guide.md'],
+          guideContents: {
+            'forms/button-group': '---\nname: button-group\ndraft: blocked\ndraft-reason: blocked on #1275\n---\n# Button group\nBody',
+            'media/autoplay': '---\nname: autoplay\nweb-feature-ids:\n  - autoplay\n---\n',
+          },
+        },
+      ],
+      openUseCaseIssues: [],
+      openFeatureIssues: [
+        {
+          number: 1550,
+          title: 'Create use cases for autoplay',
+          body: 'Feature ID: [autoplay]',
+          assignees: [],
+          labels: ['new-feature'],
+        },
+      ],
+      gitHistory: new Map(),
+      weeklyProgressPoints: [{ date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 }],
+    });
 
-  it('classifies gd-dev/* branches or grader updates: titles as eval PRs', () => {
-    assert.equal(
-      classifyPr({
-        headRefName: 'gd-dev/styling-web-components',
-        title: 'grader updates: styling-web-components',
-        files: ['guides/html/styling-web-components/targets/daily-grind/grader.ts'],
-      }),
-      'eval'
-    );
-    assert.equal(
-      classifyPr({
-        headRefName: 'feature/something',
-        title: 'grader updates: popover',
-        files: ['guides/ui-components/popover/targets/daily-grind/task.md'],
-      }),
-      'eval'
-    );
-  });
-
-  it('classifies infra or non-guide PRs as other', () => {
-    assert.equal(
-      classifyPr({
-        headRefName: 'refactor/harness-token-accounting',
-        title: 'harness: token accounting fixes',
-        files: ['src/harness/run-suite.ts', 'package.json'],
-      }),
-      'other'
-    );
+    assert.equal(report.needsGuidancePrs.length, 0);
+    assert.equal(report.needsGuidanceIssues.length, 2);
+    assert.equal(report.needsGuidanceIssues.find(i => i.slug === 'media/autoplay')?.issueNumber, null);
   });
 });
 
@@ -618,7 +704,6 @@ describe('Discipline guides inclusion and issue header rendering', () => {
       openPrs,
       openUseCaseIssues: [],
       openFeatureIssues: [],
-      openExpectationsChangedIssues: [],
       gitHistory: new Map(),
     });
 
@@ -664,7 +749,7 @@ describe('Discipline guides inclusion and issue header rendering', () => {
     // Weekly progress chart present with YAML frontmatter config
     assert.match(
       markdown,
-      /### Progress since Jul 22\n\n```mermaid\n---\nconfig:\n  xyChart:\n    height: 200\n  themeVariables:\n    xyChart:\n      plotColorPalette: "#FBBC04, #4285F4"\n---\nxychart-beta/
+      /### Progress since Jul 22\n\n```mermaid\n---\nconfig:\n  xyChart:\n    width: 800\n    height: 200\n    xAxis:\n      labelFontSize: 10\n  themeVariables:\n    xyChart:\n      plotColorPalette: "#FBBC04, #4285F4"\n---\nxychart-beta/
     );
 
   });
@@ -688,7 +773,7 @@ describe('Discipline guides inclusion and issue header rendering', () => {
         author: 'author1',
         reviewers: [],
         labels: [],
-        files: ['guides/html/guide-dup/guide.md'],
+        files: ['guides/html/guide-dup/guide.md', 'guides/html/guide-dup/expectations.md'],
       },
       {
         number: 302,
@@ -699,7 +784,7 @@ describe('Discipline guides inclusion and issue header rendering', () => {
         author: 'author2',
         reviewers: [],
         labels: [],
-        files: ['guides/html/guide-dup/guide.md'],
+        files: ['guides/html/guide-dup/guide.md', 'guides/html/guide-dup/expectations.md'],
       },
     ];
 
@@ -708,7 +793,6 @@ describe('Discipline guides inclusion and issue header rendering', () => {
       openPrs,
       openUseCaseIssues: [],
       openFeatureIssues: [],
-      openExpectationsChangedIssues: [],
       gitHistory: new Map(),
       weeklyProgressPoints: [
         { date: '2026-07-22', label: 'Jul 22', complete: 0, contentLanded: 0 },
@@ -763,7 +847,7 @@ describe('Discipline guides inclusion and issue header rendering', () => {
         author: 'author',
         reviewers: [],
         labels: [],
-        files: ['guides/html/guide-5/guide.md'],
+        files: ['guides/html/guide-5/guide.md', 'guides/html/guide-5/expectations.md'],
       },
     ];
 
@@ -791,7 +875,6 @@ describe('Discipline guides inclusion and issue header rendering', () => {
           labels: ['new-feature'],
         },
       ],
-      openExpectationsChangedIssues: [],
       gitHistory: new Map(),
       weeklyProgressPoints: [
         { date: '2026-07-22', label: 'Jul 22', complete: 127, contentLanded: 127 },
@@ -870,7 +953,6 @@ describe('Discipline guides inclusion and issue header rendering', () => {
       openPrs,
       openUseCaseIssues: [],
       openFeatureIssues: [],
-      openExpectationsChangedIssues: [],
       gitHistory: new Map(),
     });
 
@@ -917,7 +999,6 @@ describe('Discipline guides inclusion and issue header rendering', () => {
       openPrs: [],
       openUseCaseIssues: [],
       openFeatureIssues: [],
-      openExpectationsChangedIssues: [],
       gitHistory: new Map(),
     });
     const markdown = renderPipelineIssueBody(report);
@@ -949,7 +1030,6 @@ describe('Discipline guides inclusion and issue header rendering', () => {
           labels: ['new-feature'],
         },
       ],
-      openExpectationsChangedIssues: [],
       gitHistory: new Map(),
     });
 
@@ -978,12 +1058,11 @@ describe('Discipline guides inclusion and issue header rendering', () => {
     assert.throws(
       () => {
         buildPipelineReportData({
-      readySinceBySlug: readySince(),
+          readySinceBySlug: readySince(),
           guides: [complete],
           openPrs: [],
           openUseCaseIssues: [],
           openFeatureIssues: [],
-          openExpectationsChangedIssues: [],
           gitHistory: new Map(),
           weeklyProgressPoints: [],
         });

@@ -2,7 +2,10 @@
 
 ## Issues
 
-- When placing visual elements over the accent color (e.g. a checkbox checkmark), Chrome and Safari will automatically select a contrasting color, whereas Safari will modify the accent color, and may not maintain adequate contrast.
+Browser rendering of `accent-color` varies.
+For indicators generally painted over an accent color background, such as checkbox marks and radio-button dots, browsers may apply different treatments:
+- **Chromium** and **Firefox** generally select a contrasting indicator color.
+- **Safari** may instead preserve a white indicator in light mode or a black indicator in dark mode, while modifying the accent color behind it. This adjustment does not always provide sufficient contrast for every supplied color, so test important combinations in Safari, including both light and dark color schemes. Do not assume that Safari will automatically choose whichever indicator color provides the best contrast.
 
 ## Fallbacks
 

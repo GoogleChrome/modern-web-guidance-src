@@ -15,7 +15,15 @@
     "ui-behaviors": "LeaVerou",
     "ui-atoms": "LeaVerou",
     "ui-components": "LeaVerou",
+    "user-experience": [
+      "NourNabil",
+      "LeaVerou"
+    ],
     "visual-design": "LeaVerou",
+    "media": [
+      "ewewraw",
+      "beaufortfrancois"
+    ],
     "performance": [
       "tunetheweb",
       "malchata"
@@ -24,6 +32,10 @@
     "pwa": "dmurph",
     "security": "rowan-m",
     "wasm": "sbc100",
+    "webgpu": [
+      "ewewraw",
+      "beaufortfrancois"
+    ],
     "webmcp": [
       "beaufortfrancois",
       "Kulikowski"

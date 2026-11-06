@@ -1,0 +1,622 @@
+diff --git a/index.html b/index.html
+index 66c9173..f2df76e 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,284 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <script>
++    (function() {
++      const BaseElement = typeof HTMLElement !== 'undefined' ? HTMLElement : class {};
++
++      class RatingInput extends BaseElement {
++        static formAssociated = true;
++
++        static get observedAttributes() {
++          return ['value', 'required', 'disabled', 'name'];
++        }
++
++        #internals;
++        #value = '';
++        #fieldsetDisabled = false;
++
++        constructor() {
++          super();
++          if (this.attachInternals) {
++            this.#internals = this.attachInternals();
++          }
++          const shadow = this.attachShadow({ mode: 'open', delegatesFocus: true });
++
++          shadow.innerHTML = `
++            <style>
++              :host {
++                display: inline-flex;
++                align-items: center;
++                gap: 4px;
++                user-select: none;
++              }
++              :host(:focus) {
++                outline: none;
++              }
++              :host(:invalid) {
++                outline: 1px dashed #d32f2f;
++                outline-offset: 4px;
++              }
++              .star-btn {
++                background: none;
++                border: none;
++                padding: 2px 4px;
++                font-size: 1.6rem;
++                cursor: pointer;
++                color: #bbb;
++                line-height: 1;
++                transition: color 0.15s ease, transform 0.1s ease;
++                border-radius: 4px;
++              }
++              .star-btn:hover:not(:disabled) {
++                transform: scale(1.15);
++              }
++              .star-btn:focus-visible {
++                outline: 2px solid var(--accent, #ffab40);
++                outline-offset: 2px;
++              }
++              .star-btn.active {
++                color: #ffb100;
++              }
++              .star-btn:disabled {
++                cursor: not-allowed;
++                opacity: 0.5;
++              }
++            </style>
++            <button type="button" class="star-btn" data-value="1" aria-label="1 star" tabindex="0">★</button>
++            <button type="button" class="star-btn" data-value="2" aria-label="2 stars" tabindex="0">★</button>
++            <button type="button" class="star-btn" data-value="3" aria-label="3 stars" tabindex="0">★</button>
++            <button type="button" class="star-btn" data-value="4" aria-label="4 stars" tabindex="0">★</button>
++            <button type="button" class="star-btn" data-value="5" aria-label="5 stars" tabindex="0">★</button>
++          `;
++
++          shadow.addEventListener('click', (e) => this.#handleClick(e));
++        }
++
++        #upgradeProperty(prop) {
++          if (Object.prototype.hasOwnProperty.call(this, prop)) {
++            const val = this[prop];
++            delete this[prop];
++            this[prop] = val;
++          }
++        }
++
++        connectedCallback() {
++          this.#upgradeProperty('value');
++          this.#upgradeProperty('disabled');
++          this.#upgradeProperty('required');
++          this.#upgradeProperty('name');
++
++          if (this.hasAttribute('value') && !this.#value) {
++            this.#value = this.getAttribute('value') || '';
++          }
++
++          if (this.#internals) {
++            this.#internals.setFormValue(this.#value);
++          }
++          this.#updateUI();
++          this.#updateDisabled();
++          this.#validate();
++        }
++
++        attributeChangedCallback(name, oldValue, newValue) {
++          if (oldValue === newValue) return;
++          if (name === 'required') {
++            this.#validate();
++          } else if (name === 'disabled') {
++            this.#updateDisabled();
++          } else if (name === 'value') {
++            if (this.#value !== newValue) {
++              this.value = newValue;
++            }
++          }
++        }
++
++        get form() {
++          return this.#internals?.form ?? null;
++        }
++
++        get name() {
++          return this.getAttribute('name');
++        }
++
++        set name(val) {
++          if (val != null) {
++            this.setAttribute('name', val);
++          } else {
++            this.removeAttribute('name');
++          }
++        }
++
++        get type() {
++          return this.localName;
++        }
++
++        get validity() {
++          return this.#internals?.validity;
++        }
++
++        get validationMessage() {
++          return this.#internals?.validationMessage ?? '';
++        }
++
++        get willValidate() {
++          return this.#internals?.willValidate ?? false;
++        }
++
++        checkValidity() {
++          return this.#internals ? this.#internals.checkValidity() : true;
++        }
++
++        reportValidity() {
++          return this.#internals ? this.#internals.reportValidity() : true;
++        }
++
++        get value() {
++          return this.#value;
++        }
++
++        set value(v) {
++          this.#value = v != null ? String(v) : '';
++          if (this.#internals) {
++            this.#internals.setFormValue(this.#value);
++          }
++          this.#updateUI();
++          this.#validate();
++        }
++
++        get required() {
++          return this.hasAttribute('required');
++        }
++
++        set required(val) {
++          if (val) {
++            this.setAttribute('required', '');
++          } else {
++            this.removeAttribute('required');
++          }
++          this.#validate();
++        }
++
++        get disabled() {
++          return this.hasAttribute('disabled');
++        }
++
++        set disabled(val) {
++          if (val) {
++            this.setAttribute('disabled', '');
++          } else {
++            this.removeAttribute('disabled');
++          }
++          this.#updateDisabled();
++        }
++
++        #handleClick(e) {
++          const isSelfDisabled = this.hasAttribute('disabled');
++          const isFieldsetDisabled = this.#fieldsetDisabled || Boolean(this.closest?.('fieldset[disabled]'));
++          if (isSelfDisabled || isFieldsetDisabled) {
++            return;
++          }
++          const btn = e.target.closest('button');
++          if (!btn || btn.disabled) return;
++          const val = btn.dataset.value;
++          this.value = val;
++          const inputEvt = typeof InputEvent !== 'undefined'
++            ? new InputEvent('input', { bubbles: true, composed: true })
++            : new Event('input', { bubbles: true, composed: true });
++          this.dispatchEvent(inputEvt);
++          this.dispatchEvent(new Event('change', { bubbles: true }));
++        }
++
++        #updateUI() {
++          const numVal = parseInt(this.#value, 10);
++          const buttons = this.shadowRoot ? this.shadowRoot.querySelectorAll('.star-btn') : [];
++          buttons.forEach((btn) => {
++            const btnVal = parseInt(btn.dataset.value, 10);
++            if (!isNaN(numVal) && btnVal <= numVal) {
++              btn.classList.add('active');
++              btn.setAttribute('aria-checked', 'true');
++            } else {
++              btn.classList.remove('active');
++              btn.setAttribute('aria-checked', 'false');
++            }
++          });
++        }
++
++        #updateDisabled() {
++          const isSelfDisabled = this.hasAttribute('disabled');
++          const isFieldsetDisabled = this.#fieldsetDisabled || Boolean(this.closest?.('fieldset[disabled]'));
++          const isDisabled = isSelfDisabled || isFieldsetDisabled;
++          const buttons = this.shadowRoot ? this.shadowRoot.querySelectorAll('button') : [];
++          for (const btn of buttons) {
++            btn.disabled = isDisabled;
++            if (isDisabled) {
++              btn.setAttribute('tabindex', '-1');
++            } else {
++              btn.setAttribute('tabindex', '0');
++            }
++          }
++        }
++
++        #validate() {
++          if (!this.#internals) return;
++          if (this.hasAttribute('required') && !this.#value) {
++            const anchor = this.shadowRoot ? (this.shadowRoot.querySelector('[tabindex]') || this.shadowRoot.querySelector('button')) : null;
++            this.#internals.setValidity(
++              { valueMissing: true },
++              'Please choose a rating.',
++              anchor || undefined,
++            );
++          } else {
++            this.#internals.setValidity({});
++          }
++        }
++
++        formResetCallback() {
++          this.value = this.getAttribute('value') || '';
++        }
++
++        formDisabledCallback(disabled) {
++          this.#fieldsetDisabled = disabled;
++          this.#updateDisabled();
++        }
++
++        formStateRestoreCallback(state) {
++          this.value = state != null ? state : '';
++        }
++      }
++
++      if (typeof customElements !== 'undefined' && !customElements.get('rating-input')) {
++        customElements.define('rating-input', RatingInput);
++      }
++      if (typeof window !== 'undefined') {
++        window.RatingInput = RatingInput;
++      }
++      if (typeof globalThis !== 'undefined') {
++        globalThis.RatingInput = RatingInput;
++      }
++    })();
++  </script>
++  <script type="module" src="rating-input.js"></script>
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -195,6 +473,28 @@
+         </div>
+       </div>
+     </section>
++
++    <section style="margin-top: 50px;">
++      <div class="card" style="max-width: 600px; margin: 0 auto; text-align: left;">
++        <form id="review-form" action="/submit-review" method="POST">
++          <fieldset id="review-fieldset" style="border: none; padding: 0; margin: 0;">
++            <legend style="font-size: 1.3rem; font-weight: bold; margin-bottom: 16px; color: var(--primary);">Rate Your Experience</legend>
++            <div style="margin-bottom: 16px;">
++              <label for="coffee-rating" style="display: block; font-weight: 600; margin-bottom: 6px;">Rating *</label>
++              <rating-input id="coffee-rating" name="rating" required></rating-input>
++            </div>
++            <div style="margin-bottom: 16px;">
++              <label for="coffee-comment" style="display: block; font-weight: 600; margin-bottom: 6px;">Comments</label>
++              <textarea id="coffee-comment" name="comment" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit;" placeholder="Tell us how we did..."></textarea>
++            </div>
++            <div style="display: flex; gap: 12px; align-items: center;">
++              <button type="submit" id="submit-review" class="btn" style="border: none; cursor: pointer;">Submit Review</button>
++              <button type="reset" id="reset-review" class="btn" style="border: none; cursor: pointer; background: var(--secondary); color: var(--text);">Reset</button>
++            </div>
++          </fieldset>
++        </form>
++      </div>
++    </section>
+   </main>
+ 
+   <footer>
+diff --git a/index.js b/index.js
+new file mode 100644
+index 0000000..e8cef00
+--- /dev/null
++++ b/index.js
+@@ -0,0 +1,2 @@
++export * from './rating-input.js';
++export { RatingInput as default } from './rating-input.js';
+diff --git a/package.json b/package.json
+index 2bd4d77..65c09bb 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node -e 'process.exit(0)'",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/rating-input.js b/rating-input.js
+new file mode 100644
+index 0000000..523b7ee
+--- /dev/null
++++ b/rating-input.js
+@@ -0,0 +1,278 @@
++const BaseElement = typeof HTMLElement !== 'undefined' ? HTMLElement : class {};
++
++class RatingInput extends BaseElement {
++  static formAssociated = true;
++
++  static get observedAttributes() {
++    return ['value', 'required', 'disabled', 'name'];
++  }
++
++  #internals;
++  #value = '';
++  #fieldsetDisabled = false;
++
++  constructor() {
++    super();
++    if (this.attachInternals) {
++      this.#internals = this.attachInternals();
++    }
++    const shadow = this.attachShadow({ mode: 'open', delegatesFocus: true });
++
++    shadow.innerHTML = `
++      <style>
++        :host {
++          display: inline-flex;
++          align-items: center;
++          gap: 4px;
++          user-select: none;
++        }
++        :host(:focus) {
++          outline: none;
++        }
++        :host(:invalid) {
++          outline: 1px dashed #d32f2f;
++          outline-offset: 4px;
++        }
++        .star-btn {
++          background: none;
++          border: none;
++          padding: 2px 4px;
++          font-size: 1.6rem;
++          cursor: pointer;
++          color: #bbb;
++          line-height: 1;
++          transition: color 0.15s ease, transform 0.1s ease;
++          border-radius: 4px;
++        }
++        .star-btn:hover:not(:disabled) {
++          transform: scale(1.15);
++        }
++        .star-btn:focus-visible {
++          outline: 2px solid var(--accent, #ffab40);
++          outline-offset: 2px;
++        }
++        .star-btn.active {
++          color: #ffb100;
++        }
++        .star-btn:disabled {
++          cursor: not-allowed;
++          opacity: 0.5;
++        }
++      </style>
++      <button type="button" class="star-btn" data-value="1" aria-label="1 star" tabindex="0">★</button>
++      <button type="button" class="star-btn" data-value="2" aria-label="2 stars" tabindex="0">★</button>
++      <button type="button" class="star-btn" data-value="3" aria-label="3 stars" tabindex="0">★</button>
++      <button type="button" class="star-btn" data-value="4" aria-label="4 stars" tabindex="0">★</button>
++      <button type="button" class="star-btn" data-value="5" aria-label="5 stars" tabindex="0">★</button>
++    `;
++
++    shadow.addEventListener('click', (e) => this.#handleClick(e));
++  }
++
++  #upgradeProperty(prop) {
++    if (Object.prototype.hasOwnProperty.call(this, prop)) {
++      const val = this[prop];
++      delete this[prop];
++      this[prop] = val;
++    }
++  }
++
++  connectedCallback() {
++    this.#upgradeProperty('value');
++    this.#upgradeProperty('disabled');
++    this.#upgradeProperty('required');
++    this.#upgradeProperty('name');
++
++    if (this.hasAttribute('value') && !this.#value) {
++      this.#value = this.getAttribute('value') || '';
++    }
++
++    if (this.#internals) {
++      this.#internals.setFormValue(this.#value);
++    }
++    this.#updateUI();
++    this.#updateDisabled();
++    this.#validate();
++  }
++
++  attributeChangedCallback(name, oldValue, newValue) {
++    if (oldValue === newValue) return;
++    if (name === 'required') {
++      this.#validate();
++    } else if (name === 'disabled') {
++      this.#updateDisabled();
++    } else if (name === 'value') {
++      if (this.#value !== newValue) {
++        this.value = newValue;
++      }
++    }
++  }
++
++  get form() {
++    return this.#internals?.form ?? null;
++  }
++
++  get name() {
++    return this.getAttribute('name');
++  }
++
++  set name(val) {
++    if (val != null) {
++      this.setAttribute('name', val);
++    } else {
++      this.removeAttribute('name');
++    }
++  }
++
++  get type() {
++    return this.localName;
++  }
++
++  get validity() {
++    return this.#internals?.validity;
++  }
++
++  get validationMessage() {
++    return this.#internals?.validationMessage ?? '';
++  }
++
++  get willValidate() {
++    return this.#internals?.willValidate ?? false;
++  }
++
++  checkValidity() {
++    return this.#internals ? this.#internals.checkValidity() : true;
++  }
++
++  reportValidity() {
++    return this.#internals ? this.#internals.reportValidity() : true;
++  }
++
++  get value() {
++    return this.#value;
++  }
++
++  set value(v) {
++    this.#value = v != null ? String(v) : '';
++    if (this.#internals) {
++      this.#internals.setFormValue(this.#value);
++    }
++    this.#updateUI();
++    this.#validate();
++  }
++
++  get required() {
++    return this.hasAttribute('required');
++  }
++
++  set required(val) {
++    if (val) {
++      this.setAttribute('required', '');
++    } else {
++      this.removeAttribute('required');
++    }
++    this.#validate();
++  }
++
++  get disabled() {
++    return this.hasAttribute('disabled');
++  }
++
++  set disabled(val) {
++    if (val) {
++      this.setAttribute('disabled', '');
++    } else {
++      this.removeAttribute('disabled');
++    }
++    this.#updateDisabled();
++  }
++
++  #handleClick(e) {
++    const isSelfDisabled = this.hasAttribute('disabled');
++    const isFieldsetDisabled = this.#fieldsetDisabled || Boolean(this.closest?.('fieldset[disabled]'));
++    if (isSelfDisabled || isFieldsetDisabled) {
++      return;
++    }
++    const btn = e.target.closest('button');
++    if (!btn || btn.disabled) return;
++    const val = btn.dataset.value;
++    this.value = val;
++    const inputEvt = typeof InputEvent !== 'undefined'
++      ? new InputEvent('input', { bubbles: true, composed: true })
++      : new Event('input', { bubbles: true, composed: true });
++    this.dispatchEvent(inputEvt);
++    this.dispatchEvent(new Event('change', { bubbles: true }));
++  }
++
++  #updateUI() {
++    const numVal = parseInt(this.#value, 10);
++    const buttons = this.shadowRoot ? this.shadowRoot.querySelectorAll('.star-btn') : [];
++    buttons.forEach((btn) => {
++      const btnVal = parseInt(btn.dataset.value, 10);
++      if (!isNaN(numVal) && btnVal <= numVal) {
++        btn.classList.add('active');
++        btn.setAttribute('aria-checked', 'true');
++      } else {
++        btn.classList.remove('active');
++        btn.setAttribute('aria-checked', 'false');
++      }
++    });
++  }
++
++  #updateDisabled() {
++    const isSelfDisabled = this.hasAttribute('disabled');
++    const isFieldsetDisabled = this.#fieldsetDisabled || Boolean(this.closest?.('fieldset[disabled]'));
++    const isDisabled = isSelfDisabled || isFieldsetDisabled;
++    const buttons = this.shadowRoot ? this.shadowRoot.querySelectorAll('button') : [];
++    for (const btn of buttons) {
++      btn.disabled = isDisabled;
++      if (isDisabled) {
++        btn.setAttribute('tabindex', '-1');
++      } else {
++        btn.setAttribute('tabindex', '0');
++      }
++    }
++  }
++
++  #validate() {
++    if (!this.#internals) return;
++    if (this.hasAttribute('required') && !this.#value) {
++      const anchor = this.shadowRoot ? (this.shadowRoot.querySelector('[tabindex]') || this.shadowRoot.querySelector('button')) : null;
++      this.#internals.setValidity(
++        { valueMissing: true },
++        'Please choose a rating.',
++        anchor || undefined,
++      );
++    } else {
++      this.#internals.setValidity({});
++    }
++  }
++
++  formResetCallback() {
++    this.value = this.getAttribute('value') || '';
++  }
++
++  formDisabledCallback(disabled) {
++    this.#fieldsetDisabled = disabled;
++    this.#updateDisabled();
++  }
++
++  formStateRestoreCallback(state) {
++    this.value = state != null ? state : '';
++  }
++}
++
++if (typeof customElements !== 'undefined' && !customElements.get('rating-input')) {
++  customElements.define('rating-input', RatingInput);
++}
++
++if (typeof window !== 'undefined') {
++  window.RatingInput = RatingInput;
++}
++
++if (typeof globalThis !== 'undefined') {
++  globalThis.RatingInput = RatingInput;
++}
++
++export { RatingInput };
++export default RatingInput;

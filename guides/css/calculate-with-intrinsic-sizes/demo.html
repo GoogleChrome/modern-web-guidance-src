@@ -60,7 +60,8 @@
         block-size: 0;
         overflow: hidden;
         opacity: 0;
-        transition: block-size 0.3s ease, opacity 0.3s ease;
+        visibility: hidden;
+        transition: block-size 0.3s ease, opacity 0.3s ease, visibility 0.3s;
         background: #f9f9f9;
         border-radius: 4px;
       }
@@ -72,6 +73,7 @@
         */
         block-size: auto;
         opacity: 1;
+        visibility: visible;
       }
 
       /* --- Use Case 2: Constrained Dynamic Tag --- */
@@ -124,13 +126,17 @@
         block-size: 0;
         overflow: hidden;
         opacity: 0;
-        transition: block-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+        /* Removes the closed content from the accessibility tree; transitioning
+           visibility keeps it visible until the panel finishes closing */
+        visibility: hidden;
+        transition: block-size 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, visibility 0.4s;
       }
 
       .accordion.open .accordion-content {
         /* MANDATORY: Fallback value for the open state */
         block-size: auto;
         opacity: 1;
+        visibility: visible;
         
         /* 
            DO: Use calc-size(auto, ...) to animate to an intrinsic height 
@@ -203,8 +209,8 @@
       <h2>1. Simple Keyword Interpolation</h2>
       <p>This uses <code>interpolate-size: allow-keywords</code> on <code>:root</code> to enable smooth transitions from <code>0</code> to <code>auto</code> without any calculations.</p>
       <div class="simple-toggle" id="simple-toggle">
-        <button class="toggle-trigger" id="simple-toggle-btn">Click to Toggle Simple</button>
-        <div class="simple-toggle-content">
+        <button class="toggle-trigger" id="simple-toggle-btn" aria-expanded="false" aria-controls="simple-toggle-content">Click to Toggle Simple</button>
+        <div class="simple-toggle-content" id="simple-toggle-content">
           <div class="inner-text">
             This simple animation doesn't need <code>calc-size()</code> because it doesn't modify the intrinsic <code>auto</code> height.
           </div>
@@ -216,6 +222,7 @@
       <h2>2. Constrained Dynamic Tag</h2>
       <p>This tag uses <code>calc-size(fit-content, ...)</code> to maintain a minimum presence while adding extra padding as it grows.</p>
       <div class="tag-demo">
+        <label for="tag-input">Tag name</label>
         <input type="text" id="tag-input" placeholder="Type a tag name..." value="New Tag">
         <div class="tag" id="tag-preview">New Tag</div>
       </div>
@@ -225,8 +232,8 @@
       <h2>3. Accordion with "Breathing Room"</h2>
       <p>Uses <code>calc-size(auto, size + 2rem)</code> to animate to a height that includes dynamic extra padding.</p>
       <div class="accordion" id="accordion">
-        <button class="accordion-trigger" id="accordion-toggle">Click to Toggle with Breathing Room</button>
-        <div class="accordion-content">
+        <button class="accordion-trigger" id="accordion-toggle" aria-expanded="false" aria-controls="accordion-content">Click to Toggle with Breathing Room</button>
+        <div class="accordion-content" id="accordion-content">
           <div class="inner-text">
             This content animates to its <code>auto</code> height plus an additional 2rem of calculated space. 
             This ensures that no matter how much text is here, the "breathing room" remains consistent.
@@ -239,6 +246,7 @@
       <h2>4. Proportional Content Sizing</h2>
       <p>Uses <code>calc-size(max-content, size * 1.25)</code> to ensure the container is always 25% larger than its longest line of text.</p>
       <div class="tag-demo">
+        <label for="prop-input">Box text</label>
         <input type="text" id="prop-input" placeholder="Type something..." value="Proportional Box">
         <div class="proportional-box" id="prop-preview">Proportional Box</div>
       </div>
@@ -249,7 +257,8 @@
       const simpleToggle = document.getElementById('simple-toggle');
       const simpleBtn = document.getElementById('simple-toggle-btn');
       simpleBtn.addEventListener('click', () => {
-        simpleToggle.classList.toggle('open');
+        const isOpen = simpleToggle.classList.toggle('open');
+        simpleBtn.setAttribute('aria-expanded', isOpen);
       });
 
       // Tag Demo
@@ -263,7 +272,8 @@
       const accordion = document.getElementById('accordion');
       const toggle = document.getElementById('accordion-toggle');
       toggle.addEventListener('click', () => {
-        accordion.classList.toggle('open');
+        const isOpen = accordion.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', isOpen);
       });
 
       // Proportional Demo

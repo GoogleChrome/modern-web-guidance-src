@@ -3,6 +3,11 @@ name: accessible-error-announcement
 description: Synchronize programmatic accessibility states (like aria-invalid) with the visual :user-invalid state to ensure screen reader users receive error feedback only after interaction, mirroring the visual experience.
 web-feature-ids:
   - user-pseudos
+# NOTE: Unlike most guides (which replace legacy JS with a modern declarative feature),
+# this guide exists solely to teach a JS bridge syncing CSS `:user-invalid` to `aria-invalid`
+# due to cross-browser HTML-AAM gaps (Firefox/Safari exposing `required` as invalid on initial load;
+# Chromium crbug.com/564679025 keeping empty `required` text fields valid in AXTree even after interaction).
+# Under active a11y SME review in #1890 (see also #1638, #1780, #1836).
 ---
 
 # Accessible Error Announcement
@@ -38,7 +43,7 @@ Link your input to its error message using `aria-errormessage` (or `aria-describ
       required 
       aria-errormessage="email-error"
     >
-    <span id="email-error" class="error-msg">
+    <span id="email-error" class="error-msg" aria-live="polite">
       Please enter a valid email address.
     </span>
   </div>
@@ -87,6 +92,11 @@ const updateAriaState = (event) => {
 // 'blur' and 'focus' do not bubble, so we must use the capture phase (true).
 document.addEventListener('blur', updateAriaState, true);
 document.addEventListener('focus', updateAriaState, true);
+
+// Constraint validation fires 'invalid' on every control that fails when
+// the form is submitted, so synchronize all of them, not only the first
+// field the browser focuses.
+document.addEventListener('invalid', updateAriaState, true);
 
 // Also update on input if we've already shown the error, 
 // so the error clears immediately when fixed.
@@ -208,7 +218,7 @@ UserInvalidFallback.init();
 
 1.  **`aria-live` vs. `aria-errormessage`**: 
     *   `aria-errormessage` connects the input to the text, but screen readers might not announce it immediately upon appearance (only when focusing the input).
-    *   If you need *immediate* announcement when the error appears (e.g., on blur), consider adding `role="alert"` or `aria-live="polite"` to the error message container, but test thoroughly to avoid "double announcement" when the user focuses the field to fix it.
+    *   To announce the error as soon as it appears, the examples above add `aria-live="polite"` to the error message container. A more assertive `role="alert"` is also an option, but test thoroughly to avoid "double announcement" when the user focuses the field to fix it.
 
 2.  **Internationalization**:
     *   Ensure the text content of your error message (`#email-error`) is translated. The logic remains the same.

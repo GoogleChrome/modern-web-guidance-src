@@ -44,7 +44,12 @@ interface ProjectDetails {
   issueStatusMap: Map<number, string>;
 }
 
+export const NEEDS_INVESTIGATION_STATUS = 'Needs investigation';
+export const MIN_EXPECTED_FEATURE_ISSUES = 100;
+export const MIN_EXPECTED_USE_CASE_ISSUES = 200;
+
 interface GitHubData {
+  featureIssues: any[];
   featureToIssueMap: Map<string, FeatureIssueData>;
   allUseCases: any[];
   nameToIssueMap: Map<string, any>;
@@ -267,21 +272,87 @@ export function getFeaturesNeedingSync(
 }
 
 /**
- * Builds maps from use case name and subdirectory to their existing GitHub issues.
+ * Reconciles items on Project #30 that GitHub Project's built-in auto-add workflow
+ * defaulted to Status="Needs use cases" when opened:
+ * - `new-feature` issues and closed `new-use-case` issues are left alone.
+ * - Open `new-use-case` issues move to `"Needs guidance"`.
+ * - All other issues (e.g. bug/feedback issues against existing guides like #2100)
+ *   move to `"Needs investigation"`.
  */
-export function buildUseCaseMaps<T extends { title: string; body?: string | null }>(
-  issues: T[]
-): { nameToIssueMap: Map<string, T>; subdirToIssueMap: Map<string, T> } {
+export function reconcileNeedsUseCasesProjectStatus(
+  issueStatusMap: Map<number, string>,
+  featureIssues: Iterable<{ number: number }>,
+  useCaseIssues: Iterable<{ number: number; state?: string }>,
+): Map<number, string> {
+  const featureNums = new Set(Array.from(featureIssues, f => f.number));
+  const useCaseStateByNum = new Map(Array.from(useCaseIssues, u => [u.number, u.state ?? 'open']));
+  const updates = new Map<number, string>();
+  for (const [issueNumber, currentStatus] of issueStatusMap) {
+    if (currentStatus.toLowerCase() !== ProjectStatus.NeedsUseCases.toLowerCase()) continue;
+    if (featureNums.has(issueNumber) || useCaseStateByNum.get(issueNumber) === 'closed') continue;
+    updates.set(
+      issueNumber,
+      useCaseStateByNum.has(issueNumber) ? ProjectStatus.NeedsGuidance : NEEDS_INVESTIGATION_STATUS
+    );
+  }
+  return updates;
+}
+
+function isAbandonedIssue(issue: { state_reason?: string | null; stateReason?: string | null }): boolean {
+  const reason = (issue.state_reason ?? issue.stateReason ?? '').toLowerCase();
+  return reason === 'not_planned' || reason === 'duplicate';
+}
+
+/**
+ * Returns true if `candidate` should be preferred over `existing` when multiple issues
+ * match the same use case:
+ * 1. Prefer issues not closed as `not_planned` / `duplicate`.
+ * 2. Prefer the canonical (lowest-numbered) issue.
+ */
+export function shouldPreferUseCaseIssue<
+  T extends { number?: number; state?: string; state_reason?: string | null; stateReason?: string | null }
+>(existing: T | undefined, candidate: T): boolean {
+  if (!existing) return true;
+  const existingAbandoned = isAbandonedIssue(existing);
+  const candidateAbandoned = isAbandonedIssue(candidate);
+  if (existingAbandoned !== candidateAbandoned) {
+    return !candidateAbandoned;
+  }
+  if (typeof existing.number === 'number' && typeof candidate.number === 'number') {
+    return candidate.number < existing.number;
+  }
+  return false;
+}
+
+/**
+ * Builds maps from use case name and subdirectory to their canonical GitHub issues.
+ */
+export function buildUseCaseMaps<
+  T extends {
+    number?: number;
+    title: string;
+    body?: string | null;
+    state?: string;
+    state_reason?: string | null;
+    stateReason?: string | null;
+  }
+>(issues: T[]): { nameToIssueMap: Map<string, T>; subdirToIssueMap: Map<string, T> } {
   const nameToIssueMap = new Map<string, T>();
   const subdirToIssueMap = new Map<string, T>();
   for (const issue of issues) {
     const titleMatch = issue.title.match(/Create guide(?: and evals)? for the (.+) use case/i);
     if (titleMatch) {
-      nameToIssueMap.set(titleMatch[1].trim(), issue);
+      const key = titleMatch[1].trim();
+      if (shouldPreferUseCaseIssue(nameToIssueMap.get(key), issue)) {
+        nameToIssueMap.set(key, issue);
+      }
     }
     const bodyMatch = issue.body?.match(/Use case subdir: \[([^\]]+)\]/);
     if (bodyMatch) {
-      subdirToIssueMap.set(bodyMatch[1].trim(), issue);
+      const key = bodyMatch[1].trim();
+      if (shouldPreferUseCaseIssue(subdirToIssueMap.get(key), issue)) {
+        subdirToIssueMap.set(key, issue);
+      }
     }
     const templateCategoryMatch = issue.body?.match(/###\s+Category\s*\r?\n+([^\r\n#]+)/i);
     const templateSlugMatch = issue.body?.match(/###\s+Use case slug\s*\r?\n+([^\r\n#]+)/i);
@@ -289,9 +360,12 @@ export function buildUseCaseMaps<T extends { title: string; body?: string | null
       const category = templateCategoryMatch[1].trim().toLowerCase();
       const slug = templateSlugMatch[1].trim().toLowerCase();
       if (category && slug) {
-        if (!nameToIssueMap.has(slug)) nameToIssueMap.set(slug, issue);
-        if (!subdirToIssueMap.has(`guides/${category}/${slug}`)) {
-          subdirToIssueMap.set(`guides/${category}/${slug}`, issue);
+        if (shouldPreferUseCaseIssue(nameToIssueMap.get(slug), issue)) {
+          nameToIssueMap.set(slug, issue);
+        }
+        const subdirKey = `guides/${category}/${slug}`;
+        if (shouldPreferUseCaseIssue(subdirToIssueMap.get(subdirKey), issue)) {
+          subdirToIssueMap.set(subdirKey, issue);
         }
       }
     }
@@ -330,6 +404,7 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
               content {
                 ... on Issue {
                   number
+                  state
                 }
               }
               fieldValues(first: 10) {
@@ -372,7 +447,7 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
 
       for (const item of project.items.nodes) {
         const issueNumber = item.content?.number;
-        if (!issueNumber) continue;
+        if (!issueNumber || item.content?.state === 'CLOSED') continue;
         const statusValue = item.fieldValues.nodes.find((v: any) => v.field?.name === 'Status');
         if (statusValue) {
           issueStatusMap.set(issueNumber, statusValue.name);
@@ -391,7 +466,12 @@ async function getProjectDetails(org: string, number: number): Promise<ProjectDe
   }
 }
 
-async function updateProjectItemStatus(issueNumber: number, projectId: string, fieldId: string, optionId: string) {
+async function updateProjectItemStatus(
+  issueNumber: number,
+  projectId: string,
+  fieldId: string,
+  optionId: string
+) {
   try {
     const issueResponse = await octokit.rest.issues.get({
       owner: ORG,
@@ -434,8 +514,91 @@ async function updateProjectItemStatus(issueNumber: number, projectId: string, f
   }
 }
 
+async function fetchIssuesByLabelGraphQL(label: string, minExpected = 0): Promise<any[]> {
+  const query = `
+    query($owner: String!, $repo: String!, $label: String!, $cursor: String) {
+      repository(owner: $owner, name: $repo) {
+        issues(first: 100, after: $cursor, labels: [$label], orderBy: { field: CREATED_AT, direction: ASC }) {
+          totalCount
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+          nodes {
+            number
+            title
+            body
+            state
+            stateReason
+            milestone {
+              number
+              title
+            }
+            labels(first: 30) {
+              nodes {
+                name
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const issues: any[] = [];
+  let cursor: string | null = null;
+  let expectedTotal: number | null = null;
+
+  do {
+    const response = (await octokit.graphql(query, {
+      owner: ORG,
+      repo: REPO,
+      label,
+      cursor,
+    })) as any;
+
+    const conn = response?.repository?.issues;
+    if (!conn || !Array.isArray(conn.nodes)) {
+      throw new Error(`Invalid GraphQL response when fetching "${label}" issues.`);
+    }
+    if (expectedTotal === null && typeof conn.totalCount === 'number') {
+      expectedTotal = conn.totalCount;
+    }
+
+    for (const node of conn.nodes) {
+      if (!node) continue;
+      issues.push({
+        number: node.number,
+        title: node.title ?? '',
+        body: node.body ?? '',
+        state: String(node.state ?? 'OPEN').toLowerCase(),
+        state_reason: node.stateReason ? String(node.stateReason).toLowerCase() : null,
+        milestone: node.milestone ? { number: node.milestone.number, title: node.milestone.title } : null,
+        labels: (node.labels?.nodes ?? []).filter(Boolean).map((l: any) => ({ name: l.name })),
+      });
+    }
+
+    const { hasNextPage, endCursor } = conn.pageInfo ?? {};
+    cursor = hasNextPage ? endCursor : null;
+  } while (cursor);
+
+  if (expectedTotal !== null && issues.length !== expectedTotal) {
+    throw new Error(
+      `GraphQL pagination count mismatch for label "${label}": expected ${expectedTotal} issues, received ${issues.length}.`
+    );
+  }
+  if (issues.length < minExpected) {
+    throw new Error(
+      `Refusing to sync: fetched only ${issues.length} "${label}" issues (expected at least ${minExpected}).`
+    );
+  }
+
+  return issues;
+}
+
 async function fetchGitHubData(): Promise<GitHubData> {
   let projectDetails = null;
+  let featureIssues: any[] = [];
   let featureToIssueMap = new Map<string, FeatureIssueData>();
   let allUseCases: any[] = [];
   let nameToIssueMap = new Map<string, any>();
@@ -447,40 +610,21 @@ async function fetchGitHubData(): Promise<GitHubData> {
       console.warn('⚠️ Could not fetch project details. Project updates will be skipped.');
     }
 
-    console.log('Fetching "new-feature" issues...');
-    try {
-      const featureIssues = await octokit.paginate(octokit.rest.issues.listForRepo, {
-        owner: ORG,
-        repo: REPO,
-        labels: 'new-feature',
-        state: 'all'
-      });
-      featureToIssueMap = buildFeatureToIssueMap(featureIssues);
-      console.log(`Found ${featureToIssueMap.size} features with issues.`);
-    } catch (err: any) {
-      console.warn('⚠️ Could not fetch "new-feature" issues. Issue relation updates will be skipped.');
-      if (!IS_DRY_RUN) throw err;
-    }
+    console.log('Fetching "new-feature" issues via GraphQL...');
+    featureIssues = await fetchIssuesByLabelGraphQL('new-feature', MIN_EXPECTED_FEATURE_ISSUES);
+    featureToIssueMap = buildFeatureToIssueMap(featureIssues);
+    console.log(`Found ${featureIssues.length} "new-feature" issues (${featureToIssueMap.size} distinct features).`);
 
-    console.log('Fetching existing "new-use-case" issues...');
-    try {
-      allUseCases = await octokit.paginate(octokit.rest.issues.listForRepo, {
-        owner: ORG,
-        repo: REPO,
-        labels: 'new-use-case',
-        state: 'all'
-      });
-      ({ nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(allUseCases));
-    } catch (err: any) {
-      console.warn('⚠️ Could not fetch existing "new-use-case" issues. Issue creation/updates will be skipped.');
-      if (!IS_DRY_RUN) throw err;
-    }
+    console.log('Fetching existing "new-use-case" issues via GraphQL...');
+    allUseCases = await fetchIssuesByLabelGraphQL('new-use-case', MIN_EXPECTED_USE_CASE_ISSUES);
+    ({ nameToIssueMap, subdirToIssueMap } = buildUseCaseMaps(allUseCases));
+    console.log(`Found ${allUseCases.length} "new-use-case" issues (${nameToIssueMap.size} mapped by name).`);
   } else if (IS_DRY_RUN) {
     console.warn('⚠️ GITHUB_TOKEN is not set. Project status updates will be skipped in this dry run.');
     console.log('ℹ️ Skipping GitHub issue fetches (no GITHUB_TOKEN set).');
   }
 
-  return { featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails };
+  return { featureIssues, featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails };
 }
 
 async function syncIssue(
@@ -536,9 +680,13 @@ async function syncIssue(
     return { issueNumber, changed: needsUpdate };
   } else {
     const isComplete = statusName === null;
+    if (isComplete) {
+      console.log(`ℹ️ Guide "${name}" is already complete and has no issue; skipping issue creation.`);
+      return { issueNumber: 0, changed: false };
+    }
     const labels = getDesiredLabels([], priorityLabel);
 
-    console.log(`${IS_DRY_RUN ? '[DRY RUN] Would create' : 'Creating'} new issue for "${name}"${isComplete ? ' (closing immediately as completed)' : ''}...`);
+    console.log(`${IS_DRY_RUN ? '[DRY RUN] Would create' : 'Creating'} new issue for "${name}"...`);
     if (!IS_DRY_RUN) {
       const newIssue = await octokit.rest.issues.create({
         owner: ORG,
@@ -550,21 +698,11 @@ async function syncIssue(
       });
       const issueNumber: number = newIssue.data.number;
       activeIssueNumbers.add(issueNumber);
-      if (isComplete) {
-        await octokit.rest.issues.update({
-          owner: ORG,
-          repo: REPO,
-          issue_number: issueNumber,
-          state: 'closed',
-          state_reason: 'completed'
-        });
-      }
       return { issueNumber, changed: true };
     } else {
       console.log(`[DRY RUN] Title: ${issueTitle}`);
       console.log(`[DRY RUN] Labels: ${labels.join(', ')}`);
       if (milestoneNumber) console.log(`[DRY RUN] Milestone: ${milestoneNumber}`);
-      if (isComplete) console.log(`[DRY RUN] State: closed (completed)`);
       console.log(`[DRY RUN] Body:\n${issueBody}\n`);
       return { issueNumber: 0, changed: true };
     }
@@ -680,11 +818,13 @@ async function processUseCases(
 }
 
 async function syncFeatureIssues(
+  featureIssues: any[],
   featureToIssueMap: Map<string, FeatureIssueData>,
   featuresWithActiveUseCases: Set<string>,
   featuresWithAnyUseCases: Set<string>,
   featureUseCaseMap: Map<string, UseCaseEntry[]>,
-  projectDetails: ProjectDetails | null
+  projectDetails: ProjectDetails | null,
+  allUseCases: any[],
 ) {
   if (!GITHUB_TOKEN && !IS_DRY_RUN) return;
 
@@ -725,6 +865,23 @@ async function syncFeatureIssues(
     }
   }
 
+  // Reconcile any items on Project #30 that were auto-assigned "Needs use cases" by GitHub's
+  // default project workflow (such as issues against existing guides like #2100).
+  if (projectDetails && featureIssues.length > 0) {
+    for (const [issueNumber, targetStatus] of reconcileNeedsUseCasesProjectStatus(
+      projectDetails.issueStatusMap,
+      featureIssues,
+      allUseCases,
+    )) {
+      const option = projectDetails.statusOptions.find((o: any) => o.name.toLowerCase() === targetStatus.toLowerCase());
+      if (!option) continue;
+      console.log(`${IS_DRY_RUN ? '[DRY RUN] Would set' : 'Setting'} project status for #${issueNumber} from "${ProjectStatus.NeedsUseCases}" to "${targetStatus}"...`);
+      if (!IS_DRY_RUN) {
+        await updateProjectItemStatus(issueNumber, projectDetails.projectId, projectDetails.statusFieldId, option.id);
+      }
+    }
+  }
+
   // Update use case checklists in feature issue bodies (open and closed)
   for (const [featureId, useCases] of featureUseCaseMap) {
     const featureData = featureToIssueMap.get(featureId);
@@ -752,6 +909,12 @@ async function cleanupOrphanedIssues(allUseCases: any[], activeIssueNumbers: Set
       console.log('ℹ️ Skipping orphaned issue cleanup (no GITHUB_TOKEN set).');
     }
     return;
+  }
+
+  if (activeIssueNumbers.size < MIN_EXPECTED_USE_CASE_ISSUES) {
+    throw new Error(
+      `Refusing to run orphan cleanup: only ${activeIssueNumbers.size} active use-case issues matched (expected at least ${MIN_EXPECTED_USE_CASE_ISSUES}).`
+    );
   }
 
   console.log('🧹 Checking for orphaned issues to cleanup...');
@@ -794,10 +957,10 @@ async function cleanupOrphanedIssues(allUseCases: any[], activeIssueNumbers: Set
 async function run() {
   console.log('🚀 Starting use case sync...');
 
-  const { featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails } = await fetchGitHubData();
+  const { featureIssues, featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails } = await fetchGitHubData();
   const { activeIssueNumbers, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, hasError, errors } = await processUseCases(featureToIssueMap, allUseCases, nameToIssueMap, subdirToIssueMap, projectDetails);
   await cleanupOrphanedIssues(allUseCases, activeIssueNumbers);
-  await syncFeatureIssues(featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, projectDetails);
+  await syncFeatureIssues(featureIssues, featureToIssueMap, featuresWithActiveUseCases, featuresWithAnyUseCases, featureUseCaseMap, projectDetails, allUseCases);
 
   if (hasError) {
     console.error('\n🛑 Sync failed due to validation errors:\n');

@@ -1,0 +1,1 @@
+- Add a coffee feedback form to the Daily Grind homepage featuring a custom star-rating web component inside a fieldset that participates natively in form submission, required constraint validation, form reset, disabled fieldsets, and browser state restoration.

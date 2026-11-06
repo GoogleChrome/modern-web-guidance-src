@@ -1,0 +1,109 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..232a6c6 100644
+--- a/index.html
++++ b/index.html
+@@ -74,11 +74,10 @@
+ 
+     /* Hero Section */
+     .hero {
++      position: relative;
++      isolation: isolate;
+       height: 60vh;
+-      background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+-        url('https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=1350&q=80');
+-      background-size: cover;
+-      background-position: center;
++      background: var(--primary);
+       display: flex;
+       flex-direction: column;
+       justify-content: center;
+@@ -88,6 +87,17 @@
+       padding: 0 20px;
+     }
+ 
++    .hero-image {
++      position: absolute;
++      inset: 0;
++      z-index: -1;
++      width: 100%;
++      height: 100%;
++      object-fit: cover;
++      object-position: center;
++      filter: brightness(0.5);
++    }
++
+     .hero h1 {
+       font-size: 3rem;
+       margin-bottom: 1rem;
+@@ -120,6 +130,16 @@
+       color: var(--primary);
+     }
+ 
++    .card-image {
++      display: block;
++      width: 100%;
++      height: auto;
++      aspect-ratio: 3 / 2;
++      object-fit: cover;
++      border-radius: 4px;
++      margin-bottom: 15px;
++    }
++
+     .btn {
+       display: inline-block;
+       background: var(--primary);
+@@ -169,6 +189,9 @@
+   </nav>
+ 
+   <header class="hero">
++    <img class="hero-image"
++      src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=1350&amp;q=80"
++      alt="" width="1350" height="900" fetchpriority="high">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -179,16 +202,25 @@
+       <h2 style="text-align: center;">Seasonal Favorites</h2>
+       <div class="grid">
+         <div class="card">
++          <img class="card-image"
++            src="https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&amp;fit=crop&amp;w=600&amp;h=400&amp;q=80"
++            alt="Latte topped with milk foam art" width="600" height="400" loading="lazy">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+           <a href="/menu/seasonal" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-image"
++            src="https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?auto=format&amp;fit=crop&amp;w=600&amp;h=400&amp;q=80"
++            alt="A cup of dark espresso" width="600" height="400" loading="lazy">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+           <a href="/menu/espresso" class="btn">View Details</a>
+         </div>
+         <div class="card">
++          <img class="card-image"
++            src="https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&amp;fit=crop&amp;w=600&amp;h=400&amp;q=80"
++            alt="Cold coffee served over ice in a glass" width="600" height="400" loading="lazy">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+           <a href="/menu/cold-brew" class="btn">View Details</a>
+diff --git a/package.json b/package.json
+index 2bd4d77..587c05a 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node -e \"require('node:fs').mkdirSync('dist', { recursive: true }); require('node:fs').copyFileSync('index.html', 'dist/index.html');\"",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {

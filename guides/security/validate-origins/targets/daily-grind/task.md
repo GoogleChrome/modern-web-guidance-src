@@ -1,0 +1,1 @@
+- Add origin and site validation to The Daily Grind page to verify cross-window messages from a trusted ordering origin, validate same-site redirect URLs and external links without string-splitting bugs, and pin the sender identity of a sandboxed iframe widget on initialization so subsequent messages from that same widget are accepted while other sandboxed iframes are rejected.

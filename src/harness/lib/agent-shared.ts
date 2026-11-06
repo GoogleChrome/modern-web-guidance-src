@@ -2,16 +2,21 @@ import fs from 'fs';
 import path from 'path';
 import { execSync, spawn, type SpawnOptions } from 'child_process';
 import { Agents, type SuiteConfig } from '../config.ts';
+import { DETECTED_AGENT_ENV_VARS, PI_AGENT_PATH_PATTERN } from '../../cli/telemetry/detect-agent.ts';
 import { ZERO_PASSRATE_PATCH_FILE } from '../../core/guide-validation.ts';
+import { DEFAULT_GUIDED_MWGRC } from '../../core/feature-gates.ts';
+import { MODERN_WEB_LOG_FILE } from '../../core/constants.ts';
+import { normalizeBaselineTarget, type MwgConfig } from '../../core/mwgrc.ts';
 import { rootDir, guidesDir } from '../../core/paths.ts';
 import { capturePatchFromGit, initGitRepo } from '../../core/patch-utils.ts';
+import { gitExec } from '../../core/git-utils.ts';
 import { buildSandboxPolicy, wrapCommandInSandbox } from './sandbox.ts';
 
 import { setupGeminiCliCredentials, getGeminiCliCommandAndArgs } from '../agents/gemini-cli-agent.ts';
 import { setupJetskiCliCredentials, getJetskiCliCommandAndArgs } from '../agents/jetski-cli-agent.ts';
 import { setupClaudeCodeCredentials, getClaudeCodeCommandAndArgs } from '../agents/claude-code-agent.ts';
 import { setupCodexCliCredentials, getCodexCliCommandAndArgs } from '../agents/codex-cli-agent.ts';
-import { setupPiCredentials, getPiCommandAndArgs } from '../agents/pi-agent.ts';
+import { setupPiCredentials, getPiCommandAndArgs, getPiEnvOverrides } from '../agents/pi-agent.ts';
 import { setupAntigravityCliCredentials, getAntigravityCliCommandAndArgs } from '../agents/antigravity-cli-agent.ts';
 
 export function isNodeError(err: unknown): err is NodeJS.ErrnoException {
@@ -38,7 +43,11 @@ export function setupAgentCredentials(agent: Agents, tempHome: string): void {
   }
 }
 
-export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command: string; commandArgs: string[] } {
+export function getAgentCommandAndArgs(
+  agent: Agents,
+  prompt: string,
+  homeDir?: string,
+): { command: string; commandArgs: string[]; envOverrides?: NodeJS.ProcessEnv } {
   switch (agent) {
     case Agents.JETSKI_CLI:
       return getJetskiCliCommandAndArgs(prompt);
@@ -49,7 +58,7 @@ export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command
     case Agents.CODEX_CLI:
       return getCodexCliCommandAndArgs(prompt);
     case Agents.PI:
-      return getPiCommandAndArgs(prompt);
+      return { ...getPiCommandAndArgs(prompt), envOverrides: getPiEnvOverrides(homeDir) };
     case Agents.ANTIGRAVITY_CLI:
       return getAntigravityCliCommandAndArgs(prompt);
     default:
@@ -57,13 +66,30 @@ export function getAgentCommandAndArgs(agent: Agents, prompt: string): { command
   }
 }
 
+export function setupInterceptorShims(homeDir: string, runType: string = 'guided'): string {
+  const shimDir = path.join(homeDir, '.gd-bin');
+  fs.mkdirSync(shimDir, { recursive: true });
+  const templatePath = path.join(import.meta.dirname, '..', 'npx-intercept.template.ts');
+  const localCliPath = runType === 'guided'
+    ? path.join(rootDir, 'dist', 'skills-cli', 'skills/modern-web-guidance/modern-web.mjs')
+    : '';
+  const templateContent = fs.readFileSync(templatePath, 'utf8').replace('__LOCAL_CLI_PATH__', localCliPath);
+  for (const binName of ['npx', 'pnpx', 'pnpm']) {
+    const wrapperPath = path.join(shimDir, binName);
+    fs.writeFileSync(wrapperPath, templateContent, { mode: 0o755 });
+    fs.chmodSync(wrapperPath, 0o755);
+  }
+  return shimDir;
+}
+
 export function setupIsolatedWorkDir(
   agent: Agents,
   templateDir: string,
-  runType: string,
-  targetDir?: string
+  runType: string
 ): string {
-  const tempHome = createIsolatedHome(`ghh-${agent}`, targetDir);
+  const tempHome = createIsolatedHome(`ghh-${agent}`);
+  const shimDir = setupInterceptorShims(tempHome, runType);
+  setupIsolatedShellProfiles(tempHome, shimDir);
   const workDir = createWorkDir(templateDir, tempHome, runType);
 
   setupAgentCredentials(agent, tempHome);
@@ -123,14 +149,14 @@ export function spawnAsync(command: string, args: string[], options: SpawnOption
 
 /**
  * Sets up shell profile files (.bashrc, .bash_profile, .zshrc, .zprofile, .profile) in the isolated HOME directory
- * to ensure that targetDir (containing our npx interceptor shim) remains at the front of PATH even if
+ * to ensure that shimDir (containing our npx interceptor shim) remains at the front of PATH even if
  * an external binary or login shell invokes /usr/libexec/path_helper and resets PATH.
  * @param homeDir Path to the isolated HOME directory
- * @param targetDir Path to the directory containing our intercepted binaries (like npx)
+ * @param shimDir Path to the directory containing our intercepted binaries (like npx)
  */
-export function setupIsolatedShellProfiles(homeDir: string, targetDir: string): void {
+export function setupIsolatedShellProfiles(homeDir: string, shimDir: string): void {
   try {
-    const profileContent = `export PATH="${targetDir}:$PATH"\n`;
+    const profileContent = `export PATH="${shimDir}:$PATH"\n`;
     const profileFiles = ['.bashrc', '.bash_profile', '.zshrc', '.zprofile', '.profile'];
     for (const file of profileFiles) {
       fs.writeFileSync(path.join(homeDir, file), profileContent, 'utf8');
@@ -434,18 +460,36 @@ export function parseAgentArgs(scriptName: string): AgentArgs {
  * @returns The path to the working directory within the isolated home
  */
 export function createWorkDir(templateDir: string, homeDir: string, runType: string): string {
-  // For the single task run, there is no template
-  // Create the empty work dir with the runType as the directory name
-  if (templateDir === '') {
-    const workDir = path.join(homeDir, runType);
+  const isSingleTask = templateDir === '';
+  const workDir = isSingleTask
+    ? path.join(homeDir, runType)
+    : path.join(homeDir, path.basename(templateDir));
+
+  if (isSingleTask) {
     fs.mkdirSync(workDir, { recursive: true });
-    return workDir;
+  } else {
+    execSync(`cp -R "${templateDir}" "${homeDir}/"`);
   }
-  // For the suite run, copy the template directory to the isolated home directory, preserving symlinks
-  execSync(`cp -R "${templateDir}" "${homeDir}/"`);
-  const workDir = path.join(homeDir, path.basename(templateDir));
+
+  // Guided sandboxes are pre-opted-in so gated guides can be retrieved; .mwgrc must land in the
+  // root commit so it stays out of agent.patch (suite templates arrive with .git already).
+  // Also write to homeDir so agents that `cd /tmp` before running `npx modern-web-guidance`
+  // still resolve the sandbox's .mwgrc via the HOME fallback.
+  if (runType === 'guided') {
+    const mwgConfig: MwgConfig = { ...DEFAULT_GUIDED_MWGRC };
+    const normalizedBaseline = normalizeBaselineTarget(process.env.BASELINE_TARGET);
+    if (normalizedBaseline && normalizedBaseline !== 'widely') {
+      mwgConfig.baseline = normalizedBaseline;
+    }
+    const serialized = JSON.stringify(mwgConfig, null, 2) + '\n';
+    fs.writeFileSync(path.join(workDir, '.mwgrc'), serialized, 'utf8');
+    fs.writeFileSync(path.join(homeDir, '.mwgrc'), serialized, 'utf8');
+  }
   if (!fs.existsSync(path.join(workDir, '.git'))) {
     initGitRepo(workDir);
+  } else if (runType === 'guided') {
+    gitExec(['add', '.mwgrc'], { cwd: workDir, isolated: true, stdio: 'ignore' });
+    gitExec(['commit', '-q', '--amend', '--no-edit'], { cwd: workDir, isolated: true, stdio: 'ignore' });
   }
   return workDir;
 }
@@ -563,6 +607,74 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
   }
 }
 
+const STRIPPED_ENV_FRAGMENTS = [
+  // Package manager & guidance eval harness internals
+  'npm_',
+  'PNPM_',
+  'pnpm_',
+  'GD_SUITE_CONFIG$',
+  'MODERN_WEB_LOG_DIR$',
+  'BASELINE_TARGET$',
+  'INIT_CWD$',
+  'NODE_PATH$',
+  'OLDPWD$',
+  // Non-detection session & prefix markers (exact detection vars come from DETECTED_AGENT_ENV_VARS;
+  // preserve config vars like CLAUDE_CODE_USE_VERTEX, GEMINI_CLI_TRUST_WORKSPACE, ANTIGRAVITY_GCP_PROJECT)
+  'INVOKER_INFO_',
+  'ANTIGRAVITY_(?:AGENTAPI_EXE|APP_DATA_DIR|CONVERSATION_ID|CSRF_TOKEN|LS_ADDRESS|LS_VERSION|PROJECT_ID|SOURCE_METADATA|TRAJECTORY_ID)$',
+  'CLAUDE_CODE_(?:ACTION$|AGENT_NAME$|CHILD_SESSION|ENTRYPOINT$|PARENT_SESSION_ID$|SESSION_|TEAM_NAME$)',
+  'CLAUDE_AGENT_SDK_',
+  'CODEX_HOME$',
+  'CURSOR_TRACE_ID$',
+  'GEMINI_CLI_NO_RELAUNCH$',
+  'GROK_PLUGIN_',
+  'KIMI_PLUGIN_',
+  'PI_CODING_AGENT_',
+];
+
+const HARNESS_STRIPPED_ENV_PATTERN = new RegExp(`^(?:${STRIPPED_ENV_FRAGMENTS.join('|')})`);
+
+/**
+ * Strips package-manager, harness-internal, and host AI-agent session markers before
+ * spawning child agent processes while preserving provider and harness config variables.
+ */
+export function sanitizeAgentChildEnv(
+  sourceEnv: NodeJS.ProcessEnv = process.env,
+  overrides?: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv {
+  const sanitized: NodeJS.ProcessEnv = {};
+
+  for (const [key, value] of Object.entries(sourceEnv)) {
+    if (value === undefined) continue;
+    if (DETECTED_AGENT_ENV_VARS.has(key) || HARNESS_STRIPPED_ENV_PATTERN.test(key)) continue;
+    if (key === 'TERM_PROGRAM' && /kiro/i.test(value)) continue;
+    if (key.toUpperCase() === 'PATH') {
+      const cleaned = value
+        .split(path.delimiter)
+        .filter(entry => entry && !PI_AGENT_PATH_PATTERN.test(entry))
+        .join(path.delimiter);
+      sanitized.PATH = sanitized.PATH && cleaned
+        ? `${sanitized.PATH}${path.delimiter}${cleaned}`
+        : (sanitized.PATH || cleaned);
+      continue;
+    }
+    sanitized[key] = value;
+  }
+
+  if (overrides) {
+    for (const [key, value] of Object.entries(overrides)) {
+      const targetKey = key.toUpperCase() === 'PATH' ? 'PATH' : key;
+      if (value === undefined) {
+        delete sanitized[targetKey];
+      } else {
+        sanitized[targetKey] = value;
+      }
+    }
+  }
+
+  return sanitized;
+}
+
 /**
  * Runs a CLI agent command, capturing output to the terminal and to log files.
  * @param command The binary to run
@@ -571,6 +683,7 @@ export function exportTrajectories(sourceDir: string, pattern: string, targetDir
  * @param targetDir The target directory for logs and results
  * @param agentName Name of the agent (for error messages)
  * @param runType The run type ('guided' or 'unguided'); controls what the sandbox exposes
+ * @param envOverrides Optional environment variables to set after sanitizing process.env
  */
 export async function runCliAgentCommand(
   command: string,
@@ -578,18 +691,35 @@ export async function runCliAgentCommand(
   workDir: string,
   targetDir: string,
   agentName: string,
-  runType: string
+  runType: string,
+  envOverrides?: NodeJS.ProcessEnv,
 ): Promise<void> {
-  const sanitizedEnv = {
-    ...process.env,
-    PWD: workDir,
-    PWTEST_CACHE_DIR: path.join(process.env.HOME || workDir, '.cache', 'playwright-transform'),
-  };
+  const tempHome = path.dirname(workDir);
+  const shimDir = path.join(tempHome, '.gd-bin');
+  const resultsRoot = path.join(rootDir, 'results');
+  const sanitizedEnv = sanitizeAgentChildEnv(process.env, envOverrides);
+  sanitizedEnv.PWD = workDir;
+  sanitizedEnv.PATH = [
+    shimDir,
+    ...(sanitizedEnv.PATH || '')
+      .split(path.delimiter)
+      .filter(p => p && p !== targetDir && !p.startsWith(targetDir + path.sep) && !p.startsWith(resultsRoot + path.sep)),
+  ].join(path.delimiter);
+  sanitizedEnv.PWTEST_CACHE_DIR = path.join(sanitizedEnv.HOME || process.env.HOME || workDir, '.cache', 'playwright-transform');
+
+  const isolatedLogPath = path.join(tempHome, MODERN_WEB_LOG_FILE);
+  let stopWatchingMcpLog = () => {};
+  if (runType === 'guided') {
+    sanitizedEnv.MODERN_WEB_LOG_DIR = tempHome;
+    sanitizedEnv.ENABLE_FILE_LOGGING = 'true';
+    stopWatchingMcpLog = watchLogFile(isolatedLogPath);
+  }
+
   // Hide the repo from the agent so it can't read guides/expectations/graders.
-  const sandboxed = wrapCommandInSandbox(command, commandArgs, buildSandboxPolicy(targetDir, runType));
+  const sandboxed = wrapCommandInSandbox(command, commandArgs, buildSandboxPolicy(tempHome, runType));
   const child = spawn(sandboxed.command, sandboxed.commandArgs, {
     cwd: workDir,
-    env: sanitizedEnv, // Pass through environment variables (including new HOME and sanitized PWD)
+    env: sanitizedEnv,
     stdio: ['ignore', 'pipe', 'pipe'], // 'pipe' captures output for log files but does NOT print to terminal natively
     detached: true
   });
@@ -672,11 +802,11 @@ export async function runCliAgentCommand(
     }
 
     if (timedOut || exitCode !== 0) {
-      throw new Error(`${agentName} exited with code ${timedOut ? 'TIMEOUT (10m)' : exitCode}`);
+      throw new Error(`${agentName} exited with code ${timedOut ? 'TIMEOUT (15m)' : exitCode}`);
     }
   } catch (err: any) {
     console.error(`Error in runCliAgentCommand:`, err);
-    const finalExitCode = timedOut ? 'TIMEOUT (10m)' : recordedExit;
+    const finalExitCode = timedOut ? 'TIMEOUT (15m)' : recordedExit;
     
     // Save generation failure info so results collector registers early failure
     try {
@@ -685,7 +815,7 @@ export async function runCliAgentCommand(
         agentName,
         exitCode: finalExitCode,
         stderr: (timedOut && !stderrData)
-          ? 'Agent timed out after 10 minutes'
+          ? 'Agent timed out after 15 minutes'
           : (stderrData || err.message || String(err)),
         stdout: stdoutData
       }, null, 2));
@@ -705,6 +835,10 @@ export async function runCliAgentCommand(
     
     throw err; // Re-throw to propagate failure
   } finally {
+    stopWatchingMcpLog();
+    if (runType === 'guided' && fs.existsSync(isolatedLogPath)) {
+      copyFileIfExists(isolatedLogPath, path.join(targetDir, MODERN_WEB_LOG_FILE));
+    }
     process.off('SIGTERM', onSigTerm);
   }
 }
@@ -795,14 +929,15 @@ export function generateExportHtml(fileBuffer: Uint8Array, fileName: string, pro
 export function getGraderScriptContent(
   targetDir: string,
   graderPath: string,
-  guideName: string
+  guideName: string,
+  baselineTarget?: string
 ): string {
   const runGraderModulePath = path.join(rootDir, 'src/grading/run-grader.ts');
   const targetFile = path.join(targetDir, 'index.html');
-  const gradeReportDir = path.join(targetDir, 'grade-report');
   const graderResults = path.join(targetDir, `${guideName}_results.json`);
   const agentPatch = path.join(targetDir, 'agent.patch');
   const zeroPassratePatch = path.join(path.dirname(graderPath), ZERO_PASSRATE_PATCH_FILE);
+  const resolvedBaselineTarget = baselineTarget || 'widely';
 
   return `import fs from 'fs';
 import { runPlaywright } from ${JSON.stringify(runGraderModulePath)};
@@ -814,10 +949,12 @@ async function run() {
     const json = await runPlaywright(
       ${JSON.stringify(targetFile)},
       ${JSON.stringify(graderPath)},
-      ${JSON.stringify(gradeReportDir)},
-      'inherit',
-      patchFile,
-      zeroPassrateFile
+      {
+        stdio: 'inherit',
+        patchFile,
+        zeroPassrateFile,
+        baselineTarget: ${JSON.stringify(resolvedBaselineTarget)},
+      }
     );
     fs.writeFileSync(${JSON.stringify(graderResults)}, JSON.stringify(json, null, 2));
   } catch (err) {

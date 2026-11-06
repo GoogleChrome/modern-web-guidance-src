@@ -160,7 +160,7 @@ test('The implementation uses CSS container-scroll-state-queries as the primary 
         const rule = rules[i];
         const cssText = rule.cssText.toLowerCase();
 
-        if (cssText.includes('container-type') && cssText.includes('scroll-state')) {
+        if ((cssText.includes('container-type') || cssText.includes('container:')) && cssText.includes('scroll-state')) {
           foundContainerType = true;
         }
 

@@ -1,0 +1,1 @@
+- Add a coffee shop locations map section below the Seasonal Favorites grid in `index.html` with a large two-dimensional cafe map surface that users can freely pan or scroll across both horizontal and vertical directions simultaneously, including diagonal panning and changing direction mid-gesture without locking to a single axis.

@@ -1,0 +1,87 @@
+diff --git a/index.html b/index.html
+index 66c9173..b2173ee 100644
+--- a/index.html
++++ b/index.html
+@@ -195,6 +195,34 @@
+         </div>
+       </div>
+     </section>
++
++    <section style="text-align: center; margin-top: 40px;">
++      <h2>From Bean to Cup</h2>
++      <video
++        controls
++        loading="lazy"
++        width="800"
++        height="450"
++        poster="/images/roasting-poster.jpg"
++        preload="metadata"
++        style="max-width: 100%; height: auto;"
++      >
++        <source src="/media/roasting.webm" type="video/webm">
++        <source src="/media/roasting.mp4" type="video/mp4">
++        <track src="/media/roasting-en.vtt" kind="captions" srclang="en" label="English">
++      </video>
++
++      <figure>
++        <figcaption id="podcast-title">Grind Time Podcast: Meet Our Farmers</figcaption>
++        <audio
++          controls
++          loading="lazy"
++          preload="metadata"
++          src="/media/grind-time-ep1.mp3"
++          aria-labelledby="podcast-title"
++        ></audio>
++      </figure>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +235,47 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    // Fallback for browsers without native lazy loading on media elements
++    if (!Object.hasOwn(HTMLMediaElement.prototype, 'loading')) {
++      const mediaObserver = new IntersectionObserver((entries, observer) => {
++        for (const entry of entries) {
++          if (!entry.isIntersecting) continue;
++          const media = entry.target;
++          if (media.dataset.poster) {
++            media.poster = media.dataset.poster;
++            delete media.dataset.poster;
++          }
++          if (media.dataset.preload) {
++            media.preload = media.dataset.preload;
++            delete media.dataset.preload;
++          }
++          if (media.dataset.src) {
++            media.src = media.dataset.src;
++            delete media.dataset.src;
++          }
++          for (const source of media.querySelectorAll('source[data-src]')) {
++            source.src = source.dataset.src;
++            delete source.dataset.src;
++          }
++          media.load();
++          observer.unobserve(media);
++        }
++      }, { rootMargin: '200px 0px' });
++
++      for (const media of document.querySelectorAll('video[loading="lazy"], audio[loading="lazy"][controls]')) {
++        if (media.hasAttribute('poster')) {
++          media.dataset.poster = media.getAttribute('poster');
++          media.removeAttribute('poster');
++        }
++        if (media.hasAttribute('preload') && media.getAttribute('preload') !== 'none') {
++          media.dataset.preload = media.getAttribute('preload');
++        }
++        media.preload = 'none';
++        mediaObserver.observe(media);
++      }
++    }
++  </script>
+ </body>
+ 
+ </html>

@@ -1,0 +1,227 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..849ddff
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1 @@
++dist/
+diff --git a/.well-known/web-app-origin-association b/.well-known/web-app-origin-association
+new file mode 100644
+index 0000000..c324f67
+--- /dev/null
++++ b/.well-known/web-app-origin-association
+@@ -0,0 +1,8 @@
++{
++  "https://new-app.example.com": {
++    "allow_migration": true
++  },
++  "https://new-app.example.com/manifest.json": {
++    "allow_migration": true
++  }
++}
+diff --git a/DEPLOYMENT.md b/DEPLOYMENT.md
+new file mode 100644
+index 0000000..a8cfdfa
+--- /dev/null
++++ b/DEPLOYMENT.md
+@@ -0,0 +1,27 @@
++# Daily Grind origin migration
++
++Run `npm run build`. Deploy `dist/old` at `https://old-app.example.com`
++and `dist/new` at `https://new-app.example.com`, each as its own site root.
++These are placeholder origins: replace them in both manifests, the association
++file, the fallback link in `index.html`, and the validation in `scripts/build.mjs`
++before deployment. Both origins must use HTTPS and share the same registrable
++domain (eTLD+1); do not infer it by taking the last two hostname labels.
++
++The old manifest's `id` must match the identity of the already installed app.
++The predecessor shown here is `https://old-app.example.com/`; change it to the
++actual installed identity if different. The successor identity resolves to
++`https://new-app.example.com/`, and its install page links to `/manifest.json`.
++
++Serve `/manifest.json` with `application/manifest+json` (or `application/json`).
++On the old origin, serve `/.well-known/web-app-origin-association` as public JSON
++with `application/json`, without authentication, redirects, or SPA fallback.
++Ensure the host serves dot-directories. The authorization includes both the
++successor origin and its exact manifest URL. Keep the old host available so the
++browser can verify the handover and existing users can follow the fallback link.
++
++Migration is suggested by default. It preserves installation integration such
++as shortcuts, not local storage, IndexedDB, cookies, or browser permissions.
++Users are told to sign in and configure their settings again. Add a separate
++authenticated data synchronization flow if data continuity is needed.
++Browsers without migration support can use the always-visible old-app banner
++to open and manually install the new app, then remove the old installation.
+diff --git a/icons/coffee.svg b/icons/coffee.svg
+new file mode 100644
+index 0000000..dfbb659
+--- /dev/null
++++ b/icons/coffee.svg
+@@ -0,0 +1,6 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
++  <rect width="512" height="512" rx="96" fill="#4e342e"/>
++  <path d="M128 176h224v128a96 96 0 0 1-96 96h-32a96 96 0 0 1-96-96z" fill="#fafafa"/>
++  <path d="M352 192h24a56 56 0 0 1 0 112h-24" fill="none" stroke="#fafafa" stroke-width="24"/>
++  <path d="M192 136v-40m64 40v-40m64 40v-40" stroke="#ffab40" stroke-width="20" stroke-linecap="round"/>
++</svg>
+diff --git a/index.html b/index.html
+index 66c9173..a3ffd0a 100644
+--- a/index.html
++++ b/index.html
+@@ -5,6 +5,8 @@
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>The Daily Grind | Artisanal Coffee</title>
++  <link rel="manifest" href="/manifest.json">
++  <meta name="theme-color" content="#4e342e">
+   <style>
+     :root {
+       --primary: #4e342e;
+@@ -73,6 +75,18 @@
+     }
+ 
+     /* Hero Section */
++    .migration-banner {
++      background: #fff3e0;
++      padding: 20px 5%;
++      border-bottom: 2px solid var(--accent);
++    }
++
++    .migration-banner a {
++      color: var(--primary);
++      font-weight: bold;
++      text-underline-offset: 3px;
++    }
++
+     .hero {
+       height: 60vh;
+       background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+@@ -157,6 +171,16 @@
+ 
+ <body>
+ 
++  <aside class="migration-banner" aria-labelledby="migration-heading">
++    <h2 id="migration-heading">The Daily Grind has moved</h2>
++    <p><a href="https://new-app.example.com/">Open the new Daily Grind app</a>.
++      If your browser does not offer an automatic update, open the new site and install it
++      using your browser’s install option, then remove the old app manually.</p>
++    <p>Installation updates can preserve shortcuts and home screen icons. Settings, saved data,
++      and browser permissions do not transfer. You may need to sign in again, configure your
++      settings, and grant permissions on the new site.</p>
++  </aside>
++
+   <nav>
+     <div class="logo">THE DAILY GRIND</div>
+     <ul>
+diff --git a/manifest.json b/manifest.json
+new file mode 100644
+index 0000000..2858d34
+--- /dev/null
++++ b/manifest.json
+@@ -0,0 +1,19 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "id": "/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    { "src": "/icons/coffee.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
++  ],
++  "migrate_to": [
++    {
++      "id": "https://new-app.example.com/",
++      "install_url": "https://new-app.example.com/"
++    }
++  ]
++}
+diff --git a/new/manifest.json b/new/manifest.json
+new file mode 100644
+index 0000000..d8dbff2
+--- /dev/null
++++ b/new/manifest.json
+@@ -0,0 +1,16 @@
++{
++  "name": "The Daily Grind",
++  "short_name": "Daily Grind",
++  "id": "/",
++  "start_url": "/",
++  "scope": "/",
++  "display": "standalone",
++  "background_color": "#fafafa",
++  "theme_color": "#4e342e",
++  "icons": [
++    { "src": "/icons/coffee.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
++  ],
++  "migrate_from": [
++    { "id": "https://old-app.example.com/" }
++  ]
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..28acf96 100644
+--- a/package.json
++++ b/package.json
+@@ -2,6 +2,7 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "node scripts/build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
+   "pnpm": {
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..aff49cf
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,47 @@
++import assert from 'node:assert/strict';
++import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
++import { fileURLToPath } from 'node:url';
++import path from 'node:path';
++
++const root = fileURLToPath(new URL('../', import.meta.url));
++const read = (file) => readFile(path.join(root, file), 'utf8');
++const [html, oldManifest, newManifest, association] = await Promise.all([
++  read('index.html'),
++  read('manifest.json').then(JSON.parse),
++  read('new/manifest.json').then(JSON.parse),
++  read('.well-known/web-app-origin-association').then(JSON.parse),
++]);
++
++// These example origins share the explicitly known registrable domain example.com.
++// Keep this allowlist in sync with the deployment configuration when changing domains.
++const oldOrigin = 'https://old-app.example.com';
++const newOrigin = 'https://new-app.example.com';
++for (const origin of [oldOrigin, newOrigin]) {
++  const url = new URL(origin);
++  assert.equal(url.protocol, 'https:');
++  assert.ok(url.hostname.endsWith('.example.com'), 'Migration must stay same-site');
++}
++assert.ok(newManifest.id, 'The new app needs an explicit identity');
++assert.equal(new URL(oldManifest.id, oldOrigin).href, newManifest.migrate_from[0].id);
++assert.equal(new URL(newManifest.id, newOrigin).href, oldManifest.migrate_to[0].id);
++assert.equal(oldManifest.migrate_to[0].install_url, `${newOrigin}/`);
++assert.equal(association[newOrigin].allow_migration, true);
++assert.equal(association[`${newOrigin}/manifest.json`].allow_migration, true);
++assert.ok(html.includes('rel="manifest" href="/manifest.json"'));
++assert.ok(html.includes(`href="${newOrigin}/"`), 'The old app needs a fallback link');
++
++const banner = /\n  <aside class="migration-banner"[\s\S]*?<\/aside>\n/;
++assert.ok(banner.test(html), 'Expected a migration banner in the old app');
++const newHtml = html.replace(banner, '\n');
++
++const output = path.join(root, 'dist');
++await rm(output, { recursive: true, force: true });
++for (const site of ['old', 'new']) {
++  const destination = path.join(output, site);
++  await mkdir(destination, { recursive: true });
++  await writeFile(path.join(destination, 'index.html'), site === 'old' ? html : newHtml);
++  await cp(path.join(root, site === 'old' ? 'manifest.json' : 'new/manifest.json'), path.join(destination, 'manifest.json'));
++  await cp(path.join(root, 'icons'), path.join(destination, 'icons'), { recursive: true });
++}
++await cp(path.join(root, '.well-known'), path.join(output, 'old/.well-known'), { recursive: true });
++console.log('Migration configuration validated. Built dist/old and dist/new.');
