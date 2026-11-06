@@ -236,6 +236,48 @@ describe('Guides Validation (Single Source of Truth)', () => {
     }
   });
 
+  it('validates that all feature IDs and fields in features/origin-trials.json are valid', async () => {
+    const { validateFeature } = await import('../core/baseline.ts');
+    const otPath = path.join(REPO_ROOT, 'features', 'origin-trials.json');
+    const otRegistry = JSON.parse(fs.readFileSync(otPath, 'utf8'));
+
+    for (const [fid, entry] of Object.entries<any>(otRegistry)) {
+      const res = validateFeature(fid);
+      if (!res.isValid) {
+        assert.fail(`Feature ID "${fid}" in features/origin-trials.json is invalid: ${res.errorMessage}`);
+      }
+      assert.ok(
+        typeof entry.chromestatus_url === 'string' && entry.chromestatus_url.startsWith('https://chromestatus.com/feature/'),
+        `Origin trial "${fid}" must have a valid chromestatus_url`
+      );
+    }
+  });
+
+  it('validates that all feature IDs and fields in features/volatile-features.json are valid', async () => {
+    const { validateFeature } = await import('../core/baseline.ts');
+    const volatilePath = path.join(REPO_ROOT, 'features', 'volatile-features.json');
+    const volatileRegistry = JSON.parse(fs.readFileSync(volatilePath, 'utf8'));
+
+    for (const [fid, entry] of Object.entries<any>(volatileRegistry)) {
+      const res = validateFeature(fid);
+      if (!res.isValid) {
+        assert.fail(`Feature ID "${fid}" in features/volatile-features.json is invalid: ${res.errorMessage}`);
+      }
+      assert.ok(
+        typeof entry.reason === 'string' && entry.reason.length > 0,
+        `Volatile feature "${fid}" must specify a non-empty reason (e.g., 'recent-single-engine' or 'built-in-ai')`
+      );
+    }
+  });
+
+  it('correctly evaluates volatile feature active status', async () => {
+    const { isVolatileActive } = await import('../core/feature-gates.ts');
+
+    assert.strictEqual(isVolatileActive({ reason: 'recent-single-engine' }), true);
+    assert.strictEqual(isVolatileActive({ reason: 'built-in-ai' }), true);
+    assert.strictEqual(isVolatileActive(undefined), false);
+  });
+
   it('validates that all graders conform to static anti-pattern checks', async () => {
     const { checkAllGraders, formatViolations } = await import('../core/grader-lint.ts');
     const violations = checkAllGraders({ repoRoot: REPO_ROOT });
