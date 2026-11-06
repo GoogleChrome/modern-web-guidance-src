@@ -13,7 +13,7 @@ Always read and follow `.agents/skills/<skill>/SKILL.md` before starting a task:
 - `project-guide-validation`: Validating & reviewing guides
 - `project-discipline-guides`: Discipline guides (`DISCIPLINE_GUIDES` in `src/core/guide-validation.ts`)
 - `project-coding-standards`: Repo TypeScript & CLI code (`src/`, `bin/`)
-- `eval-investigation`, `nightly-eval-investigation`, `dev-prompt-canary`: Eval diagnostics & `gd dev` prompt changes
+- `eval-investigation`, `nightly-eval-investigation`, `dev-prompt-canary`, `grader-replay`: Eval diagnostics, grader replay, & `gd dev` prompt changes
 - `project-maintenance`, `coherence-auditor`: Routine maintenance & coherence audits
 
 For repository architecture and contributor workflows, see `docs/CONTEXT.md` and `CONTRIBUTING.md`.
