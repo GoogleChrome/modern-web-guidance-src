@@ -5,8 +5,10 @@ import fs from 'node:fs';
 
 import {
   cleanText,
+  stripParentheticalExamples,
   parseVerifiableExpectations,
   extractTestTitles,
+  extractManifestEntries,
   validateGraderExpectationCoverage,
   formatCoverageFailureMessage,
 } from './grader-coverage.ts';
@@ -17,6 +19,18 @@ describe('Grader Coverage Validation Utility', () => {
     assert.strictEqual(cleanText('1. Output must never be set via innerHTML'), 'Output must never be set via innerHTML');
     assert.strictEqual(cleanText('- should have `interpolate-size: allow-keywords`'), 'have interpolate-size: allow-keywords');
     assert.strictEqual(cleanText('* Should use `onINP` for metric collection'), 'use onINP for metric collection');
+    assert.strictEqual(cleanText('Expectation 6: The implementation uses :not()'), 'The implementation uses :not()');
+  });
+
+  it('strips parenthetical e.g. and such as examples including nested parens and internal punctuation', () => {
+    assert.strictEqual(
+      stripParentheticalExamples('Use semantic elements (e.g., `button.primary` or `input:not([disabled])`). Ensure focus is visible.'),
+      'Use semantic elements. Ensure focus is visible.'
+    );
+    assert.strictEqual(
+      stripParentheticalExamples('Animate discrete states (such as `<dialog>` or `:not([hidden])` elements).'),
+      'Animate discrete states.'
+    );
   });
 
   it('parses top-level expectations and combines indented sub-bullets into their parent', () => {
@@ -124,26 +138,248 @@ test(
   });
 
   it('formats actionable failure messages when expectations are uncovered', () => {
+    const missingItem = {
+      expectation: 'The component wrapper MUST have container-type: inline-size applied.',
+      isCovered: false,
+      bestMatchTest: 'should animate smoothly on click',
+      similarity: 0.22,
+    };
     const fakeResult = {
       isComplete: false,
       graderPath: '/root/guides/cat/my-guide/targets/daily-grind/grader.ts',
       expectationsPath: '/root/guides/cat/my-guide/expectations.md',
-      matches: [],
-      missing: [
-        {
-          expectation: 'The component wrapper MUST have container-type: inline-size applied.',
-          isCovered: false,
-          bestMatchTest: 'should animate smoothly on click',
-          similarity: 0.22,
-        },
+      matches: [
+        { expectation: 'Exp 1', isCovered: true, bestMatchTest: 'Test 1', similarity: 0.9 },
+        { expectation: 'Exp 2', isCovered: true, bestMatchTest: 'Test 2', similarity: 0.9 },
+        missingItem,
       ],
+      missing: [missingItem],
     };
 
-    const msg = formatCoverageFailureMessage(fakeResult, '/root');
-    assert.ok(msg.includes('❌ Uncovered expectation(s) found in grader: guides/cat/my-guide/targets/daily-grind/grader.ts'));
-    assert.ok(msg.includes('The component wrapper MUST have container-type: inline-size applied.'));
-    assert.ok(msg.includes('Closest test found: "should animate smoothly on click" (similarity: 0.22)'));
-    assert.ok(msg.includes('Add a test case verifying this behavior'));
-    assert.ok(msg.includes('Update/rephrase the test name in guides/cat/my-guide/targets/daily-grind/grader.ts'));
+    const useCaseMsg = formatCoverageFailureMessage(fakeResult, '/root');
+    assert.ok(useCaseMsg.includes('❌ Uncovered expectation(s) found in grader: guides/cat/my-guide/targets/daily-grind/grader.ts'));
+    assert.ok(useCaseMsg.includes('1. Expectation 3: "The component wrapper MUST have container-type: inline-size applied."'));
+    assert.ok(useCaseMsg.includes('Closest test found: "should animate smoothly on click" (similarity: 0.22)'));
+    assert.ok(useCaseMsg.includes('Add a test case verifying this behavior'));
+    assert.ok(useCaseMsg.includes('Update/rephrase the test name in guides/cat/my-guide/targets/daily-grind/grader.ts'));
+    assert.ok(useCaseMsg.includes('Use-case graders must test every expectation (SKIPPED manifest entries are not allowed); if this requirement does not apply to the target app, update guides/cat/my-guide/expectations.md or task.md'));
+
+    const disciplineMsg = formatCoverageFailureMessage({ ...fakeResult, isDisciplineGuide: true }, '/root');
+    assert.ok(disciplineMsg.includes('lists all expectations (1..3) and records "// Expectation 3: SKIPPED: <one-line reason>"'));
+  });
+
+  it('covers tested expectations and manifest SKIPPED entries with a non-empty reason in discipline guides', async () => {
+    const tempExp = path.join(import.meta.dirname, 'temp-skip-reason-exp.md');
+    const tempGrader = path.join(import.meta.dirname, 'temp-skip-reason-grader.ts');
+    fs.writeFileSync(
+      tempExp,
+      [
+        '- The overlay is a `<dialog>` with a non-empty accessible name.',
+        '- When a dialog guards unsaved form changes, it has `closedby="none"`.',
+        '- A non-modal dialog panel leaves the page behind it interactive.',
+      ].join('\n')
+    );
+    fs.writeFileSync(
+      tempGrader,
+      [
+        '// Expectation 1: TESTED - Verifies dialog accessible name.',
+        '// Expectation 2: SKIPPED: The target app and task have no form with unsaved changes.',
+        '// - Expectation 3: SKIPPED - The task only builds a modal dialog, not a non-modal panel.',
+        "test('The overlay is a <dialog> with a non-empty accessible name', () => {});",
+      ].join('\n')
+    );
+
+    try {
+      const entries = extractManifestEntries(tempGrader);
+      assert.strictEqual(entries.get(1)?.status, 'TESTED');
+      assert.strictEqual(entries.get(2)?.status, 'SKIPPED');
+      assert.strictEqual(entries.get(2)?.reason, 'The target app and task have no form with unsaved changes.');
+      assert.strictEqual(entries.get(3)?.status, 'SKIPPED');
+
+      const res = await validateGraderExpectationCoverage(tempExp, tempGrader, { isDisciplineGuide: true });
+      assert.strictEqual(res.isComplete, true);
+      assert.strictEqual(res.missing.length, 0);
+      assert.strictEqual(res.matches[0].isCovered, true);
+      assert.strictEqual(res.matches[1].isCovered, true);
+      assert.strictEqual(res.matches[1].bestMatchTest, 'SKIPPED: The target app and task have no form with unsaved changes.');
+      assert.strictEqual(res.matches[2].isCovered, true);
+    } finally {
+      if (fs.existsSync(tempExp)) fs.unlinkSync(tempExp);
+      if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
+    }
+  });
+
+  it('fails when a manifest SKIPPED entry has no reason, even if a test title is similar', async () => {
+    const tempExp = path.join(import.meta.dirname, 'temp-skip-noreason-exp.md');
+    const tempGrader = path.join(import.meta.dirname, 'temp-skip-noreason-grader.ts');
+    fs.writeFileSync(
+      tempExp,
+      [
+        '- A modal dialog is opened with `showModal()`.',
+        '- A modal dialog closes when Escape is pressed.',
+        '- When a dialog guards unsaved form changes, it has `closedby="none"`.',
+      ].join('\n')
+    );
+    fs.writeFileSync(
+      tempGrader,
+      [
+        '// Expectation 1: TESTED - Opens modal dialog with showModal.',
+        '// Expectation 2: SKIPPED',
+        '// Expectation 3: SKIPPED -   ',
+        "test('A modal dialog is opened with showModal() and closes when Escape is pressed', () => {});",
+      ].join('\n')
+    );
+
+    try {
+      const res = await validateGraderExpectationCoverage(tempExp, tempGrader, { isDisciplineGuide: true });
+      assert.strictEqual(res.isComplete, false);
+      assert.strictEqual(res.matches[0].isCovered, true);
+      assert.strictEqual(res.matches[1].isCovered, false);
+      assert.strictEqual(res.matches[1].bestMatchTest, 'SKIPPED (missing reason)');
+      assert.strictEqual(res.matches[2].isCovered, false);
+      assert.strictEqual(res.matches[2].bestMatchTest, 'SKIPPED (missing reason)');
+      assert.strictEqual(res.missing.length, 2);
+    } finally {
+      if (fs.existsSync(tempExp)) fs.unlinkSync(tempExp);
+      if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
+    }
+  });
+
+  it('fails when a manifest SKIPPED entry is in an incomplete manifest that does not list 1..N', async () => {
+    const tempExp = path.join(import.meta.dirname, 'temp-skip-incomplete-exp.md');
+    const tempGrader = path.join(import.meta.dirname, 'temp-skip-incomplete-grader.ts');
+    fs.writeFileSync(
+      tempExp,
+      [
+        '- A modal dialog is opened with `showModal()`.',
+        '- When a dialog guards unsaved form changes, it has `closedby="none"`.',
+      ].join('\n')
+    );
+    fs.writeFileSync(
+      tempGrader,
+      [
+        '// Expectation 2: SKIPPED: The target app and task have no form with unsaved changes.',
+        "test('A modal dialog is opened with showModal()', () => {});",
+      ].join('\n')
+    );
+
+    try {
+      const res = await validateGraderExpectationCoverage(tempExp, tempGrader, { isDisciplineGuide: true });
+      assert.strictEqual(res.isComplete, false);
+      assert.strictEqual(res.matches[0].isCovered, true);
+      assert.strictEqual(res.matches[1].isCovered, false);
+      assert.strictEqual(
+        res.matches[1].bestMatchTest,
+        'SKIPPED, but the manifest lists 1 entries for 2 expectations'
+      );
+    } finally {
+      if (fs.existsSync(tempExp)) fs.unlinkSync(tempExp);
+      if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
+    }
+  });
+
+  it('rejects manifest SKIPPED entries in a use-case guide grader and directs fixes to expectations.md or task.md', async () => {
+    const tempExp = path.join(import.meta.dirname, 'temp-leaf-dialog-exp.md');
+    const tempGrader = path.join(import.meta.dirname, 'temp-leaf-dialog-grader.ts');
+    fs.writeFileSync(
+      tempExp,
+      [
+        '- The overlay is a `<dialog>` with a non-empty accessible name (`aria-labelledby` or `aria-label`).',
+        '- When a dialog guards unsaved form changes, it has `closedby="none"` or cancels the `cancel` event before closing.',
+      ].join('\n')
+    );
+    fs.writeFileSync(
+      tempGrader,
+      [
+        '// Expectation 1: TESTED - Dialog has non-empty accessible name',
+        '// Expectation 2: SKIPPED: The daily-grind task only builds a read-only drink details modal without unsaved form edits.',
+        "test('The overlay is a <dialog> with a non-empty accessible name (aria-labelledby or aria-label)', () => {});",
+      ].join('\n')
+    );
+
+    try {
+      const res = await validateGraderExpectationCoverage(tempExp, tempGrader);
+      assert.strictEqual(res.isComplete, false);
+      assert.strictEqual(res.matches[0].isCovered, true);
+      assert.strictEqual(res.matches[1].isCovered, false);
+      assert.ok(res.matches[1].bestMatchTest.includes('use-case graders must test every expectation; fix in expectations.md or task.md'));
+      const msg = formatCoverageFailureMessage(res, import.meta.dirname);
+      assert.ok(msg.includes('Use-case graders must test every expectation (SKIPPED manifest entries are not allowed)'));
+      assert.ok(msg.includes('temp-leaf-dialog-exp.md or task.md'));
+    } finally {
+      if (fs.existsSync(tempExp)) fs.unlinkSync(tempExp);
+      if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
+    }
+  });
+
+  it('ignores inline comments inside test bodies, casual numbered comments, and duplicate manifest numbers (first entry wins)', () => {
+    const tempGrader = path.join(import.meta.dirname, 'temp-inline-comments-grader.ts');
+    fs.writeFileSync(
+      tempGrader,
+      [
+        "import { test, expect } from './fixture.ts';",
+        '// Expectation 1: TESTED: Checks modal dialog',
+        '// Expectation 1: SKIPPED: Duplicate entry in header should not overwrite first entry',
+        '// Expectation 2: SKIPPED: No unsaved form in base app or task',
+        '// Expectation 3-5: SKIPPED: No credential or payment form in base app or task',
+        '// 6: TESTED - Numbered format with colon',
+        ' * 7. SKIPPED - Numbered format with dot inside block comment',
+        '// 1. tested above',
+        '// 2 skipped',
+        "test.describe('Suite', () => {",
+        "  test('Modal dialog', () => {",
+        '    // 1. tested above',
+        '    // 2 skipped',
+        '    // Expectation 1: SKIPPED: inline comment should never overwrite header manifest',
+        '  });',
+        '});',
+      ].join('\n')
+    );
+
+    try {
+      const entries = extractManifestEntries(tempGrader);
+      assert.strictEqual(entries.size, 7);
+      assert.deepStrictEqual(entries.get(1), { status: 'TESTED', reason: 'Checks modal dialog' });
+      assert.deepStrictEqual(entries.get(2), { status: 'SKIPPED', reason: 'No unsaved form in base app or task' });
+      assert.deepStrictEqual(entries.get(3), { status: 'SKIPPED', reason: 'No credential or payment form in base app or task' });
+      assert.deepStrictEqual(entries.get(4), { status: 'SKIPPED', reason: 'No credential or payment form in base app or task' });
+      assert.deepStrictEqual(entries.get(5), { status: 'SKIPPED', reason: 'No credential or payment form in base app or task' });
+      assert.deepStrictEqual(entries.get(6), { status: 'TESTED', reason: 'Numbered format with colon' });
+      assert.deepStrictEqual(entries.get(7), { status: 'SKIPPED', reason: 'Numbered format with dot inside block comment' });
+    } finally {
+      if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
+    }
+  });
+
+  it('extractTestTitles ignores commented-out tests while preserving tests around **/*.css and http:// strings', () => {
+    const tempGrader = path.join(import.meta.dirname, 'temp-commented-tests-grader.ts');
+    fs.writeFileSync(
+      tempGrader,
+      [
+        "import { test } from './fixture.ts';",
+        "// test('Commented out with single-line comment', () => {});",
+        "  // test('Indented commented out test', () => {});",
+        '/*',
+        "  test('Commented out in multiline block comment', () => {});",
+        '*/',
+        "/* test('Commented out in single-line block comment', () => {}); */",
+        "test('First active test checking **/*.css and http://localhost:4321/*', () => {",
+        "  const pattern = '**/*.css';",
+        "  const url = 'http://localhost:4321/*';",
+        "  const closeLike = '*/';",
+        '});',
+        "test('Second active test after glob and URL strings', () => {});",
+      ].join('\n')
+    );
+
+    try {
+      const titles = extractTestTitles(tempGrader);
+      assert.deepStrictEqual(titles, [
+        'First active test checking **/*.css and http://localhost:4321/*',
+        'Second active test after glob and URL strings',
+      ]);
+    } finally {
+      if (fs.existsSync(tempGrader)) fs.unlinkSync(tempGrader);
+    }
   });
 });

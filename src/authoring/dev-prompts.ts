@@ -150,7 +150,7 @@ Analyze this failure and modify the existing grader file to fix these assertions
     : '';
 
   const disciplineInstruction = opts.isDisciplineGuide
-    ? `${DISCIPLINE_RELEVANCE_RULE} In this task, you do NOT need to write a test for every expectation. Decide relevance from the base application in your workspace, not from the solution patches: do NOT test an expectation whose pattern only exists because a solution patch added it. Also skip expectations the base application already satisfies. If a relevant pattern is implemented in different files or components across solutions, write a project-wide check instead of skipping it. At the top of \`${opts.graderFile}\`, add a comment listing every expectation number as TESTED or SKIPPED with a one-line reason.`
+    ? `${DISCIPLINE_RELEVANCE_RULE} Write a dedicated \`test('...', ...)\` block for each relevant expectation in \`${opts.expectationsFile}\`, and do not omit, merge, or skip any applicable expectation, including when revising after a calibration failure. Decide relevance from the base application and \`${taskFile}\`, not from the solution patches: do NOT test an expectation whose pattern exists only because a solution patch added it without the task asking for it. Skip an expectation only when its precondition is absent from both the base application and the task, or when the base application already satisfies it. A state the grader can create or simulate (a permission state, a viewport width, a failed or denied request, a removed global) is never a missing precondition; test it. If a relevant pattern is implemented in different files or components across solutions, write a project-wide check instead of skipping it. At the top of \`${opts.graderFile}\`, keep a manifest comment listing every expectation number (1..N) as \`Expectation N: TESTED - <one-line summary>\` or \`Expectation N: SKIPPED: <one-line reason>\` (naming the missing precondition, or \`already satisfied by the base application\`).`
     : '';
 
   const coverageInstruction = opts.isDisciplineGuide
@@ -352,6 +352,7 @@ Whenever you determine that changes are needed in \`${GUIDE_FILE}\`, \`${EXPECTA
 1. Directly modify those files in your workspace using your structured file editing tools.
 2. In addition, document your changes in \`${REPORT_FILE}\` under \`#### Actionable Recommendations:\` with a clear explanation and a unified \`diff\` block illustrating the changes applied.
 Do not leave recommended changes only as diff text in the report; always apply them directly to disk.
+Grader edits that delete or disable \`test()\` blocks or add \`SKIPPED\` manifest entries are automatically reverted, so fix \`${EXPECTATIONS_FILE}\` or \`targets/<target>/task.md\` instead.
 
 # INPUTS
 1. **Guide**: \`${GUIDE_FILE}\`

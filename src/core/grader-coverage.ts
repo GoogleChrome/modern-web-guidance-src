@@ -31,23 +31,74 @@ export function cosineSimilarity(vectorA: number[], vectorB: number[]): number {
 
 export function cleanText(text: string): string {
   return text
-    .replace(/^\s*(?:\d+[.)]|-|\*)\s*/, '') // Remove list bullets/numbering
+    .replace(/^\s*(?:(?:Expectation|Exp)\s+\d+[a-z]?(?:\s*\([^)]*\))?\s*[:.)-]?|\d+[.)]|-|\*)\s*/i, '') // Remove list bullets/numbering and Expectation N prefixes
     .replace(/^should\s+/i, '')              // Remove "should" prefix
     .replace(/[`"']/g, '')                   // Strip backticks/quotes
     .replace(/\s+/g, ' ')
     .trim();
 }
 
+export function stripParentheticalExamples(text: string): string {
+  return text.replace(/\s*\((?:e\.g\.[,:]?|such as\b)(?:[^()]|\([^()]*\))*\)/gi, '');
+}
+
+export interface ManifestExpectationEntry {
+  status: 'TESTED' | 'SKIPPED';
+  reason: string;
+}
+
+const PREFIXED_MANIFEST_ENTRY_REGEX =
+  /^\s*(?:\/\/|\/?\*+)\s*(?:[-*]\s*)?(?:Expectations?|Exp)\s+(\d+)(?:\s*[-–]\s*(\d+))?(?:\s*\([^)]*\))?\s*(?:[:.)]|[-–—]+)?\s*\b(TESTED|SKIPPED)\b(?:\s*(?:[:—–-]+\s*|\s+)(.*))?$/i;
+
+const NUMBERED_MANIFEST_ENTRY_REGEX =
+  /^\s*(?:\/\/|\/?\*+)\s*(?:[-*]\s*)?(\d+)(?:\s*[-–]\s*(\d+))?(?:\s*\([^)]*\))?\s*[:.]\s*(TESTED|SKIPPED)\b(?:\s*[:—–-]+\s*(.*))?$/;
 
 /**
- * Extracts test titles from a Playwright grader.ts file.
+ * Extracts top-of-file manifest entries (`Expectation N: TESTED ...` or `Expectation N: SKIPPED: <reason>`)
+ * keyed by 1-based expectation number. Stops scanning at the first `test` or `test.describe` block,
+ * and the first entry for a given expectation number wins.
+ */
+export function extractManifestEntries(graderFilePath: string): Map<number, ManifestExpectationEntry> {
+  const entries = new Map<number, ManifestExpectationEntry>();
+  if (!fs.existsSync(graderFilePath)) return entries;
+  const content = fs.readFileSync(graderFilePath, 'utf8');
+
+  for (const rawLine of content.split('\n')) {
+    if (/^\s*test(?:\.[a-zA-Z]+)?\s*\(/.test(rawLine)) {
+      break;
+    }
+
+    const line = rawLine.replace(/\*\/\s*$/, '').trimEnd();
+    const match = PREFIXED_MANIFEST_ENTRY_REGEX.exec(line) ?? NUMBERED_MANIFEST_ENTRY_REGEX.exec(line);
+    if (!match) continue;
+
+    const start = Number.parseInt(match[1], 10);
+    const end = match[2] ? Number.parseInt(match[2], 10) : start;
+    const status = match[3].toUpperCase() === 'SKIPPED' ? 'SKIPPED' : 'TESTED';
+    const reason = (match[4] ?? '').trim();
+
+    for (let num = start; num <= end; num++) {
+      if (!entries.has(num)) {
+        entries.set(num, { status, reason });
+      }
+    }
+  }
+
+  return entries;
+}
+
+
+/**
+ * Extracts test titles from a Playwright grader.ts file, ignoring commented-out tests
+ * and `test.skip()` blocks without corrupting glob or URL string literals.
  */
 export function extractTestTitles(graderFilePath: string): string[] {
   if (!fs.existsSync(graderFilePath)) return [];
-  const content = fs.readFileSync(graderFilePath, 'utf8');
+  const rawContent = fs.readFileSync(graderFilePath, 'utf8');
+  const content = rawContent.replace(/^\s*(?:\/\/[^\n]*|\/\*[\s\S]*?\*\/)/gm, ' ');
 
   const titles: string[] = [];
-  const testRegex = /(?:^|\s)test(?:\.(?:only|skip))?\s*\(\s*(['"`])([\s\S]*?)\1\s*,/g;
+  const testRegex = /(?:^|\s)test(?:\.only)?\s*\(\s*(['"`])([\s\S]*?)\1\s*,/g;
   let match: RegExpExecArray | null;
   while ((match = testRegex.exec(content)) !== null) {
     const rawTitle = match[2].trim();
@@ -93,89 +144,132 @@ export interface GraderCoverageResult {
   isComplete: boolean;
   graderPath: string;
   expectationsPath: string;
+  isDisciplineGuide?: boolean;
   matches: ExpectationMatch[];
   missing: ExpectationMatch[];
 }
 
+export interface ValidateGraderCoverageOptions {
+  threshold?: number;
+  isDisciplineGuide?: boolean;
+}
+
 /**
- * Validates that every expectation in expectations.md is covered by >= 1 test in the target grader.ts.
+ * Validates that every expectation in expectations.md is covered by >= 1 test in the target grader.ts
+ * (or, for discipline guides only, by a manifest SKIPPED entry with a non-empty reason in a complete 1..N manifest).
  */
 export async function validateGraderExpectationCoverage(
   expectationsPath: string,
   graderPath: string,
-  threshold = 0.50
+  opts: ValidateGraderCoverageOptions = {}
 ): Promise<GraderCoverageResult> {
+  const threshold = opts.threshold ?? 0.50;
+  const isDisciplineGuide = opts.isDisciplineGuide ?? false;
+
+  const emptyResult: GraderCoverageResult = {
+    isComplete: true,
+    graderPath,
+    expectationsPath,
+    isDisciplineGuide,
+    matches: [],
+    missing: [],
+  };
+
   if (!fs.existsSync(expectationsPath) || !fs.existsSync(graderPath)) {
-    return {
-      isComplete: true,
-      graderPath,
-      expectationsPath,
-      matches: [],
-      missing: []
-    };
+    return emptyResult;
   }
 
   const expectations = parseVerifiableExpectations(fs.readFileSync(expectationsPath, 'utf8'));
-  const testTitles = extractTestTitles(graderPath);
-
   if (expectations.length === 0) {
-    return {
-      isComplete: true,
-      graderPath,
-      expectationsPath,
-      matches: [],
-      missing: []
-    };
+    return emptyResult;
   }
 
-  if (testTitles.length === 0) {
-    const missing: ExpectationMatch[] = expectations.map(exp => ({
-      expectation: exp,
-      isCovered: false,
-      bestMatchTest: '',
-      similarity: 0,
-    }));
-    return {
-      isComplete: false,
-      graderPath,
-      expectationsPath,
-      matches: missing,
-      missing,
-    };
-  }
+  const testTitles = extractTestTitles(graderPath);
+  const manifestEntries = extractManifestEntries(graderPath);
 
-  const embedder = Embedder.getInstance();
-  await embedder.init();
+  const hasNonSkippedExpectation = !isDisciplineGuide
+    || expectations.some((_, idx) => manifestEntries.get(idx + 1)?.status !== 'SKIPPED');
 
-  function getVec(t: string): Promise<number[]> {
-    let pending = embedCache.get(t);
-    if (!pending) {
-      pending = embedder.embed(t).catch(err => {
-        embedCache.delete(t);
-        throw err;
-      });
-      embedCache.set(t, pending);
+  let rawTestVectors: number[][] = [];
+  let cleanedTestVectors: number[][] = [];
+  let rawExpVectors: number[][] = [];
+  let cleanedExpVectors: number[][] = [];
+
+  if (testTitles.length > 0 && hasNonSkippedExpectation) {
+    const embedder = Embedder.getInstance();
+    await embedder.init();
+
+    function getVec(t: string): Promise<number[]> {
+      let pending = embedCache.get(t);
+      if (!pending) {
+        pending = embedder.embed(t).catch(err => {
+          embedCache.delete(t);
+          throw err;
+        });
+        embedCache.set(t, pending);
+      }
+      return pending;
     }
-    return pending;
+
+    rawTestVectors = await Promise.all(testTitles.map(getVec));
+    cleanedTestVectors = await Promise.all(testTitles.map(t => getVec(cleanText(t))));
+
+    const expectationEntries = expectations.map(exp => {
+      const withoutExamples = stripParentheticalExamples(exp);
+      const firstSentence = withoutExamples.split(/[.!?]\s+/)[0];
+      return {
+        exp,
+        cleanedClause: cleanText(firstSentence),
+      };
+    });
+
+    rawExpVectors = await Promise.all(expectationEntries.map(e => getVec(e.exp)));
+    cleanedExpVectors = await Promise.all(expectationEntries.map(e => getVec(e.cleanedClause)));
   }
-
-  const rawTestVectors = await Promise.all(testTitles.map(getVec));
-  const cleanedTestVectors = await Promise.all(testTitles.map(t => getVec(cleanText(t))));
-
-  const expectationEntries = expectations.map(exp => {
-    const firstSentence = exp.split(/[.!?]\s+/)[0];
-    return {
-      exp,
-      cleanedClause: cleanText(firstSentence),
-    };
-  });
-
-  const rawExpVectors = await Promise.all(expectationEntries.map(e => getVec(e.exp)));
-  const cleanedExpVectors = await Promise.all(expectationEntries.map(e => getVec(e.cleanedClause)));
 
   const matches: ExpectationMatch[] = [];
 
+  // Skips are keyed by bullet position, so honor them only when the manifest lists
+  // every expectation number 1..N.
+  const manifestIsComplete = manifestEntries.size === expectations.length
+    && [...manifestEntries.keys()].every(n => n >= 1 && n <= expectations.length);
+
   for (let eIdx = 0; eIdx < expectations.length; eIdx++) {
+    const manifestEntry = manifestEntries.get(eIdx + 1);
+    if (manifestEntry?.status === 'SKIPPED') {
+      if (!isDisciplineGuide) {
+        matches.push({
+          expectation: expectations[eIdx],
+          isCovered: false,
+          bestMatchTest: 'SKIPPED in manifest (use-case graders must test every expectation; fix in expectations.md or task.md)',
+          similarity: 0,
+        });
+        continue;
+      }
+      const hasReason = manifestEntry.reason.length > 0;
+      const isCovered = hasReason && manifestIsComplete;
+      let bestMatchTest = `SKIPPED: ${manifestEntry.reason}`;
+      if (!hasReason) bestMatchTest = 'SKIPPED (missing reason)';
+      else if (!manifestIsComplete) bestMatchTest = `SKIPPED, but the manifest lists ${manifestEntries.size} entries for ${expectations.length} expectations`;
+      matches.push({
+        expectation: expectations[eIdx],
+        isCovered,
+        bestMatchTest,
+        similarity: isCovered ? 1 : 0,
+      });
+      continue;
+    }
+
+    if (testTitles.length === 0) {
+      matches.push({
+        expectation: expectations[eIdx],
+        isCovered: false,
+        bestMatchTest: '',
+        similarity: 0,
+      });
+      continue;
+    }
+
     const rawExpVec = rawExpVectors[eIdx];
     const cleanedExpVec = cleanedExpVectors[eIdx];
 
@@ -207,6 +301,7 @@ export async function validateGraderExpectationCoverage(
     isComplete: missing.length === 0,
     graderPath,
     expectationsPath,
+    isDisciplineGuide,
     matches,
     missing,
   };
@@ -221,16 +316,24 @@ export function formatCoverageFailureMessage(result: GraderCoverageResult, repoR
 
   const header = `❌ Uncovered expectation(s) found in grader: ${relGrader}\nSpec: ${relExp}\n`;
 
+  const totalExpectations = result.matches.length;
   const details = result.missing.map((m, idx) => {
+    const expIdx = result.matches.indexOf(m);
+    const expNumber = expIdx >= 0 ? expIdx + 1 : idx + 1;
     const bestTestSnippet = m.bestMatchTest
       ? `"${m.bestMatchTest}" (similarity: ${m.similarity.toFixed(2)})`
       : 'None';
 
-    return `${idx + 1}. Expectation: "${m.expectation}"
+    const scopeGuidance = result.isDisciplineGuide
+      ? `- If this requirement's precondition is absent from both the target app and task (or already satisfied by the base app): Ensure the top-of-file manifest in ${relGrader} lists all expectations (1..${totalExpectations || 'N'}) and records "// Expectation ${expNumber}: SKIPPED: <one-line reason>".`
+      : `- Use-case graders must test every expectation (SKIPPED manifest entries are not allowed); if this requirement does not apply to the target app, update ${relExp} or task.md instead of skipping it in ${relGrader}.`;
+
+    return `${idx + 1}. Expectation ${expNumber}: "${m.expectation}"
    Closest test found: ${bestTestSnippet}
    👉 Action required:
       - If this requirement is NOT yet tested in this grader: Add a test case verifying this behavior.
-      - If this requirement IS already tested: Update/rephrase the test name in ${relGrader} so it more clearly describes the requirement.`;
+      - If this requirement IS already tested: Update/rephrase the test name in ${relGrader} so it more clearly describes the requirement.
+      ${scopeGuidance}`;
   }).join('\n\n');
 
   return `${header}\n${details}`;

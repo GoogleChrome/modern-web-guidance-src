@@ -122,8 +122,7 @@ describe('Guides Validation (Single Source of Truth)', () => {
     const targetsDir = path.join(guide.dir, 'targets');
     const expectationsPath = path.join(guide.dir, 'expectations.md');
 
-    // Discipline guide graders only cover the expectations relevant to each target app.
-    if (!guide.isDisciplineGuide && fs.existsSync(targetsDir) && fs.existsSync(expectationsPath)) {
+    if (fs.existsSync(targetsDir) && fs.existsSync(expectationsPath)) {
       const targetApps = fs.readdirSync(targetsDir, { withFileTypes: true })
         .filter(e => e.isDirectory() && !e.name.startsWith('.'))
         .map(e => e.name);
@@ -137,7 +136,9 @@ describe('Guides Validation (Single Source of Truth)', () => {
           const relGrader = path.relative(REPO_ROOT, targetGraderPath).split(path.sep).join('/');
           if (staleTargets.has(relGrader)) return;
 
-          const result = await validateGraderExpectationCoverage(expectationsPath, targetGraderPath);
+          const result = await validateGraderExpectationCoverage(expectationsPath, targetGraderPath, {
+            isDisciplineGuide: guide.isDisciplineGuide,
+          });
           if (!result.isComplete) {
             assert.fail(formatCoverageFailureMessage(result, REPO_ROOT));
           }

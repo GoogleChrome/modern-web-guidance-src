@@ -6,6 +6,7 @@ import { resolveGuideResultsDir, type GuideResultsInventory } from '../core/path
 import { setupGuideDevWorkDir, runAgent } from '../harness/lib/utils.ts';
 import { buildDevReportPrompt, buildApplyReviewFeedbackPrompt } from './dev-prompts.ts';
 import { testGrader } from '../grading/run-grader.ts';
+import { extractManifestEntries, extractTestTitles, type ManifestExpectationEntry } from '../core/grader-coverage.ts';
 
 export type DevReportFlag =
   | 'CALIBRATION_FAILED'
@@ -278,6 +279,51 @@ export function buildInitialDevReport(targetDir: string, summaries: TargetEvalSu
 }
 
 /**
+ * Returns 1-based expectation numbers that are SKIPPED in `after` and were not already SKIPPED in `before`.
+ */
+export function findTestedToSkippedExpectations(
+  before: ReadonlyMap<number, ManifestExpectationEntry>,
+  after: ReadonlyMap<number, ManifestExpectationEntry>
+): number[] {
+  const flipped: number[] = [];
+  for (const [num, afterEntry] of after.entries()) {
+    if (afterEntry.status === 'SKIPPED' && before.get(num)?.status !== 'SKIPPED') {
+      flipped.push(num);
+    }
+  }
+  return flipped.sort((a, b) => a - b);
+}
+
+export interface ReportGraderGuardInput {
+  expectationsChanged: boolean;
+  beforeManifest: ReadonlyMap<number, ManifestExpectationEntry>;
+  afterManifest: ReadonlyMap<number, ManifestExpectationEntry>;
+  beforeTestCount: number;
+  afterTestCount: number;
+}
+
+/**
+ * Pure decision function for whether a report-agent edit to `grader.ts` must be reverted
+ * before calibration (because it added SKIPPED manifest entries or dropped active `test()` blocks
+ * without `expectations.md` also changing).
+ */
+export function getReportGraderRevertReason(input: ReportGraderGuardInput): string | null {
+  if (input.expectationsChanged) return null;
+
+  const flippedToSkipped = findTestedToSkippedExpectations(input.beforeManifest, input.afterManifest);
+  if (flippedToSkipped.length > 0) {
+    const listStr = flippedToSkipped.map(n => `Expectation ${n}`).join(', ');
+    return `changed ${listStr} from \`TESTED\` to \`SKIPPED\``;
+  }
+
+  if (input.afterTestCount < input.beforeTestCount) {
+    return `reduced the number of \`test()\` blocks from ${input.beforeTestCount} to ${input.afterTestCount}`;
+  }
+
+  return null;
+}
+
+/**
  * Runs the agent-driven evaluation report generation phase across all targets for a guide.
  */
 export async function runDevReport(
@@ -314,11 +360,17 @@ export async function runDevReport(
 
   const agent = getDefaultSolutionAgent();
   const { workDir, tempHome } = setupGuideDevWorkDir('report');
+  const expPath = path.join(targetDir, EXPECTATIONS_FILE);
+  const initialExpectations = fs.existsSync(expPath) ? fs.readFileSync(expPath, 'utf8') : undefined;
   const initialGraders = new Map<string, string>();
+  const initialManifests = new Map<string, Map<number, ManifestExpectationEntry>>();
+  const initialTestCounts = new Map<string, number>();
   for (const s of summaries) {
     const graderPath = path.join(targetDir, TARGETS_DIR, s.baseApp, GRADER_FILE);
     if (fs.existsSync(graderPath)) {
       initialGraders.set(s.baseApp, fs.readFileSync(graderPath, 'utf8'));
+      initialManifests.set(s.baseApp, extractManifestEntries(graderPath));
+      initialTestCounts.set(s.baseApp, extractTestTitles(graderPath).length);
     }
   }
 
@@ -327,8 +379,8 @@ export async function runDevReport(
     if (fs.existsSync(path.join(targetDir, GUIDE_FILE))) {
       fs.copyFileSync(path.join(targetDir, GUIDE_FILE), path.join(workDir, GUIDE_FILE));
     }
-    if (fs.existsSync(path.join(targetDir, EXPECTATIONS_FILE))) {
-      fs.copyFileSync(path.join(targetDir, EXPECTATIONS_FILE), path.join(workDir, EXPECTATIONS_FILE));
+    if (fs.existsSync(expPath)) {
+      fs.copyFileSync(expPath, path.join(workDir, EXPECTATIONS_FILE));
     }
     if (fs.existsSync(path.join(targetDir, TARGETS_DIR))) {
       fs.cpSync(path.join(targetDir, TARGETS_DIR), path.join(workDir, 'targets'), { recursive: true });
@@ -361,7 +413,7 @@ export async function runDevReport(
     }
     const workExpFile = path.join(workDir, EXPECTATIONS_FILE);
     if (fs.existsSync(workExpFile)) {
-      fs.copyFileSync(workExpFile, path.join(targetDir, EXPECTATIONS_FILE));
+      fs.copyFileSync(workExpFile, expPath);
     }
     const workTargetsDir = path.join(workDir, 'targets');
     if (fs.existsSync(workTargetsDir)) {
@@ -371,6 +423,11 @@ export async function runDevReport(
       });
     }
 
+    const expectationsChanged =
+      initialExpectations !== undefined &&
+      fs.existsSync(expPath) &&
+      fs.readFileSync(expPath, 'utf8') !== initialExpectations;
+
     // Verify calibration if report agent modified any targets/<target>/grader.ts
     for (const s of summaries) {
       const graderPath = path.join(targetDir, TARGETS_DIR, s.baseApp, GRADER_FILE);
@@ -379,17 +436,29 @@ export async function runDevReport(
         const originalContent = initialGraders.get(s.baseApp);
         const newContent = fs.readFileSync(graderPath, 'utf8');
         if (originalContent && originalContent !== newContent) {
-          console.log(cCyan(`\nValidating calibration for modified ${s.baseApp} grader...`));
-          const calib = await testGrader(path.join(targetDir, TARGETS_DIR, s.baseApp));
-          if (!calib.success) {
-            console.warn(cRed(`⚠️  Modified ${s.baseApp} grader failed calibration: ${calib.errorDetails || 'Unknown error'}. Reverting grader.ts changes.`));
+          let revertReason = getReportGraderRevertReason({
+            expectationsChanged,
+            beforeManifest: initialManifests.get(s.baseApp) ?? new Map(),
+            afterManifest: extractManifestEntries(graderPath),
+            beforeTestCount: initialTestCounts.get(s.baseApp) ?? 0,
+            afterTestCount: extractTestTitles(graderPath).length,
+          });
+          if (!revertReason) {
+            console.log(cCyan(`\nValidating calibration for modified ${s.baseApp} grader...`));
+            const calib = await testGrader(path.join(targetDir, TARGETS_DIR, s.baseApp));
+            if (!calib.success) {
+              revertReason = `failed calibration testing (${calib.errorDetails || 'calibration failure'})`;
+            } else {
+              console.log(cGreen(`✅ Modified ${s.baseApp} grader passed calibration!`));
+            }
+          }
+          if (revertReason) {
+            console.warn(cRed(`⚠️  Modified ${s.baseApp} grader ${revertReason.replaceAll('`', '')}. Reverting grader.ts changes.`));
             fs.writeFileSync(graderPath, originalContent);
             if (fs.existsSync(finalReportPath)) {
-              const revertWarning = `\n\n> [!WARNING]\n> **Grader Modification Reverted**: The report agent's proposed adjustments to \`targets/${s.baseApp}/${GRADER_FILE}\` failed calibration testing (${calib.errorDetails || 'calibration failure'}) and were automatically reverted on disk.\n`;
+              const revertWarning = `\n\n> [!WARNING]\n> **Grader Modification Reverted**: The report agent's proposed adjustments to \`targets/${s.baseApp}/${GRADER_FILE}\` ${revertReason} and were automatically reverted on disk.\n`;
               fs.appendFileSync(finalReportPath, revertWarning);
             }
-          } else {
-            console.log(cGreen(`✅ Modified ${s.baseApp} grader passed calibration!`));
           }
         }
       }

@@ -7,8 +7,11 @@ import {
   computeDevReportFlag,
   computeTargetSummary,
   buildInitialDevReport,
+  findTestedToSkippedExpectations,
+  getReportGraderRevertReason,
   type TargetEvalSummary,
 } from './dev-report.ts';
+import { extractTestTitles } from '../core/grader-coverage.ts';
 import { getGuideResultsDir } from '../core/paths.ts';
 import { findSharedFailingTests, collectSpecs, isSpecSkipped } from '../grading/run-grader.ts';
 import { Agents } from '../harness/config.ts';
@@ -278,7 +281,6 @@ test('findSharedFailingTests extracts intersection of failing tests across activ
   // Case 4: No active agents
   assert.deepStrictEqual(findSharedFailingTests({}, []), []);
 });
-
 test('collectSpecs ignores skipped Playwright tests during calibration reporting', () => {
   const suite = {
     title: 'Target Grader',
@@ -363,3 +365,113 @@ test('computeTargetSummary flags target when any baseline variant drops below 90
   assert.ok(summary?.flagDetails.startsWith('[daily-grind-limited] '));
 });
 
+test('findTestedToSkippedExpectations detects newly introduced SKIPPED entries in grader manifests', () => {
+  const beforeManifest = new Map([
+    [1, { status: 'TESTED' as const, reason: 'Checks modal opening' }],
+    [2, { status: 'TESTED' as const, reason: 'Checks Escape dismissal' }],
+    [3, { status: 'SKIPPED' as const, reason: 'No form in target app or task' }],
+    [4, { status: 'TESTED' as const, reason: 'Checks focus restoration' }],
+  ]);
+  const afterManifest = new Map([
+    [1, { status: 'TESTED' as const, reason: 'Checks modal opening' }],
+    [2, { status: 'SKIPPED' as const, reason: 'Agent did not implement Escape dismissal' }],
+    [3, { status: 'SKIPPED' as const, reason: 'Updated skip reason for form' }],
+    [4, { status: 'SKIPPED' as const, reason: 'Agent did not restore focus' }],
+  ]);
+
+  assert.deepStrictEqual(findTestedToSkippedExpectations(beforeManifest, afterManifest), [2, 4]);
+  assert.deepStrictEqual(findTestedToSkippedExpectations(new Map(), afterManifest), [2, 3, 4]);
+  assert.deepStrictEqual(findTestedToSkippedExpectations(beforeManifest, beforeManifest), []);
+});
+
+test('extractTestTitles count detects deleted or test.skip() blocks in modified graders', (t) => {
+  const rootTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'test-dropped-tests-'));
+  const beforePath = path.join(rootTmp, 'before-grader.ts');
+  const deletedPath = path.join(rootTmp, 'deleted-grader.ts');
+  const skippedPath = path.join(rootTmp, 'skipped-grader.ts');
+
+  t.after(() => {
+    fs.rmSync(rootTmp, { recursive: true, force: true });
+  });
+
+  fs.writeFileSync(
+    beforePath,
+    [
+      "test('Checks modal opening', () => {});",
+      "test('Checks Escape dismissal', () => {});",
+    ].join('\n')
+  );
+  fs.writeFileSync(
+    deletedPath,
+    [
+      "test('Checks modal opening', () => {});",
+    ].join('\n')
+  );
+  fs.writeFileSync(
+    skippedPath,
+    [
+      "test('Checks modal opening', () => {});",
+      "test.skip('Checks Escape dismissal', () => {});",
+    ].join('\n')
+  );
+
+  const beforeCount = extractTestTitles(beforePath).length;
+  assert.strictEqual(beforeCount, 2);
+  assert.ok(extractTestTitles(deletedPath).length < beforeCount);
+  assert.ok(extractTestTitles(skippedPath).length < beforeCount);
+});
+
+test('getReportGraderRevertReason flags new skips and dropped tests unless expectations.md changed', () => {
+  const beforeManifest = new Map([
+    [1, { status: 'TESTED' as const, reason: 'Modal open' }],
+    [2, { status: 'TESTED' as const, reason: 'Escape close' }],
+  ]);
+  const skippedManifest = new Map([
+    [1, { status: 'TESTED' as const, reason: 'Modal open' }],
+    [2, { status: 'SKIPPED' as const, reason: 'No Escape handler' }],
+  ]);
+
+  assert.strictEqual(
+    getReportGraderRevertReason({
+      expectationsChanged: false,
+      beforeManifest,
+      afterManifest: skippedManifest,
+      beforeTestCount: 2,
+      afterTestCount: 2,
+    }),
+    'changed Expectation 2 from `TESTED` to `SKIPPED`'
+  );
+
+  assert.strictEqual(
+    getReportGraderRevertReason({
+      expectationsChanged: false,
+      beforeManifest,
+      afterManifest: beforeManifest,
+      beforeTestCount: 2,
+      afterTestCount: 1,
+    }),
+    'reduced the number of `test()` blocks from 2 to 1'
+  );
+
+  assert.strictEqual(
+    getReportGraderRevertReason({
+      expectationsChanged: true,
+      beforeManifest,
+      afterManifest: skippedManifest,
+      beforeTestCount: 2,
+      afterTestCount: 1,
+    }),
+    null
+  );
+
+  assert.strictEqual(
+    getReportGraderRevertReason({
+      expectationsChanged: false,
+      beforeManifest,
+      afterManifest: beforeManifest,
+      beforeTestCount: 2,
+      afterTestCount: 2,
+    }),
+    null
+  );
+});

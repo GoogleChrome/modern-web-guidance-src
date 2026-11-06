@@ -181,13 +181,18 @@ test('buildTargetGraderPrompt includes discipline scoping only for discipline gu
 
   const disciplinePrompt = buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true });
   assert.ok(disciplinePrompt.includes('discipline guide'));
-  assert.ok(disciplinePrompt.includes('you do NOT need to write a test for every expectation'));
+  assert.ok(disciplinePrompt.includes('Decide relevance from the base application and `task.md`, not from the solution patches: do NOT test an expectation whose pattern exists only because a solution patch added it without the task asking for it.'));
+  assert.ok(disciplinePrompt.includes('Skip an expectation only when its precondition is absent from both the base application and the task, or when the base application already satisfies it.'));
+  assert.ok(disciplinePrompt.includes('A state the grader can create or simulate (a permission state, a viewport width, a failed or denied request, a removed global) is never a missing precondition; test it.'));
+  assert.ok(disciplinePrompt.includes('Expectation N: SKIPPED: <one-line reason>'));
+  assert.ok(disciplinePrompt.includes('already satisfied by the base application'));
 
   const standardPrompt = buildTargetGraderPrompt(baseOpts);
   assert.ok(!standardPrompt.includes('discipline guide'));
+  assert.ok(!standardPrompt.includes('SKIPPED:'));
 });
 
-test('buildTargetGraderPrompt requires a test for every expectation only for non-discipline guides', () => {
+test('buildTargetGraderPrompt includes expectation coverage rule for non-discipline guides', () => {
   const baseOpts = {
     guideFile: 'guide.md',
     expectationsFile: 'expectations.md',
@@ -199,17 +204,17 @@ test('buildTargetGraderPrompt requires a test for every expectation only for non
     baseApp: 'devtools-times',
     templateFile: 'template.grader.ts',
   };
-  const coverageRule = 'Every top-level expectation in `expectations.md` must have at least one dedicated';
 
-  const standardPrompt = buildTargetGraderPrompt(baseOpts);
-  assert.ok(standardPrompt.includes(coverageRule));
-  assert.ok(standardPrompt.includes('Do not omit, merge, or skip any expectation'));
-
-  const retryPrompt = buildTargetGraderPrompt({ ...baseOpts, failureContext: 'Golden test failed' });
-  assert.ok(retryPrompt.includes(coverageRule));
+  for (const prompt of [
+    buildTargetGraderPrompt(baseOpts),
+    buildTargetGraderPrompt({ ...baseOpts, failureContext: 'Golden test failed' }),
+  ]) {
+    assert.ok(prompt.includes('Every top-level expectation in `expectations.md` must have at least one dedicated'));
+    assert.ok(prompt.includes('Do not omit, merge, or skip any expectation'));
+  }
 
   const disciplinePrompt = buildTargetGraderPrompt({ ...baseOpts, isDisciplineGuide: true });
-  assert.ok(!disciplinePrompt.includes(coverageRule));
+  assert.ok(!disciplinePrompt.includes('Every top-level expectation in `expectations.md` must have at least one dedicated'));
 });
 
 test('buildSolutionPrompt and buildZeroPassratePrompt include discipline scoping only for discipline guides', () => {
@@ -289,6 +294,7 @@ test('buildDevReportPrompt creates comprehensive diagnostic prompt with flags an
   assert.ok(prompt.includes('add the needs-dev-rerun label'));
   assert.ok(prompt.includes('```diff'));
   assert.ok(prompt.includes('DIRECT FILE UPDATES REQUIREMENT'));
+  assert.ok(prompt.includes('Grader edits that delete or disable `test()` blocks or add `SKIPPED` manifest entries are automatically reverted'));
 });
 
 test('buildDevReportPrompt includes PR context and reviewer feedback instructions when provided', () => {
