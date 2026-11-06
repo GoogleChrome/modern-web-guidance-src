@@ -2,36 +2,18 @@ import {
   test,
   expect,
   getTargetFiles,
-  getCssStyleSheet,
   getHtmlDocuments,
+  getRules,
 } from '../../../../../src/grading/test-fixture.ts';
-import type { Document } from 'linkedom';
 import {
   CSSStyleRule,
-  CSSGroupingRule,
   CSSMediaRule,
   CSSStartingStyleRule,
-  type CSSRule,
-  type CSSStyleSheet,
 } from 'cssomnom';
+import type { Document } from 'linkedom';
 
 // @ts-ignore - package.json omits "type": "module", causing nodenext to infer CJS
 const targetFiles: string[] = getTargetFiles(import.meta.url);
-
-function collectAllRules(rules: Iterable<CSSRule>): CSSRule[] {
-  const result: CSSRule[] = [];
-  for (const rule of rules) {
-    result.push(rule);
-    if (rule instanceof CSSGroupingRule) {
-      result.push(...collectAllRules(rule.cssRules));
-    }
-  }
-  return result;
-}
-
-function collectStyleRules(rules: Iterable<CSSRule>): CSSStyleRule[] {
-  return collectAllRules(rules).filter((r): r is CSSStyleRule => r instanceof CSSStyleRule);
-}
 
 function ruleHasDiscreteDisplayAndOverlayTransition(rule: CSSStyleRule): boolean {
   const transition = rule.style.getPropertyValue('transition');
@@ -81,8 +63,7 @@ test.describe('hovercard Target Grader', () => {
   });
 
   test('The popover uses position-area (or inset-area) to position itself relative to the trigger link', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
     const hasPositionArea = styleRules.some((rule) => {
       const posArea =
         rule.style.getPropertyValue('position-area').trim() ||
@@ -93,8 +74,7 @@ test.describe('hovercard Target Grader', () => {
   });
 
   test('The popover has a transition that includes display: allow-discrete and overlay: allow-discrete', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const styleRules = collectStyleRules(stylesheet.cssRules);
+    const styleRules = getRules(targetFiles, CSSStyleRule);
     const hasDiscreteTransition = styleRules.some((rule) =>
       ruleHasDiscreteDisplayAndOverlayTransition(rule),
     );
@@ -102,13 +82,9 @@ test.describe('hovercard Target Grader', () => {
   });
 
   test('The popover has a @starting-style block that defines its initial state for entry animations', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllRules(stylesheet.cssRules);
-    const startingStyleRules = allRules.filter(
-      (r): r is CSSStartingStyleRule => r instanceof CSSStartingStyleRule,
-    );
+    const startingStyleRules = getRules(targetFiles, CSSStartingStyleRule);
     const hasStartingStyleState = startingStyleRules.some((startingRule) => {
-      const innerStyleRules = collectStyleRules(startingRule.cssRules);
+      const innerStyleRules = getRules(startingRule, CSSStyleRule);
       return innerStyleRules.some(
         (rule) =>
           rule.style.getPropertyValue('opacity').trim().length > 0 ||
@@ -121,14 +97,12 @@ test.describe('hovercard Target Grader', () => {
   });
 
   test('If prefers-reduced-motion: reduce is active, the popover opens without a transform or opacity transition', () => {
-    const stylesheet: CSSStyleSheet = getCssStyleSheet(targetFiles);
-    const allRules = collectAllRules(stylesheet.cssRules);
-    const mediaRules = allRules.filter((r): r is CSSMediaRule => r instanceof CSSMediaRule);
+    const mediaRules = getRules(targetFiles, CSSMediaRule);
 
     const gatedByNoPreference = mediaRules.some(
       (media) =>
         /\bprefers-reduced-motion\s*:\s*no-preference\b/i.test(media.conditionText) &&
-        collectStyleRules(media.cssRules).some((rule) =>
+        getRules(media, CSSStyleRule).some((rule) =>
           ruleHasAnimatedOpacityOrTransformTransition(rule),
         ),
     );
@@ -136,7 +110,7 @@ test.describe('hovercard Target Grader', () => {
     const disabledInReduce = mediaRules.some(
       (media) =>
         /\bprefers-reduced-motion\s*:\s*reduce\b/i.test(media.conditionText) &&
-        collectStyleRules(media.cssRules).some((rule) => {
+        getRules(media, CSSStyleRule).some((rule) => {
           const transition = rule.style.getPropertyValue('transition');
           const transitionProp = rule.style.getPropertyValue('transition-property');
           const transitionDuration = rule.style.getPropertyValue('transition-duration');
