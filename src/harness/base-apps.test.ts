@@ -40,7 +40,7 @@ test('devtools-times base app builds successfully', () => {
   }
 });
 
-test('setupWorkspaceBaseApp copies base app and applies zero-passrate.patch if present without modifying source', async () => {
+test('setupWorkspaceBaseApp copies base app untouched without modifying source', async () => {
   const { setupWorkspaceBaseApp } = await import('./run-suite.ts');
   const osTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'base-apps-test-'));
 
@@ -49,7 +49,7 @@ test('setupWorkspaceBaseApp copies base app and applies zero-passrate.patch if p
   const mockPatchesDir = path.join(mockTargetsDir, 'patches');
   fs.mkdirSync(mockPatchesDir, { recursive: true });
 
-  // Create a valid zero-passrate patch
+  // Create a zero-passrate patch in the target dir to verify setupWorkspaceBaseApp ignores it
   const patchContent = 'diff --git a/index.html b/index.html\n--- a/index.html\n+++ b/index.html\n@@ -1,2 +1,3 @@\n+<!-- ZERO_PASSRATE_APPLIED -->\n <!DOCTYPE html>\n <html lang="en">\n';
   fs.writeFileSync(path.join(mockPatchesDir, 'zero-passrate.patch'), patchContent);
 
@@ -66,10 +66,11 @@ test('setupWorkspaceBaseApp copies base app and applies zero-passrate.patch if p
   assert.ok(fs.existsSync(workspaceBaseAppDir), 'Directory should exist');
 
   const stagedIndex = fs.readFileSync(path.join(workspaceBaseAppDir, 'index.html'), 'utf8');
-  assert.ok(stagedIndex.includes('<!-- ZERO_PASSRATE_APPLIED -->'), 'Staged base app should have zero-passrate.patch applied');
+  assert.strictEqual(stagedIndex.includes('<!-- ZERO_PASSRATE_APPLIED -->'), false, 'Staged base app should remain untouched');
 
   const sourceAppDir = path.join(baseAppsDir, 'daily-grind');
   const sourceIndex = fs.readFileSync(path.join(sourceAppDir, 'index.html'), 'utf8');
+  assert.strictEqual(stagedIndex, sourceIndex, 'Staged base app should match source harness/base_apps');
   assert.strictEqual(sourceIndex.includes('<!-- ZERO_PASSRATE_APPLIED -->'), false, 'Source harness/base_apps should remain pristine');
 
   fs.rmSync(osTmp, { recursive: true, force: true });

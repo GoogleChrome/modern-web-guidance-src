@@ -333,13 +333,15 @@ export function findGraderFiles(repoRootDir: string = rootDir): string[] {
     .sort();
 }
 
-export function checkAllGraders(options?: { repoRoot?: string; project?: Project }): Map<string, GraderLintViolation[]> {
+export function checkAllGraders(options?: { repoRoot?: string; project?: Project; includeReportOnly?: boolean }): Map<string, GraderLintViolation[]> {
   const baseDir = options?.repoRoot ?? rootDir;
   const graderFiles = findGraderFiles(baseDir);
   const resultMap = new Map<string, GraderLintViolation[]>();
 
   for (const file of graderFiles) {
-    const violations = checkGraderFile(file, options?.project);
+    const violations = checkGraderFile(file, options?.project).filter(
+      v => options?.includeReportOnly || GRADER_RULES[v.ruleId].blocking
+    );
     if (violations.length > 0) {
       const relPath = path.relative(baseDir, file);
       resultMap.set(relPath, violations);

@@ -384,6 +384,37 @@ describe('Grader Static Checker (src/core/grader-lint.ts)', () => {
     });
   });
 
+  describe('Rule: no-fixed-timeout (report-only)', () => {
+    const sleepyGrader = `
+      import { test, expect } from '@playwright/test';
+      test('menu stays open', async ({ page }) => {
+        await page.goto('/');
+        await page.waitForTimeout(100);
+        expect(await page.locator('menu').isVisible()).toBe(true);
+      });
+    `;
+
+    it('flags page.waitForTimeout in a Gen 2 target grader', () => {
+      const violations = checkGraderSource('guides/category/slug/targets/app/grader.ts', sleepyGrader);
+      assert.deepStrictEqual(violations.map(v => v.ruleId), ['no-fixed-timeout']);
+    });
+
+    it('checkAllGraders reports only blocking rules unless includeReportOnly is set', () => {
+      const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'grader-lint-report-only-'));
+      try {
+        const graderDir = path.join(repoRoot, 'guides/category/slug/targets/app');
+        fs.mkdirSync(graderDir, { recursive: true });
+        fs.writeFileSync(path.join(graderDir, 'grader.ts'), sleepyGrader);
+
+        assert.equal(checkAllGraders({ repoRoot }).size, 0);
+        const reportOnly = checkAllGraders({ repoRoot, includeReportOnly: true });
+        assert.deepStrictEqual([...reportOnly.values()].flat().map(v => v.ruleId), ['no-fixed-timeout']);
+      } finally {
+        fs.rmSync(repoRoot, { recursive: true, force: true });
+      }
+    });
+  });
+
   describe('formatViolations', () => {
     it('formats violations clearly', () => {
       const sampleMap = new Map<string, GraderLintViolation[]>([
