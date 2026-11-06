@@ -32,10 +32,10 @@ As items are added or removed from a list, or rearranged, transitions can help u
 
 2. **Define the shared transition logic**
 
-   Use the `::view-transition-group()` pseudo-element with the class selector to apply styles to all members of that group.
+   Use the `::view-transition-group()` pseudo-element targeting a `view-transition-class` to apply animation styles to all members of that group.
 
    ```css
-   /* Targets any view transition group that has the 'list-item' class */
+   /* Targets any view transition group that has the 'list-item' view-transition-class */
    ::view-transition-group(.list-item) {
      /* Duration and non-linear easing are examples; customize with any ease* keyword, cubic-bezier(), or multi-stop linear() curve */
      animation-duration: 0.5s;
