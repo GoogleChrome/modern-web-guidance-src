@@ -127,13 +127,6 @@ Style the checkboxes (including the master) with `accent-color` for brand-consis
 }
 ```
 
-Also add a disabled style for options that are offline or unavailable, and dim the label to match:
-
-```css
-.checkbox:disabled { cursor: not-allowed; opacity: 0.5; }
-label:has(:disabled) { color: #8e9196; cursor: not-allowed; }
-```
-
 DO NOT remove focus indicators from the checkboxes.
 
 {{ FEATURE_ISSUES("accent-color") }}
