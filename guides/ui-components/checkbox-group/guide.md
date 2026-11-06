@@ -249,7 +249,3 @@ Without subgrid, give each label the same fixed column widths so rows still alig
 ```
 
 {{ FEATURE_FALLBACKS("accent-color") }}
-
-### `:indeterminate`
-
-{{ BASELINE_STATUS("indeterminate") }}
