@@ -251,13 +251,29 @@
         💡 <strong>Leap Month</strong>: Chinese calendar uses 'L' suffix for leap months.
       </div>
     </div>
+
+    <!-- Japanese Calendar -->
+    <div class="card" id="card-japanese">
+      <div class="card-title">
+        <span class="emoji">⛩️</span> Japanese (Imperial Era)
+      </div>
+      <div class="date-display" id="japanese-date">Loading...</div>
+      <div class="stats">
+        <div class="stat-row"><span>Year:</span> <span class="stat-value" id="japanese-year">-</span></div>
+        <div class="stat-row"><span>Month:</span> <span class="stat-value" id="japanese-month">-</span></div>
+        <div class="stat-row"><span>Month Code:</span> <span class="stat-value" id="japanese-monthCode">-</span></div>
+        <div class="stat-row"><span>Months in Year:</span> <span class="stat-value" id="japanese-monthsInYear">-</span></div>
+        <div class="stat-row"><span>Timeline:</span> <span class="stat-value" id="japanese-relative">-</span></div>
+        <div class="stat-row"><span>Breakdown:</span> <span class="stat-value" id="japanese-breakdown">-</span></div>
+      </div>
+    </div>
   </div>
 
   <script>
       (async function () {
         if (typeof Temporal === 'undefined') {
           try {
-            const module = await import('https://esm.sh/@js-temporal/polyfill');
+            const module = await import('https://esm.sh/temporal-polyfill');
             globalThis.Temporal = module.Temporal;
           } catch (e) {
             console.error('Failed to load Temporal polyfill:', e);
@@ -301,7 +317,8 @@
         const calendars = [
           { id: 'islamic', name: 'islamic-umalqura' },
           { id: 'hebrew', name: 'hebrew' },
-          { id: 'chinese', name: 'chinese' }
+          { id: 'chinese', name: 'chinese' },
+          { id: 'japanese', name: 'japanese', options: { era: 'long' } }
         ];
 
         calendars.forEach(cal => {
@@ -319,7 +336,8 @@
             dateDisplay.innerText = converted.toLocaleString('en-u-ca-' + cal.name, {
               day: 'numeric',
               month: 'long',
-              year: 'numeric'
+              year: 'numeric',
+              ...(cal.options || {})
             });
 
             // Update Stats

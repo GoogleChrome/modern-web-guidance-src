@@ -1,0 +1,14 @@
+- Underlines, overlines, and strikethroughs are drawn with the native `text-decoration` properties, not with `border-bottom`, a background gradient, or a pseudo-element.
+- The decoration's style, color, and thickness, and the `text-underline-offset`, are read from CSS custom properties, so setting those properties on an ancestor changes the rendered decoration.
+- Decoration thickness and underline offset use relative units such as `em`, so they scale with the font size.
+- A decorated link is a real `<a>` with an `href` destination, not a `javascript:` URL with a script handler.
+- A link with a hover reveal underline trims its line with `text-decoration-inset` at rest, and returns the inset to `0` on both `:hover` and `:focus-visible`.
+- The hover reveal declares its underline separately from `text-decoration-inset`, without wrapping the inset in `@supports`, so the underline is visible where `text-decoration-inset` is unsupported.
+- When the underline of mixed-script or Japanese or Chinese text must skip glyph ink, `text-decoration-skip-ink: all` is used. `text-decoration-skip-ink: auto` and `text-decoration-skip-spaces` are not declared when they would only restate the default or have no effect.
+- `text-decoration-skip-spaces` is declared only on text that preserves its spaces, such as `white-space: pre`, `pre-wrap`, or `break-spaces`.
+- A draw-on custom line is a pseudo-element on a plain `<a>`, drawn with `border-shape` (or `border-block-end` for a straight line) and revealed by transitioning `clip-path` on both `:hover` and `:focus-visible`, not an inline SVG.
+- The draw-on line's `border-shape` is applied inside `@supports (border-shape: circle(50%))`, and a straight line that still draws on is used outside it.
+- When the same shape is used for `border-shape` and its fallback (such as a `clip-path` polygon), the shape is stored in a CSS custom property and referenced from both, not repeated.
+- Hover reveal and draw-on animations are not applied when `prefers-reduced-motion: reduce` matches, and the line is fully visible otherwise.
+- A gradient outline around text uses `background-clip: border-area` over a transparent border, so the inside of the element is transparent, with `background-clip: border-area` inside `@supports (background-clip: border-area)` and the gradient still drawn outside it (an opaque padding-box layer over the gradient, or a masked pseudo-element), not a plain solid border.
+- A text outline shaped by `border-shape` applies `border-shape` inside `@supports (border-shape: circle(50%))` and reproduces the shape outside it, such as with a `clip-path` pseudo-element, rather than falling back to a plain rounded border.

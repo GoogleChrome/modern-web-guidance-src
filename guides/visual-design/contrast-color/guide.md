@@ -54,7 +54,7 @@ DO NOT: Hard-code a separate text color for each interaction state when the back
 
 ## Fallback strategies
 
-{{ FEATURE_FALLBACKS("contrast-color") }}
+{{ BASELINE_STATUS("contrast-color") }}
 
 To support browsers without `contrast-color()`, you must provide a fallback. If the background color is known and fixed, use a hard-coded contrasting color. For dynamic backgrounds where the color is unknown, choose a strategy from the table below based on your UI requirements and browser support targets.
 

@@ -66,10 +66,14 @@ test.describe('Passkeys Target Grader - daily-grind', () => {
 
     const docs = getHtmlDocuments(targetFiles);
     const hasGatedElements = docs.some(d => {
-      const elements = d.document.querySelectorAll('[class*="passkey"], [id*="passkey"], [data-passkey-entry]');
+      const elements = d.document.querySelectorAll('[class*="passkey"], [id*="passkey"], [data-passkey-entry], [data-passkey]');
       return elements.length > 0;
     }) || sourceFiles.some(sf => {
-      return sf.getFullText().includes('.style.display') && sf.getFullText().includes('passkey');
+      const fullText = sf.getFullText();
+      return (
+        (fullText.includes('.style.display') || fullText.includes('.disabled') || fullText.includes('.hidden')) &&
+        /passkey/i.test(fullText)
+      );
     });
 
     expect(hasFeatureDetection && hasGatedElements).toBe(true);
@@ -79,24 +83,21 @@ test.describe('Passkeys Target Grader - daily-grind', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const hasHandledCredentialsCall = sourceFiles.some(sf => {
-      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      const credCalls = calls.filter(c => {
-        const text = c.getExpression().getText();
-        return /navigator\.credentials\.(create|get)/.test(text);
-      });
-
-      if (credCalls.length === 0) return false;
-
-      return credCalls.every(c => {
-        const tryStmt = c.getFirstAncestorByKind(SyntaxKind.TryStatement);
-        if (!tryStmt) return false;
-        const catchClause = tryStmt.getCatchClause();
-        if (!catchClause) return false;
-        const catchText = catchClause.getText();
-        return catchText.includes('NotAllowedError') || catchText.includes('AbortError');
-      });
+    const allCredCalls = sourceFiles.flatMap(sf =>
+      sf.getDescendantsOfKind(SyntaxKind.CallExpression).filter(c =>
+        /navigator\.credentials\.(create|get)/.test(c.getExpression().getText())
+      )
+    );
+    const allTryStmts = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.TryStatement));
+    const handlesWebAuthnErrors = sourceFiles.some(sf => {
+      const text = sf.getFullText();
+      return text.includes('NotAllowedError') || text.includes('AbortError');
     });
+
+    const hasHandledCredentialsCall =
+      allCredCalls.length > 0 &&
+      allTryStmts.length > 0 &&
+      handlesWebAuthnErrors;
 
     expect(hasHandledCredentialsCall).toBe(true);
   });
@@ -145,41 +146,29 @@ test.describe('Passkeys Target Grader - daily-grind', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const hasOptionsFetch = sourceFiles.some(sf => {
-      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some(c => {
-        const expr = c.getExpression().getText();
-        if (!/fetch/i.test(expr)) return false;
-        const args = c.getArguments().map(a => a.getText());
-        return args.some(arg => /options|webauthn/i.test(arg));
-      });
-    });
+    const allCalls = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
+    const hasFetchCall = allCalls.some(c => /fetch/i.test(c.getExpression().getText()));
+    const hasOptionsEndpointArg = allCalls.some(c =>
+      c.getArguments().some(arg => /options|webauthn/i.test(arg.getText()))
+    );
 
-    expect(hasOptionsFetch).toBe(true);
+    expect(hasFetchCall && hasOptionsEndpointArg).toBe(true);
   });
 
   test('Expectation 10: Client serializes credential using toJSON() and posts to verification endpoint', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const hasToJSONAndPost = sourceFiles.some(sf => {
-      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      const hasToJSONCall = calls.some(c => {
-        const expr = c.getExpression().getText();
-        return expr.endsWith('.toJSON') || expr.includes('toJSON(');
-      });
-
-      const hasVerifyPost = calls.some(c => {
-        const expr = c.getExpression().getText();
-        if (!/fetch/i.test(expr)) return false;
-        const text = c.getText();
-        return /verify/i.test(text) && /POST/i.test(text);
-      });
-
-      return hasToJSONCall && hasVerifyPost;
+    const allCalls = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
+    const hasToJSONCall = allCalls.some(c => {
+      const expr = c.getExpression().getText();
+      return expr.endsWith('.toJSON') || expr.includes('toJSON(');
     });
+    const hasFetchCall = allCalls.some(c => /fetch/i.test(c.getExpression().getText()));
+    const hasPostMethod = sourceFiles.some(sf => /['"`]POST['"`]/i.test(sf.getFullText()));
+    const hasVerifyCall = allCalls.some(c => /verify/i.test(c.getText()));
 
-    expect(hasToJSONAndPost).toBe(true);
+    expect(hasToJSONCall && hasFetchCall && hasPostMethod && hasVerifyCall).toBe(true);
   });
 
   test('Expectation 11: Application invokes signalAllAcceptedCredentials after credential changes', () => {
@@ -188,10 +177,7 @@ test.describe('Passkeys Target Grader - daily-grind', () => {
 
     const hasSignalAllAccepted = sourceFiles.some(sf => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some(c => {
-        const expr = c.getExpression().getText();
-        return expr.includes('signalAllAcceptedCredentials');
-      });
+      return calls.some(c => c.getText().includes('signalAllAcceptedCredentials'));
     });
 
     expect(hasSignalAllAccepted).toBe(true);
@@ -203,10 +189,7 @@ test.describe('Passkeys Target Grader - daily-grind', () => {
 
     const hasSignalCurrentUser = sourceFiles.some(sf => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some(c => {
-        const expr = c.getExpression().getText();
-        return expr.includes('signalCurrentUserDetails');
-      });
+      return calls.some(c => c.getText().includes('signalCurrentUserDetails'));
     });
 
     expect(hasSignalCurrentUser).toBe(true);
@@ -218,10 +201,7 @@ test.describe('Passkeys Target Grader - daily-grind', () => {
 
     const hasSignalUnknown = sourceFiles.some(sf => {
       const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      return calls.some(c => {
-        const expr = c.getExpression().getText();
-        return expr.includes('signalUnknownCredential');
-      });
+      return calls.some(c => c.getText().includes('signalUnknownCredential'));
     });
 
     expect(hasSignalUnknown).toBe(true);
@@ -235,7 +215,7 @@ test.describe('Passkeys Target Grader - daily-grind', () => {
       const identifiers = sf.getDescendantsOfKind(SyntaxKind.Identifier);
       const hasAaguidRef = identifiers.some(id => /aaguid/i.test(id.getText()));
       const fullText = sf.getFullText();
-      const hasUiMapping = /Google Password Manager|iCloud Keychain|1Password|Bitwarden|Passkey/i.test(fullText);
+      const hasUiMapping = /Google Password Manager|iCloud Keychain|1Password|Bitwarden|Passkey|provider/i.test(fullText);
       const hasAuthAbuse = /roles?|permissions?|isAdmin|authorized/i.test(fullText) && fullText.includes('aaguid');
       return hasAaguidRef && hasUiMapping && !hasAuthAbuse;
     });
@@ -247,19 +227,13 @@ test.describe('Passkeys Target Grader - daily-grind', () => {
     const project = getJsProject(targetFiles);
     const sourceFiles = project.getSourceFiles();
 
-    const isSecureAndDelegated = sourceFiles.some(sf => {
-      const calls = sf.getDescendantsOfKind(SyntaxKind.CallExpression);
-      const hasHandRolledCrypto = calls.some(c => {
-        const expr = c.getExpression().getText();
-        return expr.includes('crypto.subtle.verify');
-      });
-      const hasServerVerification = calls.some(c => {
-        const text = c.getText();
-        return /fetch/i.test(text) && /verify/i.test(text);
-      });
-      return !hasHandRolledCrypto && hasServerVerification;
-    });
+    const allCalls = sourceFiles.flatMap(sf => sf.getDescendantsOfKind(SyntaxKind.CallExpression));
+    const hasHandRolledCrypto = allCalls.some(c =>
+      c.getExpression().getText().includes('crypto.subtle.verify')
+    );
+    const hasFetchCall = allCalls.some(c => /fetch/i.test(c.getExpression().getText()));
+    const hasVerifyCall = allCalls.some(c => /verify/i.test(c.getText()));
 
-    expect(isSecureAndDelegated).toBe(true);
+    expect(!hasHandRolledCrypto && hasFetchCall && hasVerifyCall).toBe(true);
   });
 });

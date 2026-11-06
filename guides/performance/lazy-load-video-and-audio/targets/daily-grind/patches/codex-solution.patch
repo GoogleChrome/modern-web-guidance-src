@@ -1,0 +1,220 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..1eae0cf
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++dist/
++node_modules/
+diff --git a/build.mjs b/build.mjs
+new file mode 100644
+index 0000000..7b95f6e
+--- /dev/null
++++ b/build.mjs
+@@ -0,0 +1,7 @@
++import { copyFile, mkdir } from 'node:fs/promises';
++
++await mkdir(new URL('./dist/', import.meta.url), { recursive: true });
++for (const file of ['index.html', 'media.js']) {
++  await copyFile(new URL(file, import.meta.url), new URL(`dist/${file}`, import.meta.url));
++}
++console.log('Built static application in dist/');
+diff --git a/index.html b/index.html
+index 66c9173..150c2e9 100644
+--- a/index.html
++++ b/index.html
+@@ -93,6 +93,50 @@
+       margin-bottom: 1rem;
+     }
+ 
++    video {
++      display: block;
++      max-width: 100%;
++      height: auto;
++      aspect-ratio: 16 / 9;
++      background: var(--primary);
++      border-radius: 8px;
++    }
++
++    .hero {
++      height: auto;
++      min-height: 60vh;
++      padding: 24px 20px;
++    }
++
++    .hero video {
++      width: 320px;
++      margin-bottom: 16px;
++    }
++
++    .media-section {
++      /* Keep these players below the initial viewport even on tall screens. */
++      margin-top: max(40px, 45vh);
++    }
++
++    .media-section figure {
++      margin-top: 24px;
++    }
++
++    .media-section video {
++      width: 800px;
++    }
++
++    .media-section audio {
++      display: block;
++      width: min(100%, 480px);
++      margin-top: 12px;
++    }
++
++    figcaption {
++      margin-bottom: 12px;
++      font-weight: 600;
++    }
++
+     /* Content Sections */
+     .container {
+       max-width: 1100px;
+@@ -169,6 +213,13 @@
+   </nav>
+ 
+   <header class="hero">
++    <!-- The hero is immediately visible: keep its poster and media eager. -->
++    <video controls width="640" height="360" preload="metadata"
++      poster="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&amp;fit=crop&amp;w=640&amp;q=80"
++      aria-label="A moment in the garden">
++      <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4">
++      Your browser does not support video playback.
++    </video>
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+     <a href="/order-online" class="btn">Order Now</a>
+@@ -195,6 +246,33 @@
+         </div>
+       </div>
+     </section>
++
++    <section class="media-section" aria-labelledby="pause-title">
++      <h2 id="pause-title">Take a Coffee Break</h2>
++      <p>Slow down with a moment in nature and a little music for your next cup.</p>
++      <figure>
++        <figcaption id="garden-title">A Moment in the Garden</figcaption>
++        <!-- Sources and posters remain inert until native lazy loading or the fallback takes over. -->
++        <video controls loading="lazy" width="800" height="450" preload="none"
++          data-poster="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&amp;fit=crop&amp;w=800&amp;q=80"
++          aria-labelledby="garden-title">
++          <source data-src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.webm" type="video/webm">
++          <source data-src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4">
++          Your browser does not support video playback.
++        </video>
++      </figure>
++      <figure>
++        <figcaption id="music-title">Music for Your Coffee Break</figcaption>
++        <audio controls loading="lazy" preload="none" aria-labelledby="music-title"
++          data-src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">
++          Your browser does not support audio playback.
++        </audio>
++      </figure>
++      <noscript>
++        <p>Listen to the <a href="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3">coffee break music</a>
++          or watch the <a href="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4">garden video</a>.</p>
++      </noscript>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +285,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script src="media.js" defer></script>
+ </body>
+ 
+ </html>
+diff --git a/media.js b/media.js
+new file mode 100644
+index 0000000..9b68d2d
+--- /dev/null
++++ b/media.js
+@@ -0,0 +1,47 @@
++// @ts-check
++
++/** @param {HTMLMediaElement} media */
++function restoreMedia(media) {
++  if (media instanceof HTMLVideoElement && media.dataset.poster) {
++    media.poster = media.dataset.poster;
++    delete media.dataset.poster;
++  }
++  if (media.dataset.src) {
++    media.src = media.dataset.src;
++    delete media.dataset.src;
++  }
++  for (const source of media.querySelectorAll('source[data-src]')) {
++    if (source instanceof HTMLSourceElement && source.dataset.src) {
++      source.src = source.dataset.src;
++      delete source.dataset.src;
++    }
++  }
++}
++
++const lazyMedia = document.querySelectorAll('video[loading="lazy"], audio[loading="lazy"][controls]');
++const supportsLazyMedia = Object.hasOwn(HTMLMediaElement.prototype, 'loading');
++
++if (supportsLazyMedia) {
++  // Native loading defers the restored poster and media resources.
++  for (const media of lazyMedia) {
++    if (media instanceof HTMLMediaElement) restoreMedia(media);
++  }
++} else if ('IntersectionObserver' in window) {
++  const observer = new IntersectionObserver((entries) => {
++    for (const entry of entries) {
++      if (!entry.isIntersecting || !(entry.target instanceof HTMLMediaElement)) continue;
++      restoreMedia(entry.target);
++      entry.target.load();
++      observer.unobserve(entry.target);
++    }
++  }, { rootMargin: '200px 0px' });
++
++  for (const media of lazyMedia) observer.observe(media);
++} else {
++  // Older browsers still have working players; preload="none" limits downloads.
++  for (const media of lazyMedia) {
++    if (!(media instanceof HTMLMediaElement)) continue;
++    restoreMedia(media);
++    media.load();
++  }
++}
+diff --git a/package.json b/package.json
+index 2bd4d77..3c51124 100644
+--- a/package.json
++++ b/package.json
+@@ -2,8 +2,12 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
++    "build": "tsc --project tsconfig.json && node build.mjs",
+     "start": "pnpm dlx statikk --port ${PORT:-11222}"
+   },
++  "devDependencies": {
++    "typescript": "^5.9.3"
++  },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+   }
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..14fbbdb
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "allowJs": true,
++    "checkJs": true,
++    "noEmit": true,
++    "strict": true,
++    "target": "ES2022",
++    "lib": ["DOM", "DOM.Iterable", "ES2022"],
++    "types": []
++  },
++  "include": ["media.js"]
++}

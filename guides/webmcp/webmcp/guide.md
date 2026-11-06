@@ -1,9 +1,12 @@
 ---
 name: webmcp
-description: Use this guide to implement WebMCP (Web Model Context Protocol) in browser applications, exposing client-side functionality as tools to AI agents via declarative or imperative APIs.
+description: Use this guide to implement WebMCP in browser applications, exposing client-side functionality as tools to AI agents via declarative or imperative APIs.
+web-feature-ids:
+  - declarative-webmcp
+  - document-modelcontext
 ---
 
-# WebMCP (Web Model Context Protocol)
+# WebMCP
 
 WebMCP is a browser-native JavaScript API that allows web pages to expose their client-side functionality as structured "tools" to AI agents, browser assistants, and assistive technologies. 
 
@@ -17,6 +20,7 @@ Currently, WebMCP **only supports Tools**. It does not support the "Resources" o
 
 - **Imperative API**: Use `document.modelContext.registerTool()` for complex logic and dynamic interactions.
 - **Declarative API**: Annotate standard HTML `<form>` elements with `toolname` and `tooldescription` to turn them into tools.
+- **Frameworks (MANDATORY)**: React uses `useWebMCP` from `use-webmcp-tool`. Angular uses `provideExperimentalWebMcpTools` / `declareExperimentalWebMcpTool` from `@angular/core`. Vue uses `useWebMCP` from `@vueuse/core`. **DO NOT** call `registerTool()` from components.
 
 ## Best Practices
 

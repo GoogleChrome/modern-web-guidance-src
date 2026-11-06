@@ -1,0 +1,1 @@
+- Refactor the coffee cards into autonomous custom elements with lifecycle management and attribute/property reflection (including string, numeric, and boolean attributes).

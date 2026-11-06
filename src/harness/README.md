@@ -297,7 +297,7 @@ Only these paths are re-exposed:
 |------|--------|-----|
 | `node_modules`, `src/harness/node_modules` | read-only | Agent CLI binaries |
 | `dist/skills-cli` | read-only, guided only | The npx/pnpx shim runs the local skills CLI |
-| per-run `targetDir` | writable | npx shim, `modern-web.log` |
+| isolated `HOME` (`/tmp/ghh-*`) | writable | Agent workspace, `.gd-bin` npx/pnpx/pnpm shims, and `modern-web.log` |
 
 If no sandbox tool is available the run fails loudly. Set `GD_UNSAFE_NO_SANDBOX=1` to bypass for local debugging only. If an agent hits `EPERM`/`Operation not permitted` on a repo path the harness legitimately needs, add it to `buildSandboxPolicy()` rather than disabling the sandbox.
 

@@ -14,12 +14,16 @@ const demoName = path.basename(filePath);
 test.describe('Passkey Authentication Expectations', () => {
   test.beforeEach(async ({ page, TARGET_URL }) => {
     if (TARGET_URL.startsWith('http://localhost/') || TARGET_URL === `http://localhost/${demoName}`) {
-      await page.route('http://localhost/*', async (route) => {
+      await page.route('http://localhost/**', async (route) => {
         const requestPath = new URL(route.request().url()).pathname;
         const localFilePath = path.join(targetDir, requestPath === '/' ? demoName : requestPath);
 
         if (fs.existsSync(localFilePath)) {
-          await route.fulfill({ path: localFilePath });
+          const isJs = /\.(m?js|cjs)$/i.test(localFilePath);
+          await route.fulfill({
+            path: localFilePath,
+            ...(isJs ? { contentType: 'application/javascript' } : {}),
+          });
         } else {
           await route.continue();
         }
@@ -80,12 +84,23 @@ test.describe('Passkey Authentication Expectations', () => {
       }
 
       if (navigator.credentials) {
-        navigator.credentials.get = async (options) => {
+        navigator.credentials.get = async (options: any) => {
           (window as any).__getCalled = true;
           (window as any).__getOptions = options;
+          if (options?.mediation === 'conditional' && options?.signal) {
+            return await new Promise((_resolve, reject) => {
+              const onAbort = () => reject(new DOMException('Conditional UI request aborted', 'AbortError'));
+              if (options.signal.aborted) {
+                onAbort();
+              } else {
+                options.signal.addEventListener('abort', onAbort, { once: true });
+              }
+            });
+          }
           return {
             id: 'fake-auth-id',
-            toJSON: () => ({ id: 'fake-auth-id' })
+            type: 'public-key',
+            toJSON: () => ({ id: 'fake-auth-id', type: 'public-key' })
           } as any;
         };
       }

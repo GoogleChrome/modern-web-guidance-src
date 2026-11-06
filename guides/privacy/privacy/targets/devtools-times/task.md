@@ -1,1 +1,1 @@
-- Update the application to implement privacy by design, data minimization, third-party audits, and secure data handling across user data handling, third-party service integrations, and security headers.
+- Audit and update The DevTools Times across its sign-in and sign-up forms, third-party scripts in the page layout, and document headers to follow privacy by design, data minimization, and user transparency.

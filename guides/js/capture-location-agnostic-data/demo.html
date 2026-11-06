@@ -344,6 +344,40 @@
       </div>
     </div>
 
+    <!-- Section 3: Partial Dates & Recurring Monthly Intervals -->
+    <div class="card">
+      <div class="section-title">🗓️ Partial Dates &amp; Recurring Billing Intervals</div>
+      <div class="results-section">
+        <div class="result-item">
+          <div class="result-label">
+            <span>Temporal.PlainMonthDay &rarr; PlainDate</span>
+            <span class="result-sublabel">Annual holiday projected into current year</span>
+          </div>
+          <div class="result-value">
+            <span id="monthDayValue">-</span>
+          </div>
+        </div>
+        <div class="result-item">
+          <div class="result-label">
+            <span>Temporal.PlainYearMonth</span>
+            <span class="result-sublabel">Card expiry (year + month without day leakage)</span>
+          </div>
+          <div class="result-value">
+            <span id="yearMonthValue">-</span>
+          </div>
+        </div>
+        <div class="result-item">
+          <div class="result-label">
+            <span>Recurring Interval (<code>overflow: 'constrain'</code>)</span>
+            <span class="result-sublabel">2024-01-31 + 1 month clamps to month-end</span>
+          </div>
+          <div class="result-value">
+            <span id="recurringValue">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -362,29 +396,31 @@
     const standardTimeValue = document.getElementById('standardTimeValue');
     const standardTimeBadge = document.getElementById('standardTimeBadge');
     const standardTimeItem = document.getElementById('standardTimeItem');
+    const monthDayValue = document.getElementById('monthDayValue');
+    const yearMonthValue = document.getElementById('yearMonthValue');
+    const recurringValue = document.getElementById('recurringValue');
     const unsupportedBanner = document.getElementById('unsupportedBanner');
 
     // Check Support
     (async () => {
       if (typeof Temporal === 'undefined') {
         try {
-          const module = await import('https://esm.sh/@js-temporal/polyfill');
+          const module = await import('https://esm.sh/temporal-polyfill');
           // Manually assign to global scope if needed
           globalThis.Temporal = module.Temporal;
           // The polyfill doesn't patch Date.prototype itself; install toTemporalInstant()
           // because the demo relies on it for Date -> Temporal conversion below.
           Date.prototype.toTemporalInstant = module.toTemporalInstant;
-          initializeDemo();
         } catch (err) {
           console.error("Failed to load polyfill:", err);
           unsupportedBanner.style.display = 'flex';
           birthdateInput.disabled = true;
           timezoneSelect.disabled = true;
           reminderInput.disabled = true;
+          return;
         }
-      } else {
-        initializeDemo();
       }
+      initializeDemo();
     })();
 
     function initializeDemo() {
@@ -400,6 +436,21 @@
     function updateAll() {
       updateBirthdate();
       updateReminder();
+      updatePartialAndRecurring();
+    }
+
+    function updatePartialAndRecurring() {
+      const today = Temporal.Now.plainDateISO();
+      const annualHoliday = Temporal.PlainMonthDay.from({ month: 10, day: 31, calendar: 'iso8601' });
+      const holidayThisYear = annualHoliday.toPlainDate({ year: today.year });
+      monthDayValue.textContent = holidayThisYear.toString();
+
+      const cardExpiry = Temporal.PlainYearMonth.from({ year: 2027, month: 12, calendar: 'iso8601' });
+      yearMonthValue.textContent = cardExpiry.toString();
+
+      const billingStart = Temporal.PlainDate.from('2024-01-31');
+      const nextBilling = billingStart.add({ months: 1 }, { overflow: 'constrain' });
+      recurringValue.textContent = nextBilling.toString();
     }
 
     function setBadge(badge, item, drifted) {

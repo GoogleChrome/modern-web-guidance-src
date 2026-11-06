@@ -1,0 +1,198 @@
+diff --git a/index.html b/index.html
+index 66c9173..aa06c7f 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,123 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .btn[aria-busy="true"] {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      pointer-events: none;
++      opacity: 0.85;
++    }
++
++    /* Hide native bars */
++    progress.loading-spinner:indeterminate::-webkit-progress-bar {
++      display: none;
++      background: none;
++    }
++    progress.loading-spinner:indeterminate::-webkit-progress-value {
++      display: none;
++      background: none;
++    }
++    progress.loading-spinner:indeterminate::-moz-progress-bar {
++      display: none;
++      background: none;
++    }
++    progress.loading-spinner:indeterminate::slider-fill {
++      display: none;
++      background: none;
++    }
++
++    @property --arc-start {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 0deg;
++    }
++    @property --arc-end {
++      syntax: "<angle>";
++      inherits: false;
++      initial-value: 0deg;
++    }
++    @property --progress-dash-animation {
++      syntax: "*";
++      inherits: false;
++      initial-value: , progress-dash 3s ease-in-out infinite;
++    }
++
++    progress.loading-spinner:indeterminate {
++      --_from: calc(90deg + var(--arc-start, 0deg));
++      --_to: calc(90deg + var(--arc-end, 158deg));
++      --size: 16px;
++      --thickness: 2px;
++      --spinner-color: #ffffff;
++      --track-color: rgba(255, 255, 255, 0.3);
++      --spinner-duration: 1.5s;
++      --_used-spinner-duration: var(--spinner-duration);
++
++      position: relative;
++      flex: none;
++      width: var(--size);
++      height: var(--size);
++      border-radius: 50%;
++      appearance: none;
++      background: conic-gradient(
++          from var(--_from),
++          var(--spinner-color) calc(var(--_to) - var(--_from)),
++          transparent 0
++        )
++        var(--track-color);
++      animation:
++        progress-spin var(--_used-spinner-duration) linear infinite
++        var(--progress-dash-animation, );
++    }
++
++    @supports (background-clip: border-area) {
++      progress.loading-spinner:indeterminate {
++        background-clip: border-area;
++        border: var(--thickness) solid transparent;
++        background-origin: border-box;
++      }
++    }
++
++    @supports not (background-clip: border-area) {
++      progress.loading-spinner:indeterminate {
++        --clip-boundary: calc(100% - var(--thickness));
++        mask-image: radial-gradient(
++          farthest-side,
++          transparent var(--clip-boundary),
++          black var(--clip-boundary)
++        );
++        border: 0;
++      }
++    }
++
++    @keyframes progress-spin {
++      to {
++        rotate: 1turn;
++      }
++    }
++
++    @keyframes progress-dash {
++      from {
++        --arc-start: 0deg;
++        --arc-end: 3deg;
++      }
++      50% {
++        --arc-start: 100deg;
++        --arc-end: 358deg;
++      }
++      to {
++        --arc-start: 360deg;
++        --arc-end: 363deg;
++      }
++    }
++
++    @media (prefers-reduced-motion: reduce) {
++      .loading-spinner {
++        /* Slow down rather than stop so users still know work is underway. */
++        --_used-spinner-duration: 6s;
++      }
++    }
+   </style>
+ </head>
+ 
+@@ -171,7 +288,7 @@
+   <header class="hero">
+     <h1>Wake Up Your Senses</h1>
+     <p>Ethically sourced, locally roasted, delivered to your cup.</p>
+-    <a href="/order-online" class="btn">Order Now</a>
++    <a href="/order-online" class="btn" data-loading-label="Starting order">Order Now</a>
+   </header>
+ 
+   <main class="container">
+@@ -181,17 +298,17 @@
+         <div class="card">
+           <h3>Maple Oat Latte</h3>
+           <p>Creamy oat milk with a hint of Vermont maple syrup.</p>
+-          <a href="/menu/seasonal" class="btn">View Details</a>
++          <a href="/menu/seasonal" class="btn" data-loading-label="Loading details">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Dark Roast Espresso</h3>
+           <p>Bold, smokey, and perfect for a morning boost.</p>
+-          <a href="/menu/espresso" class="btn">View Details</a>
++          <a href="/menu/espresso" class="btn" data-loading-label="Loading details">View Details</a>
+         </div>
+         <div class="card">
+           <h3>Cold Brew</h3>
+           <p>Steeped for 18 hours for maximum smoothness.</p>
+-          <a href="/menu/cold-brew" class="btn">View Details</a>
++          <a href="/menu/cold-brew" class="btn" data-loading-label="Loading details">View Details</a>
+         </div>
+       </div>
+     </section>
+@@ -207,6 +324,39 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script>
++    function resetBusyLinks() {
++      document.querySelectorAll('.btn[aria-busy="true"]').forEach(function (link) {
++        link.removeAttribute('aria-busy');
++        link.removeAttribute('aria-disabled');
++        var spinner = link.querySelector('.loading-spinner');
++        if (spinner) spinner.remove();
++      });
++    }
++
++    document.querySelectorAll('.btn[data-loading-label]').forEach(function (link) {
++      link.addEventListener('click', function (event) {
++        if (link.getAttribute('aria-busy') === 'true') {
++          event.preventDefault();
++          return;
++        }
++        if (event.defaultPrevented || event.button !== 0 ||
++            event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
++        var spinner = document.createElement('progress');
++        spinner.className = 'loading-spinner';
++        spinner.setAttribute('aria-label', link.dataset.loadingLabel);
++        link.setAttribute('aria-busy', 'true');
++        link.setAttribute('aria-disabled', 'true');
++        link.prepend(spinner);
++      });
++    });
++
++    // Clear busy state when returning via back/forward cache.
++    window.addEventListener('pageshow', function (event) {
++      if (event.persisted) resetBusyLinks();
++    });
++  </script>
++
+ </body>
+ 
+ </html>

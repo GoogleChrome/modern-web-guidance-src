@@ -1,0 +1,457 @@
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..b947077
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,2 @@
++node_modules/
++dist/
+diff --git a/index.html b/index.html
+index 66c9173..e201f05 100644
+--- a/index.html
++++ b/index.html
+@@ -152,6 +152,13 @@
+       text-decoration: none;
+       font-size: 0.85rem;
+     }
++
++    .feedback { margin-top: 40px; padding: 24px; background: white; border-radius: 8px; }
++    .feedback fieldset { border: 0; margin-top: 16px; }
++    .feedback legend { font-weight: 600; margin-bottom: 10px; }
++    .feedback button { font: inherit; border: 0; cursor: pointer; }
++    .feedback .reset { background: var(--secondary); color: var(--text); margin-left: 8px; }
++    .feedback output { display: block; margin-top: 12px; }
+   </style>
+ </head>
+ 
+@@ -195,6 +202,19 @@
+         </div>
+       </div>
+     </section>
++    <section class="feedback" aria-labelledby="feedback-heading">
++      <h2 id="feedback-heading">How was your daily grind?</h2>
++      <p>Tell us how you enjoyed your coffee.</p>
++      <form id="coffee-feedback">
++        <fieldset>
++          <legend id="rating-label">Your coffee rating (required)</legend>
++          <rating-input name="rating" required aria-labelledby="rating-label"></rating-input>
++        </fieldset>
++        <button type="submit" class="btn">Submit Rating</button>
++        <button type="reset" class="btn reset">Reset</button>
++        <output id="feedback-result" aria-live="polite"></output>
++      </form>
++    </section>
+   </main>
+ 
+   <footer>
+@@ -207,6 +227,7 @@
+     <p>&copy; 2026 The Daily Grind Coffee Co. All rights reserved.</p>
+   </footer>
+ 
++  <script type="module" src="/src/main.ts"></script>
+ </body>
+ 
+ </html>
+diff --git a/package.json b/package.json
+index 2bd4d77..0990820 100644
+--- a/package.json
++++ b/package.json
+@@ -2,7 +2,14 @@
+   "name": "daily-grind",
+   "version": "1.0.0",
+   "scripts": {
+-    "start": "pnpm dlx statikk --port ${PORT:-11222}"
++    "start": "npm run build && node scripts/serve.mjs",
++    "build": "tsc --noEmit && node scripts/build.mjs",
++    "test": "npm run build && node tests/forms.mjs"
++  },
++  "devDependencies": {
++    "playwright": "^1.58.2",
++    "typescript": "^5.9.3",
++    "esbuild": "^0.28.1"
+   },
+   "pnpm": {
+     "onlyBuiltDependencies": []
+diff --git a/scripts/build.mjs b/scripts/build.mjs
+new file mode 100644
+index 0000000..d3ece73
+--- /dev/null
++++ b/scripts/build.mjs
+@@ -0,0 +1,15 @@
++import { build } from 'esbuild';
++import { mkdir, readFile, writeFile } from 'node:fs/promises';
++
++await mkdir('dist', { recursive: true });
++await build({
++  entryPoints: ['src/main.ts'],
++  outfile: 'dist/main.js',
++  bundle: true,
++  format: 'esm',
++  target: 'es2022',
++  sourcemap: true,
++});
++const html = await readFile('index.html', 'utf8');
++await writeFile('dist/index.html', html.replace('/src/main.ts', '/main.js'));
++console.log('Production build complete.');
+diff --git a/scripts/serve.mjs b/scripts/serve.mjs
+new file mode 100644
+index 0000000..e18f130
+--- /dev/null
++++ b/scripts/serve.mjs
+@@ -0,0 +1,24 @@
++import { createServer } from 'node:http';
++import { readFile } from 'node:fs/promises';
++
++const files = new Map([
++  ['/main.js', ['dist/main.js', 'text/javascript; charset=utf-8']],
++  ['/main.js.map', ['dist/main.js.map', 'application/json']],
++]);
++const port = Number(process.env.PORT ?? 11222);
++const server = createServer(async (request, response) => {
++  try {
++    const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
++    const [file, type] = files.get(pathname) ?? ['dist/index.html', 'text/html; charset=utf-8'];
++    const body = await readFile(file);
++    response.writeHead(200, { 'Content-Type': type });
++    response.end(body);
++  } catch {
++    response.writeHead(500, { 'Content-Type': 'text/plain' });
++    response.end('Unable to load the application.');
++  }
++});
++server.listen(port, '0.0.0.0', () => {
++  const address = server.address();
++  if (address && typeof address === 'object') console.log(`Listening on http://localhost:${address.port}`);
++});
+diff --git a/src/main.ts b/src/main.ts
+new file mode 100644
+index 0000000..e0da88f
+--- /dev/null
++++ b/src/main.ts
+@@ -0,0 +1,12 @@
++import './rating-input';
++
++const form = document.querySelector<HTMLFormElement>('#coffee-feedback')!;
++const result = document.querySelector<HTMLOutputElement>('#feedback-result')!;
++
++form.addEventListener('submit', event => {
++  event.preventDefault();
++  const data = new FormData(form);
++  result.textContent = `Thanks for rating your coffee ${String(data.get('rating'))} out of 5 stars!`;
++});
++form.addEventListener('reset', () => { result.textContent = ''; });
++form.addEventListener('input', () => { result.textContent = ''; });
+diff --git a/src/rating-input.ts b/src/rating-input.ts
+new file mode 100644
+index 0000000..15fcead
+--- /dev/null
++++ b/src/rating-input.ts
+@@ -0,0 +1,170 @@
++const supportsFormAssociation =
++  'attachInternals' in HTMLElement.prototype &&
++  typeof ElementInternals !== 'undefined' &&
++  'setFormValue' in ElementInternals.prototype;
++
++/** A single-value rating control owned by its native form. */
++export class RatingInput extends HTMLElement {
++  static formAssociated = true;
++  static observedAttributes = ['required', 'disabled', 'value', 'name'];
++
++  #internals: ElementInternals | null;
++  #value = '';
++  #disabled = false;
++  #buttons: HTMLButtonElement[];
++  #status: HTMLElement;
++  #fallback: HTMLInputElement | null = null;
++  #fallbackForm: HTMLFormElement | null = null;
++  #fallbackObserver: MutationObserver | null = null;
++  #resetFallback = () => { this.formResetCallback(); };
++
++  constructor() {
++    super();
++    this.#internals = supportsFormAssociation ? this.attachInternals() : null;
++    const root = this.attachShadow({ mode: 'open', delegatesFocus: true });
++    root.innerHTML = `
++      <style>
++        :host { display: block; }
++        .ratings { display: flex; flex-wrap: wrap; gap: .6rem; }
++        button { font: inherit; background: white; color: #4e342e; border: 2px solid #d7ccc8;
++          border-radius: 6px; min-width: 3rem; padding: .6rem; cursor: pointer; }
++        button[aria-checked="true"] { background: #4e342e; color: white; border-color: #4e342e; }
++        button:hover:enabled { border-color: #4e342e; }
++        button:focus-visible { outline: 3px solid #ffab40; outline-offset: 3px; }
++        button:disabled { opacity: .45; cursor: default; }
++        :host(:invalid) button { border-color: #a43c27; }
++        p { margin: .6rem 0 0; font-size: .9rem; }
++      </style>
++      <div class="ratings" role="radiogroup" aria-label="Coffee rating">
++        ${[1, 2, 3, 4, 5].map(value => `<button type="button" role="radio" aria-checked="false"
++          aria-label="${value} ${value === 1 ? 'star' : 'stars'}" data-value="${value}">${value} ★</button>`).join('')}
++      </div>
++      <p aria-live="polite">Choose a rating from 1 to 5 stars.</p>
++    `;
++    this.#buttons = Array.from(root.querySelectorAll('button'));
++    this.#status = root.querySelector('p')!;
++    for (const button of this.#buttons) {
++      button.addEventListener('click', () => this.#select(button.dataset.value!));
++      button.addEventListener('keydown', event => {
++        if (this.#disabled) return;
++        const index = this.#buttons.indexOf(button);
++        let next: number;
++        switch (event.key) {
++          case 'ArrowRight': case 'ArrowDown': next = (index + 1) % 5; break;
++          case 'ArrowLeft': case 'ArrowUp': next = (index + 4) % 5; break;
++          case 'Home': next = 0; break;
++          case 'End': next = 4; break;
++          default: return;
++        }
++        event.preventDefault();
++        this.#buttons[next].focus();
++        this.#select(this.#buttons[next].dataset.value!);
++      });
++    }
++  }
++
++  connectedCallback() {
++    // Only browsers without FACE need a native submission proxy.
++    if (!this.#internals && !this.#fallback) {
++      const input = document.createElement('input');
++      input.type = 'text';
++      input.tabIndex = -1;
++      input.setAttribute('aria-label', 'Coffee rating');
++      input.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);';
++      input.addEventListener('invalid', () => this.#buttons[0].focus());
++      this.append(input);
++      this.#fallback = input;
++      this.#fallbackForm = input.form;
++      this.#fallbackForm?.addEventListener('reset', this.#resetFallback);
++      this.#fallbackObserver = new MutationObserver(() => this.#sync());
++      for (let ancestor = this.parentElement; ancestor; ancestor = ancestor.parentElement) {
++        this.#fallbackObserver.observe(ancestor, { attributes: true, attributeFilter: ['disabled'] });
++      }
++    }
++    this.#sync();
++  }
++
++  disconnectedCallback() {
++    this.#fallbackForm?.removeEventListener('reset', this.#resetFallback);
++    this.#fallbackForm = null;
++    this.#fallbackObserver?.disconnect();
++    this.#fallbackObserver = null;
++    this.#fallback?.remove();
++    this.#fallback = null;
++  }
++
++  attributeChangedCallback(name: string, _old: string | null, value: string | null) {
++    if (name === 'value') this.#value = value ?? '';
++    if (!this.#internals && name === 'disabled') this.#disabled = value !== null;
++    this.#sync();
++  }
++
++  get value(): string { return this.#value; }
++  set value(value: string) { this.#value = String(value); this.#sync(); }
++  get name(): string { return this.getAttribute('name') ?? ''; }
++  set name(value: string) { this.setAttribute('name', value); }
++  get required(): boolean { return this.hasAttribute('required'); }
++  set required(value: boolean) { this.toggleAttribute('required', value); }
++  get disabled(): boolean { return this.hasAttribute('disabled'); }
++  set disabled(value: boolean) { this.toggleAttribute('disabled', value); }
++  get form(): HTMLFormElement | null { return this.#internals?.form ?? this.#fallback?.form ?? null; }
++  get validity(): ValidityState { return (this.#internals ?? this.#fallback!).validity; }
++  get validationMessage(): string { return (this.#internals ?? this.#fallback!).validationMessage; }
++  get willValidate(): boolean { return (this.#internals ?? this.#fallback!).willValidate; }
++  get labels(): NodeList | null { return this.#internals?.labels ?? this.#fallback?.labels ?? null; }
++  checkValidity(): boolean { return (this.#internals ?? this.#fallback!).checkValidity(); }
++  reportValidity(): boolean { return (this.#internals ?? this.#fallback!).reportValidity(); }
++
++  formResetCallback() { this.value = this.getAttribute('value') ?? ''; }
++  formDisabledCallback(disabled: boolean) {
++    // The browser computes this from both the host and its ancestor fieldset.
++    // Do not set the host attribute here: that would prevent re-enabling it.
++    this.#disabled = disabled;
++    this.#sync();
++  }
++  formStateRestoreCallback(state: string | File | FormData) {
++    if (typeof state === 'string') this.value = state;
++  }
++
++  #select(value: string) {
++    if (this.#disabled || value === this.#value) return;
++    this.value = value;
++    this.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true, inputType: 'insertReplacementText' }));
++    // Each button activation commits the selection immediately.
++    this.dispatchEvent(new Event('change', { bubbles: true }));
++  }
++
++  #sync() {
++    if (this.#fallback) {
++      this.#fallback.disabled = this.disabled;
++      this.#disabled = this.#fallback.matches(':disabled');
++    }
++    const missing = this.required && this.#value === '';
++    const message = missing ? 'Please choose a coffee rating.' : '';
++    const selected = this.#buttons.find(button => button.dataset.value === this.#value);
++    for (const button of this.#buttons) {
++      button.disabled = this.#disabled;
++      button.tabIndex = !this.#disabled && button === (selected ?? this.#buttons[0]) ? 0 : -1;
++      button.setAttribute('aria-checked', String(button === selected));
++    }
++    this.shadowRoot!.querySelector('[role="radiogroup"]')!
++      .setAttribute('aria-required', String(this.required));
++    this.#status.textContent = this.#value ? `Your rating: ${this.#value} out of 5 stars.` : 'Choose a rating from 1 to 5 stars.';
++    if (this.#internals) {
++      this.#internals.setFormValue(this.#value, this.#value);
++      if (missing) this.#internals.setValidity({ valueMissing: true }, message, this.#buttons[0]);
++      else this.#internals.setValidity({});
++    } else if (this.#fallback) {
++      this.#fallback.name = this.name;
++      this.#fallback.value = this.#value;
++      this.#fallback.required = this.required;
++      this.#fallback.setCustomValidity(message);
++    }
++  }
++}
++
++customElements.define('rating-input', RatingInput);
++
++declare global {
++  interface HTMLElementTagNameMap { 'rating-input': RatingInput; }
++}
+diff --git a/tests/forms.mjs b/tests/forms.mjs
+new file mode 100644
+index 0000000..e96f5a3
+--- /dev/null
++++ b/tests/forms.mjs
+@@ -0,0 +1,114 @@
++import assert from 'node:assert/strict';
++import { existsSync } from 'node:fs';
++import { spawn } from 'node:child_process';
++import { chromium } from 'playwright';
++
++const server = spawn(process.execPath, ['scripts/serve.mjs'], {
++  env: { ...process.env, PORT: '0' }, stdio: ['ignore', 'pipe', 'inherit'],
++});
++let browser;
++try {
++  const url = await new Promise((resolve, reject) => {
++    server.stdout.once('data', data => resolve(data.toString().match(/http:\/\/localhost:\d+/)[0]));
++    server.once('error', reject);
++    server.once('exit', code => reject(new Error(`Test server exited: ${code}`)));
++  });
++  const executablePath = process.env.CHROME_PATH ?? (existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined);
++  browser = await chromium.launch({ executablePath, headless: true, args: ['--no-sandbox'] });
++  const page = await browser.newPage();
++  const errors = [];
++  page.on('pageerror', error => errors.push(error.message));
++  await page.goto(url);
++  await page.evaluate(() => customElements.whenDefined('rating-input'));
++
++  assert.deepEqual(await page.evaluate(() => {
++    const rating = document.querySelector('rating-input');
++    const form = rating.form;
++    window.submitCount = 0;
++    window.events = [];
++    form.addEventListener('submit', () => window.submitCount++);
++    rating.addEventListener('input', event => window.events.push([event.type, event instanceof InputEvent]));
++    rating.addEventListener('change', event => window.events.push([event.type, event instanceof Event]));
++    return {
++      associated: rating.constructor.formAssociated,
++      proxyCount: rating.querySelectorAll('input').length + rating.shadowRoot.querySelectorAll('input').length,
++      invalid: rating.matches(':invalid'),
++      validForm: form.checkValidity(),
++      report: form.reportValidity(),
++      focused: document.activeElement === rating && rating.shadowRoot.activeElement === rating.shadowRoot.querySelector('button'),
++    };
++  }), { associated: true, proxyCount: 0, invalid: true, validForm: false, report: false, focused: true });
++
++  await page.getByRole('button', { name: 'Submit Rating' }).click();
++  assert.equal(await page.evaluate(() => window.submitCount), 0);
++  await page.getByRole('radio', { name: '4 stars', exact: true }).click();
++  assert.deepEqual(await page.evaluate(() => {
++    const rating = document.querySelector('rating-input');
++    return [rating.value, rating.matches(':valid'), rating.form.checkValidity(), new FormData(rating.form).get('rating'), window.events];
++  }), ['4', true, true, '4', [['input', true], ['change', true]]]);
++  await page.getByRole('button', { name: 'Submit Rating' }).click();
++  assert.equal(await page.evaluate(() => window.submitCount), 1);
++  assert.match(await page.locator('output').textContent(), /4 out of 5/);
++
++  assert.deepEqual(await page.evaluate(() => {
++    const rating = document.querySelector('rating-input');
++    rating.value = '2';
++    const set = [rating.value, rating.matches(':valid'), new FormData(rating.form).get('rating'), window.events.length];
++    rating.form.reset();
++    return [set, rating.value, rating.matches(':invalid'), rating.form.checkValidity()];
++  }), [['2', true, '2', 2], '', true, false]);
++
++  assert.deepEqual(await page.evaluate(() => {
++    const rating = document.querySelector('rating-input');
++    const fieldset = rating.closest('fieldset');
++    rating.value = '3';
++    const controls = () => [...rating.shadowRoot.querySelectorAll('button')];
++    fieldset.disabled = true;
++    controls()[0].click();
++    const ancestorDisabled = [rating.matches(':disabled'), controls().every(button => button.disabled && button.tabIndex === -1), rating.value, new FormData(rating.form).has('rating'), rating.hasAttribute('disabled')];
++    fieldset.disabled = false;
++    const enabled = [controls().every(button => !button.disabled), controls().some(button => button.tabIndex === 0)];
++    rating.disabled = true;
++    fieldset.disabled = true;
++    fieldset.disabled = false;
++    controls()[0].click();
++    const ownDisabled = [controls().every(button => button.disabled), rating.value];
++    rating.disabled = false;
++    rating.formStateRestoreCallback('5');
++    return [ancestorDisabled, enabled, ownDisabled, rating.value, rating.form.checkValidity(), new FormData(rating.form).get('rating')];
++  }), [[true, true, '3', false, false], [true, true], [true, '3'], '5', true, '5']);
++
++  await page.getByRole('radio', { name: '5 stars', exact: true }).focus();
++  await page.keyboard.press('ArrowLeft');
++  assert.equal(await page.locator('rating-input').evaluate(rating => rating.value), '4');
++  assert.deepEqual(await page.evaluate(() => {
++    const rating = document.querySelector('rating-input');
++    rating.setAttribute('value', '2');
++    rating.value = '5';
++    rating.form.reset();
++    const defaults = [rating.value, new FormData(rating.form).get('rating')];
++    rating.removeAttribute('value');
++    rating.required = false;
++    return [defaults, rating.matches(':valid'), rating.form.checkValidity()];
++  }), [['2', '2'], true, true]);
++  assert.deepEqual(errors, []);
++  console.log('All FACE expectations passed in Chromium (including keyboard and event checks).');
++
++  const fallbackPage = await browser.newPage();
++  await fallbackPage.addInitScript(() => { delete HTMLElement.prototype.attachInternals; });
++  await fallbackPage.goto(url);
++  await fallbackPage.evaluate(() => customElements.whenDefined('rating-input'));
++  assert.equal(await fallbackPage.locator('rating-input').evaluate(rating => rating.form.checkValidity()), false);
++  await fallbackPage.getByRole('radio', { name: '3 stars', exact: true }).click();
++  assert.equal(await fallbackPage.locator('rating-input').evaluate(rating => new FormData(rating.form).get('rating')), '3');
++  await fallbackPage.locator('fieldset').evaluate(fieldset => { fieldset.disabled = true; });
++  assert.equal(await fallbackPage.locator('rating-input').evaluate(rating => [...rating.shadowRoot.querySelectorAll('button')].every(button => button.disabled && button.tabIndex === -1)), true);
++  await fallbackPage.locator('fieldset').evaluate(fieldset => { fieldset.disabled = false; });
++  assert.equal(await fallbackPage.locator('rating-input').evaluate(rating => [...rating.shadowRoot.querySelectorAll('button')].every(button => !button.disabled)), true);
++  await fallbackPage.getByRole('button', { name: 'Reset', exact: true }).click();
++  assert.deepEqual(await fallbackPage.locator('rating-input').evaluate(rating => [rating.value, rating.form.checkValidity()]), ['', false]);
++  console.log('Unsupported-browser fallback checks passed.');
++} finally {
++  await browser?.close();
++  server.kill();
++}
+diff --git a/tsconfig.json b/tsconfig.json
+new file mode 100644
+index 0000000..0d8dcf3
+--- /dev/null
++++ b/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "compilerOptions": {
++    "target": "ES2022",
++    "module": "ESNext",
++    "moduleResolution": "Bundler",
++    "lib": ["ES2022", "DOM", "DOM.Iterable"],
++    "strict": true,
++    "noEmit": true,
++    "skipLibCheck": true
++  },
++  "include": ["src/**/*.ts"]
++}

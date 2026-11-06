@@ -9,6 +9,8 @@ web-feature-ids:
 
 The Declarative API transforms standard HTML `<form>` elements into WebMCP tools via attributes. The browser synthesizes a JSON Schema from the form inputs and handles agent interactions.
 
+**Angular Signal Forms:** **DO NOT** add `toolname`/`tooldescription` to forms built with `form()` from `@angular/forms/signals`. Instead, add `provideExperimentalWebMcpForms()` to the app providers and pass the `experimentalWebMcpTool: { name, description }` option to `form()`. Angular then registers the form through the Imperative API, building the schema from the signal model and wiring it to validation and submission. Using both approaches registers the same form twice.
+
 ## Form Attributes
 
 *   `toolname`: Unique name for the tool.

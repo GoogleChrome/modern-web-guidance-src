@@ -3,3 +3,4 @@
 - The implementation MUST use unitless values for `line-height` (such as `1.5`) and MUST NOT use `px` for `font-size`.
 - The implementation MUST apply `text-wrap: balance` to headings (`<h1>`–`<h6>`) and `text-wrap: pretty` to body text paragraphs.
 - The implementation MUST NOT apply `text-wrap: balance` or `text-wrap: pretty` globally via the universal selector (`*`).
+- The implementation MUST NOT use `text-align: justify` without `hyphens: auto`.

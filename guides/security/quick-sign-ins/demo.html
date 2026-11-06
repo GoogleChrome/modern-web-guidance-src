@@ -192,7 +192,7 @@
         if (verifyResponse.status === 404) {
           if (PublicKeyCredential.signalUnknownCredential) {
             await PublicKeyCredential.signalUnknownCredential({
-              rpId: publicKey.rpId || window.location.hostname,
+              rpId: publicKey.rpId,
               credentialId: encoded.id,
             });
           }
