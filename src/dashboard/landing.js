@@ -301,7 +301,11 @@ function setupInsightsControls() {
             renderPivotInsights();
         });
         limitInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') limitInput.blur();
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.isComposing || e.keyCode === 229) return;
+                limitInput.blur();
+            }
         });
     }
 
@@ -1455,7 +1459,7 @@ function renderPivotInsights() {
             if (pSort === 'alpha') firstColAriaSort = ' aria-sort="ascending"';
             else secondColAriaSort = ` aria-sort="${pSort === 'uplift-asc' ? 'ascending' : 'descending'}"`;
         }
-        const table = `<table class="insights-table"> <caption class="visually-hidden">Median ${metricName.toLowerCase()} by ${captionNoun}, unguided vs. guided${showVariance ? ' (bands show one standard deviation across runs)' : ''}</caption> <thead class="${filterKey === 'guide' ? 'pivot-head' : 'visually-hidden'}"><tr><th scope="col"${firstColAriaSort}>${escapeHtml(colHeader)}</th><th scope="col"${secondColAriaSort}>${escapeHtml(metricName)} <span class="pivot-head-note">unguided → guided (median)</span></th></tr></thead> <tbody>${rowsHtml}</tbody> </table>`;
+        const table = `<table class="insights-table"> <caption class="visually-hidden">Median ${metricName.toLowerCase()} by ${captionNoun}, unguided vs. guided${showVariance ? ' (bands show one standard deviation across runs)' : ''}</caption> <thead class="visually-hidden"><tr><th scope="col"${firstColAriaSort}>${escapeHtml(colHeader)}</th><th scope="col"${secondColAriaSort}>${escapeHtml(metricName)} <span class="pivot-head-note">unguided → guided (median)</span></th></tr></thead> <tbody>${rowsHtml}</tbody> </table>`;
         const isExpanded = Boolean(expandedPanels[filterKey]);
         const scrollCls = `insights-table-scroll${filterKey === 'guide' ? ' pivot-scroll' : ''}${isExpanded ? ' is-expanded' : ''}`;
         const label = filterKey === 'guide' ? 'By guide table (scrolls vertically)' : `By ${captionNoun} table (scrolls vertically)`;
@@ -1482,10 +1486,13 @@ function renderPivotInsights() {
         return `<div class="insights-panel-header"> <h3 class="insights-panel-title"> <button type="button" class="insights-panel-title-btn anchor-${alphaHintId}" data-panel-title-sort="${panelKey}" aria-pressed="${sortMode === 'alpha'}" interestfor="${alphaHintId}">${titleHtml}</button> </h3> <button type="button" class="insights-uplift-sort-btn anchor-${upliftHintId}${isSorted ? ' is-sorted' : ''}" data-panel-uplift-sort="${panelKey}" aria-pressed="${isSorted}" interestfor="${upliftHintId}"> <span>Uplift<span class="visually-hidden">${sortStateLabel}</span></span> <span class="insights-uplift-sort-arrow" aria-hidden="true">${arrow}</span> </button> <div id="${alphaHintId}" popover="hint" class="hint-popover">Sort ${panelNoun} alphabetically</div> <div id="${upliftHintId}" popover="hint" class="hint-popover">${upliftHintText}</div> </div>`;
     };
 
-    /** @param {'model' | 'dimension' | 'guide'} panelKey */
-    const renderExpandRow = (panelKey) => {
+    const COLLAPSED_ROW_THRESHOLD = 6;
+    /** @param {'model' | 'dimension' | 'guide'} panelKey
+     * @param {number} rowCount */
+    const renderExpandRow = (panelKey, rowCount) => {
         const isExpanded = Boolean(expandedPanels[panelKey]);
-        return ` <div class="insights-expand-row"> <button type="button" class="insights-expand-btn${isExpanded ? ' is-expanded' : ''}" data-expand-panel="${panelKey}" aria-expanded="${isExpanded}"> <span>${isExpanded ? 'Collapse' : 'Expand'}</span> <svg class="insights-expand-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"> <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/> </svg> </button>
+        if (rowCount <= COLLAPSED_ROW_THRESHOLD && !isExpanded) return '';
+        return ` <div class="insights-expand-row"> <button type="button" class="insights-expand-btn${isExpanded ? ' is-expanded' : ''}" data-expand-panel="${panelKey}" aria-expanded="${isExpanded}"> <span>${isExpanded ? 'Collapse' : `Show all ${rowCount}`}</span> <svg class="insights-expand-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"> <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/> </svg> </button>
             </div>
         `;
     };
@@ -1499,43 +1506,46 @@ function renderPivotInsights() {
     const sortOptionsHtml = sortOptions.map(opt => `<option value="${opt.value}" ${currentGuideSort === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('');
     const dirLabel = currentGuideSortDir === 'asc' ? 'ascending' : 'descending';
     const dirArrow = currentGuideSortDir === 'asc' ? '↑' : '↓';
-    const modeSuffix = onlyA11y ? ' <span class="mode-badge-inline">Accessibility checks</span>' : '';
+    const dimensionCount = Object.keys(grouped.dimension).length;
+    const modelCount = Object.keys(grouped.model).length;
     const guideCount = Object.keys(grouped.guide).length;
     const runCount = keys.length;
-    const dimensionPanelHtml = onlyA11y && Object.keys(grouped.dimension).length > 0 ? `
+    const dimensionPanelHtml = onlyA11y && dimensionCount > 0 ? `
         <div class="insights-panel insights-dimension-panel" data-panel="dimension">
-            ${renderPanelHeader('dimension', `By Accessibility Dimension (${Object.keys(grouped.dimension).length})${modeSuffix}`)}
+            ${renderPanelHeader('dimension', `By accessibility dimension (${dimensionCount})`)}
             ${renderPivotTable(grouped.dimension, 'dimension')}
-            ${renderExpandRow('dimension')}
+            ${renderExpandRow('dimension', dimensionCount)}
         </div>`
         : '';
     container.innerHTML = `
-        <p class="insights-scope">Based on ${runCount} run${runCount === 1 ? '' : 's'} matching current filters (medians across runs).</p>
+        <div class="insights-scope-bar">
+            <p class="insights-scope">${runCount} ${runCount === 1 ? 'run' : 'runs'} · medians across runs</p>
+            <div class="guide-legend">
+                <span class="guide-legend-item">
+                    <span class="guide-legend-swatch unguided"><span class="guide-legend-tick"></span></span>
+                    <span class="guide-legend-label-u">Unguided</span>
+                </span>
+                <span class="guide-legend-vs" aria-hidden="true">→</span>
+                <span class="guide-legend-item">
+                    <span class="guide-legend-swatch guided"><span class="guide-legend-tick"></span></span>
+                    <strong>Guided</strong>
+                </span>
+                <button type="button" class="info-hint-btn anchor-hint-guide-legend" interestfor="hint-guide-legend" aria-label="About the bands and ticks">?</button>
+                <div id="hint-guide-legend" popover="hint" class="hint-popover">Shaded band shows ±1 standard deviation across runs; the vertical tick mark shows the median rate.</div>
+            </div>
+        </div>
         ${dimensionPanelHtml}
         <div class="insights-panel" data-panel="model">
-            ${renderPanelHeader('model', `By Model (${Object.keys(grouped.model).length})${modeSuffix}`)}
+            ${renderPanelHeader('model', `By model (${modelCount})`)}
             ${renderPivotTable(grouped.model, 'model')}
-            ${renderExpandRow('model')}
+            ${renderExpandRow('model', modelCount)}
         </div>
         <div class="insights-panel insights-panel-full insights-guide-drawer" data-panel="guide">
             <div class="insights-guide-body">
-                <div class="insights-panel-header-row">
-                    <h3 class="insights-panel-title" tabindex="-1">By Guide (${guideCount})${modeSuffix}</h3>
-                    <div class="guide-legend">
-                        <span class="guide-legend-item">
-                            <span class="guide-legend-swatch unguided"><span class="guide-legend-tick"></span></span>
-                            <span>Unguided</span>
-                        </span>
-                        <span class="guide-legend-vs">vs.</span>
-                        <span class="guide-legend-item">
-                            <span class="guide-legend-swatch guided"><span class="guide-legend-tick"></span></span>
-                            <span>Guided</span>
-                        </span>
-                        <button type="button" class="info-hint-btn anchor-hint-guide-legend" interestfor="hint-guide-legend" aria-label="About the bands and ticks">?</button>
-                        <div id="hint-guide-legend" popover="hint" class="hint-popover">Shaded band shows ±1 standard deviation across runs; the vertical tick mark shows the median rate.</div>
-                    </div>
+                <div class="insights-panel-header">
+                    <h3 class="insights-panel-title" tabindex="-1">By guide (${guideCount})</h3>
                     <div class="guide-sort-controls">
-                        <label for="guide-sort-select" class="sort-label">Sort by:</label>
+                        <label for="guide-sort-select" class="sort-label">Sort</label>
                         <div class="sort-combined-control">
                             <div class="sort-select-pill">
                                 <select id="guide-sort-select" class="sort-select">${sortOptionsHtml}</select>
@@ -1551,7 +1561,7 @@ function renderPivotInsights() {
                     </div>
                 </div>
                 ${renderPivotTable(grouped.guide, 'guide')}
-                ${renderExpandRow('guide')}
+                ${renderExpandRow('guide', guideCount)}
             </div>
         </div>
     `;

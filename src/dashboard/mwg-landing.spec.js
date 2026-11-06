@@ -197,6 +197,8 @@ async function expectNextToBarbell(page, track) {
   });
   test('expand chevron does not animate under reduced motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    const manyGuides = Object.fromEntries(Array.from({ length: 7 }, (_, i) => [`guide-${i}`, { guidedPassed: 5, guidedTotal: 5, guidedRate: 100, unguidedPassed: 2, unguidedTotal: 5, unguidedRate: 40, uplift: 60 }]));
+    await page.route('**/api/suites*', route => route.fulfill({ json: { suites: A11Y_SUITES_FIXTURE.suites.map(s => ({ ...s, guides: manyGuides })) } }));
     await page.goto('/');
     await openBreakdowns(page);
     const duration = await page.locator('.insights-expand-chevron').first().evaluate(el => getComputedStyle(el).transitionDuration);
@@ -443,5 +445,59 @@ test.describe('Guide trend page MWG compliance', () => {
     await expect(tooltip).toBeHidden();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/dashboard\.html\?testId=/);
+  });
+});
+test.describe('Search quality page MWG compliance', () => {
+  test('links from landing header and renders interactive search benchmarks without third-party requests or console errors', async ({ page }) => {
+    const errors = collectErrors(page);
+    /** @type {string[]} */
+    const thirdParty = [];
+    page.on('request', r => { if (/unpkg\.com|jsdelivr|cdn\.|fonts\.googleapis\.com|fonts\.gstatic\.com/.test(r.url())) thirdParty.push(r.url()); });
+
+    await page.goto('/');
+    const searchLink = page.locator('.header-links a[href="search/"]');
+    await expect(searchLink).toHaveText('Search Quality');
+    await searchLink.click();
+    await expect(page).toHaveURL(/\/search\/$/);
+
+    await expect(page.locator('meta[name="referrer"]')).toHaveAttribute('content', 'strict-origin-when-cross-origin');
+    await expect(page.locator('meta[name="text-scale"]')).toHaveAttribute('content', 'scale');
+    await expect(page.locator('meta[name="color-scheme"]')).toHaveAttribute('content', 'light dark');
+    await expect(page.locator('h1')).toContainText('MWG CLI: Search quality over time');
+    await expect(page.locator('.cadence-note')).toContainText('updates when changes land in the search pipeline');
+
+    // Section 1: sparkline metric switching and query/axis controls
+    const svgA = page.locator('#svg-a');
+    await expect(svgA).toHaveAttribute('aria-label', /Right guide shown, Wild-v2 test:.*#3089 95\.4%/);
+    await page.locator('.spark[data-metric="ndcg"]').click();
+    await expect(page.locator('.spark[data-metric="ndcg"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(svgA).toHaveAttribute('aria-label', /Leaf nDCG@K, Wild-v2 test:.*#3089 75%/);
+    await expect(page.locator('#a [data-metric-note="ndcg"]')).toBeVisible();
+
+    await page.locator('#a-view input[value="nightly"]').check({ force: true });
+    await expect(svgA).toHaveAttribute('aria-label', /Leaf nDCG@K, Agent test:.*#3089 91\.3%/);
+
+    await page.locator('#a-x input[value="time"]').check({ force: true });
+    await expect(svgA.locator('text.a-row-label', { hasText: '2026' })).toBeVisible();
+
+    await page.locator('#svg-a .a-pt').first().hover();
+    await expect(page.locator('#tip')).toBeVisible();
+
+    // Section 2: milestones table
+    await expect(page.locator('#m-table tbody tr')).toHaveCount(15);
+
+    // Section 3: K-horizon metric toggle
+    const svgK = page.locator('#svg-k');
+    await expect(svgK).toHaveAttribute('aria-label', /^Signal-to-noise by K\./);
+    await page.locator('#k-metric input[value="hit"]').check({ force: true });
+    await expect(svgK).toHaveAttribute('aria-label', /^Right guide shown by K\./);
+
+    // Mobile viewport check: no document-level horizontal overflow
+    await page.setViewportSize({ width: 390, height: 844 });
+    const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+    expect(hasHorizontalOverflow).toBe(false);
+
+    expect(thirdParty).toEqual([]);
+    expect(errors).toEqual([]);
   });
 });

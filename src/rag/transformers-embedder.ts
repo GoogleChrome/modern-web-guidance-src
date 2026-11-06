@@ -34,7 +34,10 @@ export class Embedder {
         dtype = parts[1];
     }
     
-    this.pipe = (await pipeline("feature-extraction", repo, { dtype: dtype as any })) as any as FeatureExtractionPipeline;
+    this.pipe = (await pipeline("feature-extraction", repo, {
+      dtype: dtype as any,
+      session_options: { intraOpNumThreads: 2, interOpNumThreads: 1 },
+    })) as any as FeatureExtractionPipeline;
   }
 
   public async embed(text: string, _isQuery = false): Promise<number[]> {

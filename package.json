@@ -85,6 +85,7 @@
     "minimatch": "^11.0.1",
     "oxlint": "1.55.0",
     "playwright": "^1.58.2",
+    "statikk": "^3.1.0",
     "ts-morph": "^27.0.2",
     "typescript": "^5.9.3"
   },
