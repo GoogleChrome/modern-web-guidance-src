@@ -73,7 +73,7 @@ The Owners group comprises seats representing browser and developer ecosystem st
 * **Microsoft Edge** (1 seat):
   * Patrick Brosset ([`@captainbrosset`](https://github.com/captainbrosset))
 * **Mozilla Firefox / MDN** (1 seat):
-  * *[Mozilla representative, TBD]*
+  * Jake Archibald ([`@jakearchibald`](https://github.com/jakearchibald))
 * **Independent Web Platform Experts** (2 seats):
   * Dr. Lea Verou ([`@LeaVerou`](https://github.com/LeaVerou))
   * *[Independent representative, TBD]* — to be nominated and appointed by the Owners
