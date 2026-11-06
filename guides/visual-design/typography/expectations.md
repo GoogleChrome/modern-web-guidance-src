@@ -6,6 +6,6 @@
 - The implementation MUST NOT use `text-align: justify` without `hyphens: auto`.
 - When `font-size` is set using `clamp`, the minimum and maximum values are in `rem`, `em` or `%`.
 - When `font-size` is set using `clamp`, the maximum value is no more than 2.5 times its minimum value.
-- Every element with `hyphens: auto` has a non-empty `lang` value, from the `lang` attribute on itself or on its nearest ancestor that has one.
+- Every element whose computed `hyphens` value is `auto` has a non-empty `lang` attribute or is inside an element that has one.
 - Applying a line height of 1.5, letter spacing of 0.12em and word spacing of 0.16em to all elements, and spacing of 2em after paragraphs, doesn't make the content of any element that has text of its own, other than a scroll container, overflow its height.
 - At a 320 CSS px viewport width, no element makes the page scroll horizontally.
