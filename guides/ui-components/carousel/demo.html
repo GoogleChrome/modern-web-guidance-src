@@ -43,7 +43,7 @@
       border-radius: 0.5rem;
     }
 
-    .carousel-track > * {
+    .carousel-item {
       flex: 0 0 100%;
       scroll-snap-align: center;
       display: grid;
@@ -56,20 +56,18 @@
     }
 
     /*
-     * Looping without clones: at or one step from the first slide, park the last slide before it
-     * (order: -1); at or one step from the last slide, park the first slide after it (order: 1). The
-     * neighbor is already in place before scrolling reaches an end, so native scroll buttons never
-     * disable. Only the first and last slides ever get `order`.
-     * Without support the carousel stays a finite list.
+     * Looping without clones: rotate the ring so the current slide always sits in the middle
+     * position. There are always slides on both sides, so scrolling never reaches a limit and
+     * native scroll buttons never disable. Requires equal-size slides. Without support the
+     * carousel stays a finite list.
      */
     @supports (order: mod(sibling-index(), 2)) {
-      /* --current is deliberately not defined here: without JavaScript no slide is parked, so DOM order applies and the carousel starts on slide 1 */
-      .carousel-track > :first-child {
-        order: clamp(0, var(--current) - (sibling-count() - 3), 1);
+      .carousel-track {
+        --current: 0;
       }
 
-      .carousel-track > :last-child {
-        order: calc(-1 * clamp(0, 2 - var(--current), 1));
+      .carousel-item {
+        order: mod(sibling-index() - 1 - var(--current) + round(down, sibling-count() / 2), sibling-count());
       }
     }
 
@@ -79,7 +77,7 @@
       }
 
       @supports (animation-timeline: view()) {
-        .carousel-track > * {
+        .carousel-item {
           animation: fade-in linear both;
           animation-timeline: view(inline);
           animation-range: entry 0% cover 40%;
@@ -130,9 +128,8 @@
         pointer-events: none;
       }
 
-      /* WORKAROUND (Chrome bug, remove when fixed): set from script on the first Tab, because native
-         buttons lose focus when looping reorders the slides.
-         Bug: https://issues.chromium.org/issues/581318163 */
+      /* WORKAROUND (Chrome bug, remove when fixed): script sets this on the first Tab, because native
+         buttons lose focus when looping reorders the slides. Bug: https://issues.chromium.org/issues/581318163 */
       .carousel-track[data-html-buttons]::scroll-button(*) {
         display: none;
       }
@@ -152,7 +149,7 @@
         margin-block: 0.8rem;
       }
 
-      .carousel-track > *::scroll-marker {
+      .carousel-item::scroll-marker {
         content: "" / attr(data-marker-name);
         inline-size: 0.8rem;
         block-size: 0.8rem;
@@ -162,15 +159,14 @@
         cursor: pointer;
       }
 
-      .carousel-track > *::scroll-marker:target-current {
+      .carousel-item::scroll-marker:target-current {
         background: var(--accent);
       }
 
-      /* Without :target-current, the settled-scroll handler marks the current slide */
-      @supports not selector(:target-current) {
-        .carousel-track > *[data-current]::scroll-marker {
-          background: var(--accent);
-        }
+      /* WORKAROUND (Chrome bug, remove when fixed): script sets this on the first Tab, because native
+         markers lose focus when activated. Bug: https://issues.chromium.org/issues/582416742 */
+      .carousel-track[data-html-markers] {
+        scroll-marker-group: none;
       }
     }
 
@@ -232,23 +228,7 @@
       background: var(--accent);
     }
 
-    .carousel-track,
-    :where(.fallback-controls, .fallback-markers) button {
-      touch-action: manipulation;
-    }
-
     :focus-visible {
-      outline: 0.2rem solid #f90;
-      outline-offset: 0.15rem;
-    }
-
-    /* Bare :focus-visible only matches elements; keep pseudo-element rules separate so unsupported browsers don't drop :focus-visible */
-    .carousel-track::scroll-button(*):focus-visible {
-      outline: 0.2rem solid #f90;
-      outline-offset: 0.15rem;
-    }
-
-    .carousel-track > *::scroll-marker:focus-visible {
       outline: 0.2rem solid #f90;
       outline-offset: 0.15rem;
     }
@@ -274,13 +254,13 @@
     </div>
 
     <div class="carousel-track" tabindex="0" role="group" aria-label="Slides">
-      <div role="group" aria-roledescription="slide" aria-label="1 of 4"
+      <div class="carousel-item" role="group" aria-roledescription="slide" aria-label="1 of 4"
         data-marker-name="Go to slide 1">Slide 1</div>
-      <div role="group" aria-roledescription="slide" aria-label="2 of 4"
+      <div class="carousel-item" role="group" aria-roledescription="slide" aria-label="2 of 4"
         data-marker-name="Go to slide 2">Slide 2</div>
-      <div role="group" aria-roledescription="slide" aria-label="3 of 4"
+      <div class="carousel-item" role="group" aria-roledescription="slide" aria-label="3 of 4"
         data-marker-name="Go to slide 3">Slide 3</div>
-      <div role="group" aria-roledescription="slide" aria-label="4 of 4"
+      <div class="carousel-item" role="group" aria-roledescription="slide" aria-label="4 of 4"
         data-marker-name="Go to slide 4">Slide 4</div>
     </div>
 
@@ -288,12 +268,12 @@
     <p class="visually-hidden" role="status" aria-live="polite"></p>
 
     <!-- Rendered only when the browser lacks native ::scroll-marker support -->
-    <nav class="fallback-markers" aria-label="Choose a slide" hidden></nav>
+    <nav class="fallback-markers" aria-label="Slides" hidden></nav>
   </section>
 
   <script type="module">
     const track = document.querySelector(".carousel-track");
-    const slides = [...track.children];
+    const slides = [...track.querySelectorAll(".carousel-item")];
     const status = document.querySelector('.carousel [role="status"]');
     const controls = document.querySelector(".fallback-controls");
     const markerNav = document.querySelector(".fallback-markers");
@@ -303,157 +283,116 @@
     const hasMarkers = CSS.supports("selector(::scroll-marker)");
     let markers = [];
     const loops = CSS.supports("order: mod(sibling-index(), 2)");
-    let parkedFor = -1;
+    const middle = Math.floor(slides.length / 2);
 
     // Slides in visual order. `order` is 0 for every slide without looping support, so DOM order applies.
     const visual = () => [...slides].sort((a, b) => getComputedStyle(a).order - getComputedStyle(b).order);
     const neighbor = (item, step) => visual()[visual().indexOf(item) + step];
 
-    // Inline (x) axis only: distance from the track's center to the slide's center.
-    const offsetToCenter = (s) => {
-      const r = s.getBoundingClientRect();
-      const t = track.getBoundingClientRect();
-      return r.left + r.width / 2 - (t.left + t.width / 2);
-    };
+    const show = (item, behavior = "auto") =>
+      item?.scrollIntoView({ behavior, inline: "center", block: "nearest" });
 
-    // Scrolls the track to the slide's snap position without touching ancestor scrollers.
-    const show = (item, behavior = "auto") => {
-      if (item) track.scrollBy({ left: offsetToCenter(item), behavior });
-    };
+    // Inline (x) axis only.
+    function nearest() {
+      const center = track.getBoundingClientRect().left + track.clientWidth / 2;
+      const distance = (s) => {
+        const r = s.getBoundingClientRect();
+        return Math.abs(r.left + r.width / 2 - center);
+      };
+      return [...track.children].reduce((a, b) => (distance(b) < distance(a) ? b : a));
+    }
 
-    const nearest = () => slides.reduce((a, b) => (Math.abs(offsetToCenter(b)) < Math.abs(offsetToCenter(a)) ? b : a));
-
-    // Run a callback once scrolling settles. Without scrollend, a debounce stands in for it.
+    // Run a callback once scrolling settles, with a debounced fallback when scrollend is unsupported.
     function onSettled(fn) {
-      if ("onscrollend" in window) {
-        // A scrollend from a scroll that was cut short can arrive after the next one has started; skip it.
-        track.addEventListener("scrollend", () => {
-          const at = [track.scrollLeft, track.scrollTop].join();
-          requestAnimationFrame(() => requestAnimationFrame(() => {
-            if ([track.scrollLeft, track.scrollTop].join() === at) fn();
-          }));
-        });
-        return;
-      }
       let timer;
+      track.addEventListener("scrollend", fn);
       track.addEventListener("scroll", () => {
         clearTimeout(timer);
         timer = setTimeout(fn, 150);
       }, { passive: true });
     }
 
-    // Fallback clicks made mid-scroll build on the pending target, so rapid clicks are not lost.
-    let pending = null;
+    controls.hidden = hasButtons;
     // Highlight the active marker right away, as native :target-current does, rather than after scrolling settles.
     const mark = (item) => {
       const i = slides.indexOf(item);
-      slides.forEach((s, j) => s.toggleAttribute("data-current", j === i));
       markers.forEach((m, j) => m.setAttribute("aria-current", String(j === i)));
     };
+    let pending = null;
     const aim = (item) => {
+      if (!item) return;
       pending = item;
       mark(item);
       show(item);
-    };
-    const step = (dir) => {
-      const target = neighbor(pending ?? nearest(), dir);
-      if (target) aim(target);
     };
     let markFrame = 0;
     track.addEventListener("scroll", () => {
       cancelAnimationFrame(markFrame);
       markFrame = requestAnimationFrame(() => mark(pending ?? nearest()));
     }, { passive: true });
-
-    // Native scroll buttons aim from the in-flight position, so a click mid-scroll would repeat the same slide.
-    // Finish the running scroll first; presses on the buttons and markers target the track itself.
-    let lastPos = track.scrollLeft + track.scrollTop;
-    let heading = 0;
-    track.addEventListener("scroll", () => {
-      const pos = track.scrollLeft + track.scrollTop;
-      heading = Math.sign(pos - lastPos) || heading;
-      lastPos = pos;
-    }, { passive: true });
-    track.addEventListener("scrollend", () => { heading = 0; });
-    const settleBeforePress = (e) => {
-      const current = nearest();
-      // Not aligned with a slide means a scroll is running; scroll events can lag, so derive the direction if needed.
-      if (e.target !== track || Math.abs(offsetToCenter(current)) < 1) return;
-      const dir = heading || (offsetToCenter(current) < 0 ? 1 : -1);
-      const ahead = slides.filter((s) => offsetToCenter(s) * dir >= 0);
-      ahead.sort((x, y) => Math.abs(offsetToCenter(x)) - Math.abs(offsetToCenter(y)));
-      show(ahead[0], "instant");
-      // Park the end slides now, so the native button already has a neighbor to aim at.
-      sync();
-    };
-    track.addEventListener("pointerdown", settleBeforePress);
-    // Keyboard activation of a native scroll button needs the same preparation as a pointer press.
-    track.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") settleBeforePress(e);
+    // Wired even where native buttons exist, because the Chrome workaround below can swap these in.
+    prevBtn.addEventListener("click", () => aim(neighbor(pending ?? nearest(), -1)));
+    nextBtn.addEventListener("click", () => aim(neighbor(pending ?? nearest(), 1)));
+    markerNav.hidden = hasMarkers;
+    // Built even where native markers exist, because the Chrome workaround below can swap these in.
+    markers = slides.map((slide, i) => {
+      const button = Object.assign(document.createElement("button"), { type: "button", textContent: i + 1 });
+      button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
+      button.addEventListener("click", () => aim(slide));
+      markerNav.append(button);
+      return button;
     });
 
-    controls.hidden = hasButtons;
-    prevBtn.addEventListener("click", () => step(-1));
-    nextBtn.addEventListener("click", () => step(1));
-    // WORKAROUND (Chrome bug, remove when fixed): reordering slides makes Chrome drop focus from native
-    // scroll buttons, so keyboard users get the HTML buttons instead. Bug: https://issues.chromium.org/issues/581318163
-    if (hasButtons && loops) {
-      const useHtmlButtons = (e) => {
+    // WORKAROUND (Chrome bugs, remove when fixed): Chrome drops keyboard focus from native scroll buttons
+    // when looping reorders the slides (https://issues.chromium.org/issues/581318163) and from native scroll markers when they
+    // are activated (https://issues.chromium.org/issues/582416742). Script can't refocus a pseudo-element, so on the
+    // first Tab, swap in the HTML controls, which keep focus. Delete each flag with its bug.
+    const swapButtons = hasButtons && loops;
+    const swapMarkers = hasMarkers;
+    if (swapButtons || swapMarkers) {
+      const swapToHtmlControls = (e) => {
         if (e.key !== "Tab") return;
-        controls.hidden = false;
-        track.dataset.htmlButtons = "";
-        document.removeEventListener("keydown", useHtmlButtons);
+        document.removeEventListener("keydown", swapToHtmlControls);
+        if (swapButtons) {
+          controls.hidden = false;
+          track.dataset.htmlButtons = "";
+        }
+        if (swapMarkers) {
+          markerNav.hidden = false;
+          track.dataset.htmlMarkers = "";
+        }
       };
-      document.addEventListener("keydown", useHtmlButtons);
-    }
-    markerNav.hidden = hasMarkers;
-    if (!hasMarkers) {
-      markers = slides.map((slide, i) => {
-        const button = Object.assign(document.createElement("button"), { type: "button" });
-        button.setAttribute("aria-label", slide.dataset.markerName || `Go to slide ${i + 1}`);
-        button.addEventListener("click", () => aim(slide));
-        markerNav.append(button);
-        return button;
-      });
+      document.addEventListener("keydown", swapToHtmlControls);
     }
 
-    // Park an end slide beside the current one, then cancel the layout shift with an instant scroll.
-    function park(item) {
-      const before = offsetToCenter(item);
-      // Snapping off while the slides are reordered: Firefox otherwise re-snaps to another slide and loops
-      track.style.scrollSnapType = "none";
-      // Safari paints the reordered layout for a frame before the compensating scroll lands; locking overflow hides that flicker
-      if (document.activeElement !== track) track.style.overflowX = "hidden";
-      track.style.setProperty("--current", slides.indexOf(item));
-      track.scrollBy({ left: offsetToCenter(item) - before, behavior: "instant" });
-      track.style.scrollSnapType = "";
-      requestAnimationFrame(() => requestAnimationFrame(() => { track.style.overflowX = ""; }));
-      // The parked slide is a visual-only neighbor, so keep it out of keyboard and AT reach.
-      slides.forEach((s) => { s.inert = getComputedStyle(s).order !== "0"; });
-      // Safari keeps the scroll-driven fade at its old progress after the instant scroll; restart it
-      slides.forEach((s) => s.getAnimations().forEach((a) => { a.cancel(); a.play(); }));
-    }
-
-    // The single code path for state: controls only scroll; this reflects where scrolling ended.
-    let settled = null;
     function sync() {
       pending = null;
       const item = nearest();
       const i = slides.indexOf(item);
-      if (loops && i !== parkedFor) {
-        parkedFor = i;
-        park(item);
-      }
-      if (settled && item !== settled) {
-        status.textContent = `Slide ${i + 1} of ${slides.length}`;
-      }
-      settled = item;
+      status.textContent = `Slide ${i + 1} of ${slides.length}`;
       mark(item);
       prevBtn.disabled = !neighbor(item, -1);
       nextBtn.disabled = !neighbor(item, 1);
     }
 
-    onSettled(sync);
+    // Slides are equal size, so one slide plus the gap is the distance between snap positions.
+    const stepSize = () => slides[0].offsetWidth + parseFloat(getComputedStyle(track).columnGap);
+    const park = () => track.scrollTo({ left: middle * stepSize(), behavior: "instant" });
+
+    // Rotate the ring so the slide the user landed on becomes the middle one again.
+    function rotate() {
+      const shift = visual().indexOf(nearest()) - middle;
+      if (!shift) return;
+      const current = Number(track.style.getPropertyValue("--current") || 0);
+      track.style.setProperty("--current", (current + shift + slides.length) % slides.length);
+      park(); // the reorder moved the content, so put the new current slide back in the middle
+    }
+
+    onSettled(() => {
+      if (loops) rotate();
+      sync();
+    });
+    if (loops) park();
     sync();
   </script>
 </body>
