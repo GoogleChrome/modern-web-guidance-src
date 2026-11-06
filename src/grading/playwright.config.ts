@@ -7,7 +7,7 @@ export default defineConfig({
   expect: { timeout: 2000 },
   // Forces Playwright to always search relative to the guides directory,
   // regardless of where you run it from (e.g., when run from within a specific results folder).
-  testDir: guidesDir,
+  testDir: process.env.PLAYWRIGHT_TEST_DIR || guidesDir,
   testMatch: '**/grader.ts',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
